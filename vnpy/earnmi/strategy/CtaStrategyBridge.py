@@ -15,12 +15,12 @@ from vnpy.app.cta_strategy.base import EngineType
 from datetime import datetime, timedelta
 
 
-class CtaStrategyWrapper(CtaTemplate):
+class CtaStrategyBridage(CtaTemplate):
     myStragey:StockStrategy = StrategyTest()
 
     def __init__(self, cta_engine, strategy_name, vt_symbol, setting):
         """"""
-        super(CtaStrategyWrapper, self).__init__(
+        super(CtaStrategyBridage, self).__init__(
             cta_engine, strategy_name, vt_symbol, setting
         )
         #self.myStrategy = StrategyTest()

@@ -1,5 +1,5 @@
 #%%
-from earnmi.strategy.CtaStrategyWrapper import CtaStrategyWrapper
+from earnmi.strategy.CtaStrategyBridge import CtaStrategyBridage
 from earnmi.strategy.FundsFavouriteStrategy import FundsFavouriteStrategy
 from earnmi.strategy.TestMultiStrategy import TestMultiStrategy
 from vnpy.app.cta_strategy.strategies.test_strategy import TestStrategy
@@ -33,7 +33,7 @@ engine.set_parameters(
     pricetick=0.2,
     capital=1_000_000,
 )
-engine.add_strategy(CtaStrategyWrapper, {})
+engine.add_strategy(CtaStrategyBridage, {})
 
 #%%
 engine.load_data()
