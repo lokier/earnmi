@@ -614,7 +614,10 @@ class BacktestingEngine:
         Write log message.
         """
         msg = f"{self.datetime}\t{msg}"
-        self.logs.append(msg)
+
+        print(msg)
+
+        #self.logs.append(msg)
 
     def send_email(self, msg: str, strategy: StrategyTemplate = None) -> None:
         """

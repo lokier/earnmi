@@ -29,6 +29,10 @@ class jqSdk(object):
         security = jq.get_security_info(jqCode, date=None)
         return security.start_date
 
+    def get(self):
+        self.checkOk()
+        return jq
+
 jqSdk = jqSdk()
 #date = jqSdk.getOnMarketDate("000001")
 #print(date)

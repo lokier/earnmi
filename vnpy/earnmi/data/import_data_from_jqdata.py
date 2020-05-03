@@ -5,7 +5,9 @@ from vnpy.trader.constant import Interval, Exchange
 from vnpy.trader.database import database_manager
 from vnpy.trader.object import BarData
 
-
+"""
+  保存数据库。
+"""
 def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetime, end_date: datetime):
     exechage = Exchange.SZSE
     vn_code = code+".XSHE"

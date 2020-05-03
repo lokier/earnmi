@@ -6,9 +6,14 @@ from vnpy.app.cta_strategy.strategies.atr_rsi_strategy import (
 from datetime import datetime
 
 #%%
+from vnpy.event import Event
 from vnpy.trader.constant import Interval
 
+
+
 engine = BacktestingEngine()
+
+
 engine.set_parameters(
     vt_symbol="600519.SSE",
     interval=Interval.MINUTE,

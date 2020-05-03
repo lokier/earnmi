@@ -1,5 +1,7 @@
 # flake8: noqa
+from vnpy.app.chart_wizard import ChartWizardApp
 from vnpy.app.cta_backtester import CtaBacktesterApp
+from vnpy.app.data_manager import DataManagerApp
 from vnpy.app.portfolio_manager import PortfolioManagerApp
 from vnpy.event import EventEngine
 
@@ -108,9 +110,9 @@ def main():
     # main_engine.add_app(SpreadTradingApp)
     main_engine.add_app(PortfolioManagerApp)
     # main_engine.add_app(OptionMasterApp)
-    # main_engine.add_app(ChartWizardApp)
+    main_engine.add_app(ChartWizardApp)
     # main_engine.add_app(ExcelRtdApp)
-    # main_engine.add_app(DataManagerApp)
+    main_engine.add_app(DataManagerApp)
     main_engine.add_app(PortfolioStrategyApp)
     
     main_window = MainWindow(main_engine, event_engine)

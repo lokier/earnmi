@@ -1,5 +1,17 @@
 
-1、扩展一个策略：比较基金重点持仓的波段操作使用什么技术指标比较好；
-2、多合约组合策略模块：PortfolioStrategy
+//TODO
 
 
+1、开发一个基金喜欢FundsFavouriteStrategy.
+ 1）1分钟bar是以上证中心为模块,生成上证开市的时间表；2010
+
+
+比较基金重点持仓的波段操作使用什么技术指标比较好；
+
+
+2、熟悉多合约组合策略模块：PortfolioStrategy
+
+3、数据模块：后复权数据，分钟，小时，天。
+
+
+BarGeneratorDemo
