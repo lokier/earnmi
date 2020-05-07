@@ -4,6 +4,31 @@ from typing import Any
 
 from datetime import datetime, timedelta
 
+class Market:
+    """
+        市场.
+    """
+
+    @abstractmethod
+    def buy(self, code:str,price: float, volume: float):
+        """
+          买入股票
+        """
+        pass
+
+    @abstractmethod
+    def sell(self,code:str, price: float, volume: float):
+        """
+          卖出股票
+        """
+        pass
+
+
+class Portfolio:
+    """
+        证券账户.
+    """
+    pass
 
 class StockStrategy(ABC):
 
@@ -27,7 +52,7 @@ class StockStrategy(ABC):
         pass
 
     @abstractmethod
-    def on_market_prepare_open(self):
+    def on_market_prepare_open(self,market:Market):
         """
             市场准备开始（比如：竞价）.
         """
@@ -35,28 +60,28 @@ class StockStrategy(ABC):
 
 
     @abstractmethod
-    def on_market_open(self):
+    def on_market_open(self,market:Market):
         """
             市场开市.
         """
         pass
 
     @abstractmethod
-    def on_market_prepare_close(self):
+    def on_market_prepare_close(self,market:Market):
         """
             市场准备关市.
         """
         pass
 
     @abstractmethod
-    def on_market_close(self):
+    def on_market_close(self,market:Market):
         """
             市场关市.
         """
         pass
 
     @abstractmethod
-    def on_bar_per_minute(self,time:datetime):
+    def on_bar_per_minute(self,time:datetime,market:Market):
         """
             市场开市后的每分钟。
         """
@@ -67,23 +92,4 @@ class StockStrategy(ABC):
         pass
 
 
-class Market:
-    """
-        市场.
-    """
 
-    @abstractmethod
-    def buy(self):
-        """
-        """
-        pass
-
-    def sell(self):
-        pass
-
-
-class Portfolio:
-    """
-        证券账户.
-    """
-    pass

@@ -3,7 +3,7 @@ from copy import copy
 from datetime import datetime
 from typing import Any
 
-from earnmi.strategy.StockStrategy import StockStrategy
+from earnmi.strategy.StockStrategy import StockStrategy, Market
 from vnpy.trader.utility import virtual
 
 
@@ -30,18 +30,20 @@ class StrategyTest(StockStrategy):
         self.write_log("on_destroy")
         pass
 
-    def on_market_prepare_open(self):
+    def on_market_prepare_open(self,market:Market):
         """
             市场准备开始（比如：竞价）.
         """
         self.write_log("on_market_prepare")
+
+        market.buy("000034",344.23,200)
 
         pass
 
 
 
 
-    def on_market_open(self):
+    def on_market_open(self,market:Market):
         """
             市场开市.
         """
@@ -49,14 +51,16 @@ class StrategyTest(StockStrategy):
 
         pass
 
-    def on_market_prepare_close(self):
+    def on_market_prepare_close(self,market:Market):
         """
             市场准备关市.
         """
         self.write_log("on_market_prepare_close")
+        market.sell("000034",344.23,200)
+
         pass
 
-    def on_market_close(self):
+    def on_market_close(self,market:Market):
         """
             市场关市.
         """
@@ -64,7 +68,7 @@ class StrategyTest(StockStrategy):
 
         pass
 
-    def on_bar_per_minute(self,time:datetime):
+    def on_bar_per_minute(self,time:datetime,market:Market):
         """
             市场开市后的每分钟。
         """

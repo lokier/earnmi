@@ -1,4 +1,4 @@
-from earnmi.strategy.StockStrategy import StockStrategy
+from earnmi.strategy.StockStrategy import StockStrategy, Market
 from earnmi.strategy.StrategyTest import StrategyTest
 from vnpy.app.cta_strategy import (
     CtaTemplate,
@@ -14,8 +14,10 @@ from time import time
 from vnpy.app.cta_strategy.base import EngineType
 from datetime import datetime, timedelta
 
+from vnpy.trader.constant import Direction, Offset
 
-class CtaStrategyBridage(CtaTemplate):
+
+class CtaStrategyBridage(CtaTemplate,Market):
     myStragey:StockStrategy = StrategyTest()
 
     def __init__(self, cta_engine, strategy_name, vt_symbol, setting):
@@ -33,9 +35,9 @@ class CtaStrategyBridage(CtaTemplate):
         """
         Callback when strategy is inited.
         """
-        #self.write_log("策略初始化")
-        #应该是初始化bar
-        #super.callback = self.__on_bar_dump
+        # self.write_log("策略初始化")
+        # 应该是初始化bar
+        # super.callback = self.__on_bar_dump
         self.load_bar(0)
 
     def on_start(self):
@@ -91,25 +93,25 @@ class CtaStrategyBridage(CtaTemplate):
 
         if (EngineType.BACKTESTING == self.get_engine_type()):
 
-            self.myStragey.on_market_prepare_open()
-            self.myStragey.on_market_open()
+            self.myStragey.on_market_prepare_open(self)
+            self.myStragey.on_market_open(self)
 
             day = bar.datetime
             tradeTime = datetime(year=day.year, month=day.month, day=day.day, hour=9, minute=30, second=1)
             end_date = datetime(year=day.year, month=day.month, day=day.day, hour=11, minute=30, second=1)
 
             while (tradeTime.__le__(end_date)):
-                self.myStragey.on_bar_per_minute(tradeTime)
+                self.myStragey.on_bar_per_minute(tradeTime,self)
                 tradeTime = tradeTime + timedelta(minutes=1)
 
             tradeTime = datetime(year=day.year, month=day.month, day=day.day, hour=13, minute=0, second=1)
             end_date = datetime(year=day.year, month=day.month, day=day.day, hour=15, minute=0, second=1)
             while (tradeTime.__le__(end_date)):
-                self.myStragey.on_bar_per_minute(tradeTime)
+                self.myStragey.on_bar_per_minute(tradeTime,self)
                 tradeTime = tradeTime + timedelta(minutes=1)
 
-            self.myStragey.on_market_prepare_close()
-            self.myStragey.on_market_close()
+            self.myStragey.on_market_prepare_close(self)
+            self.myStragey.on_market_close(self)
 
             pass
 
@@ -155,3 +157,20 @@ class CtaStrategyBridage(CtaTemplate):
         """"""
         self.cancel_all()
         self.write_log("执行全部撤单测试")
+
+    def buy(self, code: str, price: float, volume: float):
+            """
+              买入股票
+            """
+            if self.trading:
+                vt_orderids = self.cta_engine.send_limit_order(code, Direction.LONG, Offset.OPEN, price, volume)
+                return vt_orderids
+            else:
+                return []
+
+    def sell(self, code: str, price: float, volume: float):
+        if self.trading:
+            vt_orderids = self.cta_engine.send_limit_order(code, Direction.SHORT, Offset.CLOSE, price, volume)
+            return vt_orderids
+        else:
+            return []

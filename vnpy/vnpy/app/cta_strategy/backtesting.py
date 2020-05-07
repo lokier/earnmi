@@ -984,7 +984,17 @@ class BacktestingEngine:
         return stop_order.stop_orderid
 
     def send_limit_order(
+            self,
+            direction: Direction,
+            offset: Offset,
+            price: float,
+            volume: float
+    ):
+        return self.send_limit_order(self.symbol,direction,offset,price,volume)
+
+    def send_limit_order(
         self,
+        symbol:str,
         direction: Direction,
         offset: Offset,
         price: float,
@@ -994,7 +1004,7 @@ class BacktestingEngine:
         self.limit_order_count += 1
 
         order = OrderData(
-            symbol=self.symbol,
+            symbol=symbol,
             exchange=self.exchange,
             orderid=str(self.limit_order_count),
             direction=direction,
