@@ -100,15 +100,21 @@ class CtaStrategyBridage(CtaTemplate,Market):
             tradeTime = datetime(year=day.year, month=day.month, day=day.day, hour=9, minute=30, second=1)
             end_date = datetime(year=day.year, month=day.month, day=day.day, hour=11, minute=30, second=1)
 
+            self.cta_engine.cross_limit_order()
+            self.cta_engine.cross_stop_order()
             while (tradeTime.__le__(end_date)):
                 self.myStragey.on_bar_per_minute(tradeTime,self)
                 tradeTime = tradeTime + timedelta(minutes=1)
+                self.cta_engine.cross_limit_order()
+                self.cta_engine.cross_stop_order()
 
             tradeTime = datetime(year=day.year, month=day.month, day=day.day, hour=13, minute=0, second=1)
             end_date = datetime(year=day.year, month=day.month, day=day.day, hour=15, minute=0, second=1)
             while (tradeTime.__le__(end_date)):
                 self.myStragey.on_bar_per_minute(tradeTime,self)
                 tradeTime = tradeTime + timedelta(minutes=1)
+                self.cta_engine.cross_limit_order()
+                self.cta_engine.cross_stop_order()
 
             self.myStragey.on_market_prepare_close(self)
             self.myStragey.on_market_close(self)
@@ -124,18 +130,22 @@ class CtaStrategyBridage(CtaTemplate,Market):
         """
         Callback of new order data update.
         """
+        self.write_log("on_order")
         self.put_event()
 
     def on_trade(self, trade: TradeData):
         """
         Callback of new trade data update.
         """
+        self.write_log("on_trade")
+
         self.put_event()
 
     def on_stop_order(self, stop_order: StopOrder):
         """
         Callback of stop order update.
         """
+        self.write_log("on_stop_order")
         self.put_event()
 
     def test_market_order(self):
@@ -174,3 +184,7 @@ class CtaStrategyBridage(CtaTemplate,Market):
             return vt_orderids
         else:
             return []
+
+    def write_log(self, msg):
+        print(f"CtaStrategyBridage: {msg}")
+        pass
