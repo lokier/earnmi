@@ -10,7 +10,7 @@ from vnpy.app.cta_strategy import (
 )
 
 from time import time
-
+import copy
 from vnpy.app.cta_strategy.base import EngineType
 from datetime import datetime, timedelta
 
@@ -93,6 +93,9 @@ class CtaStrategyBridage(CtaTemplate,Market):
 
         if (EngineType.BACKTESTING == self.get_engine_type()):
 
+            #取消所有订单。
+            self.cta_engine.cancel_all(self)
+
             self.myStragey.on_market_prepare_open(self)
             self.myStragey.on_market_open(self)
 
@@ -100,21 +103,21 @@ class CtaStrategyBridage(CtaTemplate,Market):
             tradeTime = datetime(year=day.year, month=day.month, day=day.day, hour=9, minute=30, second=1)
             end_date = datetime(year=day.year, month=day.month, day=day.day, hour=11, minute=30, second=1)
 
-            self.cta_engine.cross_limit_order()
-            self.cta_engine.cross_stop_order()
             while (tradeTime.__le__(end_date)):
                 self.myStragey.on_bar_per_minute(tradeTime,self)
+                tradeBar = copy.deepcopy(bar)
+                tradeBar.datetime = tradeTime
+                self.__cross_order_by_per_miniute(tradeBar)
                 tradeTime = tradeTime + timedelta(minutes=1)
-                self.cta_engine.cross_limit_order()
-                self.cta_engine.cross_stop_order()
 
             tradeTime = datetime(year=day.year, month=day.month, day=day.day, hour=13, minute=0, second=1)
             end_date = datetime(year=day.year, month=day.month, day=day.day, hour=15, minute=0, second=1)
             while (tradeTime.__le__(end_date)):
                 self.myStragey.on_bar_per_minute(tradeTime,self)
+                tradeBar = copy.deepcopy(bar)
+                tradeBar.datetime = tradeTime
+                self.__cross_order_by_per_miniute(tradeBar)
                 tradeTime = tradeTime + timedelta(minutes=1)
-                self.cta_engine.cross_limit_order()
-                self.cta_engine.cross_stop_order()
 
             self.myStragey.on_market_prepare_close(self)
             self.myStragey.on_market_close(self)
@@ -124,6 +127,22 @@ class CtaStrategyBridage(CtaTemplate,Market):
         """
         Callback of new bar data update.
         """
+        pass
+
+    def __cross_order_by_per_miniute(self, tradeBar: BarData):
+        """
+        交割订单
+        """
+
+
+        for order in list(self.cta_engine.active_limit_orders.values()):
+            bar = copy.deepcopy(tradeBar)
+            bar.symbol = order.symbol
+            bar.low_price = order.price - 0.01
+            bar.high_price = order.price + 0.01
+            bar.open_price = order.price
+            self.cta_engine.cross_limit_order_byBar(bar)
+
         pass
 
     def on_order(self, order: OrderData):

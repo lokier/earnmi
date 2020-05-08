@@ -1,7 +1,4 @@
 from abc import abstractmethod, ABC
-from copy import copy
-from typing import Any
-
 from datetime import datetime, timedelta
 
 class Market:
@@ -90,6 +87,5 @@ class StockStrategy(ABC):
     def write_log(self,msg):
         print(f"StockStrategy: {msg}")
         pass
-
 
 
