@@ -21,10 +21,17 @@ def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetim
     # 1d : 900day
     # interval.__str__()
     batch_day = 900
+    jq_frequency = '1d'
     if(interval == Interval.MINUTE):
         batch_day = 4
+        jq_frequency = '1m'
     elif(interval == Interval.HOUR):
         batch_day = 200
+        jq_frequency ='60m'
+    elif (interval == Interval.DAILY):
+        jq_frequency = '1d'
+
+
 
     batch_start = start_date
     while(batch_start.__lt__(end_date)):
@@ -34,7 +41,7 @@ def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetim
         print(" start:%s , end :%s" % (batch_start.__str__(), batch_end.__str__()))
 
         prices = jq.get_price(vn_code, start_date=batch_start, end_date=batch_end,
-        fields=['open', 'close', 'high', 'low', 'volume'], frequency=interval.value)
+        fields=['open', 'close', 'high', 'low', 'volume'], frequency=jq_frequency)
         bars = []
         lists = np.array(prices)
         for rowIndex in range(0, lists.shape[0]):
@@ -77,6 +84,6 @@ if(not jq.is_auth()):
     exit()
 print('jq is auth')
 
-code = '600519'
+code = '600009'
 database_manager.clean(code)
-save_bar_data_from_jqdata(code,Interval.MINUTE,start_date=start_day,end_date=end_day)
+save_bar_data_from_jqdata(code,Interval.DAILY,start_date=start_day,end_date=end_day)
