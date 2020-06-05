@@ -34,9 +34,7 @@ class StrategyTest(StockStrategy):
         """
             市场准备开始（比如：竞价）.
         """
-        self.write_log("on_market_prepare")
 
-        market.buy("000034",344.23,200)
 
         pass
 
@@ -47,7 +45,6 @@ class StrategyTest(StockStrategy):
         """
             市场开市.
         """
-        self.write_log("on_market_open")
 
         pass
 
@@ -55,8 +52,7 @@ class StrategyTest(StockStrategy):
         """
             市场准备关市.
         """
-        self.write_log("on_market_prepare_close")
-        market.sell("000034",344.23,200)
+
 
         pass
 
@@ -64,7 +60,6 @@ class StrategyTest(StockStrategy):
         """
             市场关市.
         """
-        self.write_log("on_market_close")
 
         pass
 
@@ -72,7 +67,6 @@ class StrategyTest(StockStrategy):
         """
             市场开市后的每分钟。
         """
-        self.write_log(f"on_bar_per_minute:{time}" )
         pass
 
 
