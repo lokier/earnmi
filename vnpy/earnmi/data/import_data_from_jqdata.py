@@ -54,7 +54,7 @@ def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetim
             symbol=code,
             exchange=exechage,
             datetime=date,
-            interval=Interval.MINUTE,
+            interval=interval,
             volume=row['volume'],
             open_price=row['open'],
             high_price=row['high'],
