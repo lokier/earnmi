@@ -29,6 +29,9 @@ class Portfolio:
 
 class StockStrategy(ABC):
 
+    #是否在运行到回撤里面。
+    mRunOnBackTest = False
+
     def __init__(
             self
     ):

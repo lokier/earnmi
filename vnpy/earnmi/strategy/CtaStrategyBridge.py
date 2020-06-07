@@ -38,6 +38,7 @@ class CtaStrategyBridage(CtaTemplate,Market):
         # self.write_log("策略初始化")
         # 应该是初始化bar
         # super.callback = self.__on_bar_dump
+        self.myStragey.mRunOnBackTest = EngineType.BACKTESTING == self.get_engine_type();
         self.load_bar(0)
 
     def on_start(self):
