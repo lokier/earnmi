@@ -9,9 +9,9 @@ if __name__ == "__main__":
     app = create_qapp()
 
     bars = database_manager.load_bar_data(
-        "600519",
+        "600009",
         Exchange.SSE,
-        interval=Interval.MINUTE,
+        interval=Interval.DAILY,
         start=datetime(2018, 4, 1),
         end=datetime(2019, 7, 17)
     )
