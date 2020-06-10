@@ -35,7 +35,7 @@ class Chart:
         bars = self.barDatas;
         if(bars[0].datetime > bars[-1].datetime):
             bars = bars.__reversed__()
-        print(bars)
+
         data = []
         index = []
         am = ArrayManager(self.window_size * 2)
