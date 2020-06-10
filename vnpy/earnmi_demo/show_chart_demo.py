@@ -22,7 +22,7 @@ historyData.initPool(startDate,endDate)
 historyData.setToday(endDate)
 bars = historyData.getData()
 
-print(f"bar.size = ${bars.__len__()}")
+print(f"bar.size = {bars.__len__()}")
 
 
 if(bars.__len__() < 1):

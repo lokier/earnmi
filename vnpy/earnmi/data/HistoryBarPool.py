@@ -83,7 +83,7 @@ class HistoryBarPool:
             currentDate = bars[0].datetime - timedelta(days=-1)
 
         if(beforeBars.__len__() >self.__keepN):
-            beforeBars = beforeBars[beforeBars.__len__() - self.__keepN:-1]
+            beforeBars = beforeBars[ -1  - self.__keepN:-1]
 
         self.__current_pool_index = 0
 
