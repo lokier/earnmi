@@ -47,6 +47,9 @@ boll_dev = 3.4
 char = Chart()
 char.setBarData(bars)
 char.open_boll = True
+#char.open_obv = True
+char.open_rsi = True
+
 #char.openBoll(False)
 char.show()
 

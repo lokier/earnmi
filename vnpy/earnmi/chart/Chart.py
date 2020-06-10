@@ -16,6 +16,8 @@ class Chart:
 
     window_size = 15
     open_boll = False  ##是否显示布林指标
+    open_obv = False  ##是否显示obv指标
+    open_rsi = False  ##是否显示rsiv指标
 
 
     """
@@ -41,10 +43,13 @@ class Chart:
         ### 初始化columns
         columns = ['Open', 'High', 'Low', 'Close', "Volume"]
 
-        enable_bool = self.open_boll
-        if enable_bool:
+        if self.open_boll:
             columns.append("boll_up")
             columns.append("boll_down")
+        if(self.open_obv):
+            columns.append("obv")
+        if (self.open_rsi):
+            columns.append("rsi")
 
         for bar in bars:
             index.append(bar.datetime)
@@ -52,7 +57,7 @@ class Chart:
             am.update_bar(bar)
 
             #添加布林指标数据
-            if enable_bool:
+            if self.open_boll:
                 if am.count >= self.window_size:
                     up, down = am.boll(self.window_size, 3.4)
                     list.append(up)
@@ -60,6 +65,20 @@ class Chart:
                 else:
                     list.append(bar.close_price)
                     list.append(bar.close_price)
+
+            if self.open_obv:
+                if am.count >= self.window_size:
+                    obv = am.obv(self.window_size)
+                    list.append(obv)
+                else:
+                    list.append(bar.volume)
+
+            if self.open_rsi:
+                if am.count >= self.window_size:
+                    rsi = am.rsi(self.window_size)
+                    list.append(rsi)
+                else:
+                    list.append(50)
 
             data.append(list)
 
@@ -69,11 +88,16 @@ class Chart:
         apds = []
 
         # 添加布林指标数据
-        if enable_bool:
+        if self.open_boll:
             apds.append(mpf.make_addplot(trades['boll_up'], linestyle='dashdot'))
             apds.append(mpf.make_addplot(trades['boll_down'], linestyle='dashdot'))
 
+        if self.open_obv:
+            apds.append(mpf.make_addplot(trades['obv'], panel='lower',color='g',secondary_y=True))
+        if self.open_rsi:
+            apds.append(mpf.make_addplot(trades['rsi'], panel='lower',color='b',secondary_y=True))
 
-        mpf.plot(trades, type='candle', volume=True, mav=(5), figscale=0.9, style='yahoo',addplot=apds)
+
+        mpf.plot(trades, type='candle', volume=True, mav=(5), figscale=1.3, style='yahoo',addplot=apds)
 
 
