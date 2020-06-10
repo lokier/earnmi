@@ -1,0 +1,4 @@
+
+class TradeDays:
+
+    pass

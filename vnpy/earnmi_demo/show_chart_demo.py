@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from earnmi.chart.Chart import Chart
+from earnmi.data.HistoryBarPool import HistoryBarPool
 from vnpy.trader.constant import Interval, Exchange
 from vnpy.trader.database import database_manager
 from earnmi.data import import_data_from_jqdata
@@ -15,6 +16,14 @@ if code.startswith("6"):
     exchange = Exchange.SSE
 
 bars = database_manager.load_bar_data(code,exchange,Interval.DAILY,startDate,endDate)
+
+historyData = HistoryBarPool(code,120)
+historyData.initPool(startDate,endDate)
+historyData.setToday(endDate)
+bars = historyData.getData()
+
+print(f"bar.size = ${bars.__len__()}")
+
 
 if(bars.__len__() < 1):
     #从网络加载

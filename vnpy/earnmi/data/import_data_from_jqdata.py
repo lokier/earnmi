@@ -42,6 +42,10 @@ def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetim
 
         prices = jq.get_price(vn_code, start_date=batch_start, end_date=batch_end,
         fields=['open', 'close', 'high', 'low', 'volume'], frequency=jq_frequency)
+
+        if(prices is None):
+            break
+
         bars = []
         lists = np.array(prices)
         for rowIndex in range(0, lists.shape[0]):
@@ -69,21 +73,26 @@ def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetim
         batch_start = batch_end #+ timedelta(days = 1)
     pass
 
-
-
-# start main
-
-start_day = datetime.strptime("2018-03-29","%Y-%m-%d")
-end_day = datetime.strptime("2020-03-29","%Y-%m-%d")
-
 if(not jq.is_auth()):
     jq.auth('13530336157','Qwer4321') #ID是申请时所填写的手机号；Password为聚宽官网登录密码，新申请用户默认为手机号后6位
 
 if(not jq.is_auth()):
     print('jq is not auth,exist')
     exit()
-print('jq is auth')
 
-code = '600009'
-database_manager.clean(code)
-save_bar_data_from_jqdata(code,Interval.DAILY,start_date=start_day,end_date=end_day)
+# start main
+
+# start_day = datetime.strptime("2018-03-29","%Y-%m-%d")
+# end_day = datetime.strptime("2020-03-29","%Y-%m-%d")
+#
+# if(not jq.is_auth()):
+#     jq.auth('13530336157','Qwer4321') #ID是申请时所填写的手机号；Password为聚宽官网登录密码，新申请用户默认为手机号后6位
+#
+# if(not jq.is_auth()):
+#     print('jq is not auth,exist')
+#     exit()
+# print('jq is auth')
+#
+# code = '600009'
+# database_manager.clean(code)
+# save_bar_data_from_jqdata(code,Interval.DAILY,start_date=start_day,end_date=end_day)

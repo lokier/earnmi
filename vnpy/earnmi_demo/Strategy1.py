@@ -1,13 +1,13 @@
-from abc import abstractmethod, ABC
-from copy import copy
 from datetime import datetime
-from typing import Any
 
 from earnmi.strategy.StockStrategy import StockStrategy, Market
-from vnpy.trader.utility import virtual
 
+"""
+使用三个指标来：
+    obv、rsi、boll指标
 
-class StrategyTest(StockStrategy):
+"""
+class Strategy1(StockStrategy):
 
     def __init__(
             self,
@@ -34,6 +34,8 @@ class StrategyTest(StockStrategy):
         """
             市场准备开始（比如：竞价）.
         """
+
+        #准备线程池，准备数据。
 
 
         pass
