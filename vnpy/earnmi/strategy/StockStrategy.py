@@ -20,6 +20,10 @@ class Market:
         """
         pass
 
+    @abstractmethod
+    def today(self)->datetime:
+        pass
+
 
 class Portfolio:
     """
@@ -27,10 +31,18 @@ class Portfolio:
     """
     pass
 
+"""
+回溯环境
+"""
+class BackTestContext:
+    start_date:datetime = None
+    end_date:datetime = None
+
 class StockStrategy(ABC):
 
     #是否在运行到回撤里面。
     mRunOnBackTest = False
+    backtestContext:BackTestContext = None
 
     def __init__(
             self

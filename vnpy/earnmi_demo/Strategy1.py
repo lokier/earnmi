@@ -1,5 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
+from earnmi.data.HistoryBarPool import HistoryBarPool
 from earnmi.strategy.StockStrategy import StockStrategy, Market
 
 """
@@ -21,6 +22,14 @@ class Strategy1(StockStrategy):
         决策初始化.
         """
         self.write_log("on_create")
+        self.historyData = HistoryBarPool("300004",30)
+
+        if( not self.backtestContext is None):
+            #从网络上面准备数据。
+            startDate = self.backtestContext.start_date  - timedelta(days=100)
+            endDate = self.backtestContext.end_date
+            self.historyData.initPool(startDate,endDate)
+
         pass
 
     def on_destroy(self):
@@ -36,6 +45,7 @@ class Strategy1(StockStrategy):
         """
 
         #准备线程池，准备数据。
+        self.historyData.getData(market.today())
 
 
         pass
@@ -47,7 +57,6 @@ class Strategy1(StockStrategy):
         """
             市场开市.
         """
-
         pass
 
     def on_market_prepare_close(self,market:Market):

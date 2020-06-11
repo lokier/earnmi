@@ -19,6 +19,7 @@ from vnpy.trader.constant import Direction, Offset
 
 class CtaStrategyBridage(CtaTemplate,Market):
     myStragey:StockStrategy = StrategyTest()
+    __privous_on_bar_datime = None
 
     def __init__(self, cta_engine, strategy_name, vt_symbol, setting):
         """"""
@@ -27,6 +28,7 @@ class CtaStrategyBridage(CtaTemplate,Market):
         )
         #self.myStrategy = StrategyTest()
         self.isCreated = False
+        self.today= None
 
     def __on_bar_dump(self, bar: BarData):
         pass
@@ -85,7 +87,6 @@ class CtaStrategyBridage(CtaTemplate,Market):
 
         self.put_event()
 
-    __privous_on_bar_datime = None
 
     def on_bar(self, bar: BarData):
 
@@ -97,10 +98,11 @@ class CtaStrategyBridage(CtaTemplate,Market):
             #取消所有订单。
             self.cta_engine.cancel_all(self)
 
+            self.today = bar.datetime
+            day = bar.datetime
             self.myStragey.on_market_prepare_open(self)
             self.myStragey.on_market_open(self)
 
-            day = bar.datetime
             tradeTime = datetime(year=day.year, month=day.month, day=day.day, hour=9, minute=30, second=1)
             end_date = datetime(year=day.year, month=day.month, day=day.day, hour=11, minute=30, second=1)
 
@@ -204,6 +206,9 @@ class CtaStrategyBridage(CtaTemplate,Market):
             return vt_orderids
         else:
             return []
+
+    def today(self) -> datetime:
+        return self.today
 
     def write_log(self, msg):
         print(f"CtaStrategyBridage: {msg}")

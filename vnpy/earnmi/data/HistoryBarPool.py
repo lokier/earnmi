@@ -34,6 +34,8 @@ class HistoryBarPool:
         self.__minPoolSize = keepN
 
     def initPool(self,begin:datetime,end:datetime):
+
+        print(f"start load data from net, code:{self.__code}")
         database_manager.clean(self.__code)
         save_bar_data_from_jqdata(self.__code, Interval.DAILY, start_date=begin, end_date=end)
         self.__poolBegin = begin
