@@ -22,6 +22,8 @@ class HistoryBarPool:
     __current_pool_data:Sequence = None
     __current_pool_index = -1
 
+    __BATCH_SIZE = 200
+
     def __init__(self, code: str):
         self.__init__(code,100)
 
@@ -37,17 +39,26 @@ class HistoryBarPool:
         self.__poolBegin = begin
         self.__poolEnd = end
 
-    def setToday(self,today:datetime):
-        if(self.__poolBegin == None):
+    def setToday(self,today:datetime)->bool:
+        if(self.__poolBegin is None):
             raise RuntimeError("must call initPoll() first!")
         if(today.__gt__(self.__poolEnd) or today.__lt__(self.__poolBegin)):
             raise RuntimeError("today must be in range poll size")
 
-        chagned = self.__today == None or (not( self.__is_same_day(today,self.__today)))
+        chagned = self.__today is None or (not( self.__is_same_day(today,self.__today)))
         if chagned :
              self.__today = today
-             self.__prepareDataSet()
+             index = self.__findIndexInPool()
+             if(index != -1 and index == self.__current_pool_index):
+                 chagned = False
 
+        if(chagned):
+            self.__prepareDataSet()
+        return chagned
+
+    """
+    返回今天以前的数据
+    """
     def getData(self)-> Sequence:
         if(self.__current_pool_index >=0):
             begin =  self.__current_pool_index
@@ -56,34 +67,30 @@ class HistoryBarPool:
 
         return None
 
-    def __findTodayIndexInPool(self) ->int:
+    def __findIndexInPool(self) ->int:
         index = -1
-        for i, bar in enumerate(self.__current_pool_data):
-            if (self.__is_same_day(self.__today, bar.datetime)):
-                index = i
-                break
+        if (not self.__current_pool_data is None):
+            for i, bar in enumerate(self.__current_pool_data):
+                # 找到第一个不是以前的天数
+                if (not self.is_before_day(self.__today, bar.datetime)):
+                    index = i
+                    break
         return index
 
     def __prepareDataSet(self):
         #判断数据池里面有没有今天的数据，是否充分；
         self.__current_pool_index = -1
-        if( not (self.__current_pool_data == None)):
-            index = self.__findTodayIndexInPool();
-            if(index + 1 >= self.__keepN):
-                #skip ,already is the poll data
-                self.__current_pool_index = index - self.__keepN + 1
-                return;
         beforeBars = []
         currentDate = self.__today
         while(beforeBars.__len__() < self.__keepN):
             bars = self.__loadBefore(currentDate)
-            if(bars == None or bars.__len__() ==0):
+            if(bars is None or bars.__len__() ==0):
                 return
             beforeBars = bars + beforeBars
-            currentDate = bars[0].datetime - timedelta(days=-1)
+            currentDate = bars[0].datetime + timedelta(days=-1)
 
         if(beforeBars.__len__() >self.__keepN):
-            beforeBars = beforeBars[ -1  - self.__keepN:-1]
+            beforeBars = beforeBars[ beforeBars.__len__()  - self.__keepN -1:]
 
         self.__current_pool_index = 0
 
@@ -96,7 +103,7 @@ class HistoryBarPool:
             afterBars.extend(self.__loadAfter(currentDate))
             if(afterBars.__len__() == oldSize):
                 break
-            currentDate = afterBars[:-1]
+            currentDate = afterBars[-1].datetime
 
         beforeBars.extend(afterBars)
         self.__current_pool_data = beforeBars
@@ -104,14 +111,14 @@ class HistoryBarPool:
 
 
     def __loadBefore(self,end:datetime)-> Sequence:
-        start = end - timedelta(days=200)
+        start = end - timedelta(days=self.__BATCH_SIZE)
         exchange = Exchange.SZSE
         if self.__code.startswith("6"):
             exchange = Exchange.SSE
         return database_manager.load_bar_data(self.__code, exchange, Interval.DAILY, start, end)
 
     def __loadAfter(self,start:datetime) ->Sequence:
-        end = start +  timedelta(days=150)
+        end = start +  timedelta(days=self.__BATCH_SIZE)
         exchange = Exchange.SZSE
         if self.__code.startswith("6"):
             exchange = Exchange.SSE
@@ -119,3 +126,8 @@ class HistoryBarPool:
 
     def __is_same_day(self,d1:datetime,d2:datetime)->bool:
         return d1.day == d2.day and d1.month == d2.month and d1.year == d2.year
+
+    def is_before_day(self,d1:datetime,before:datetime)->bool:
+        if(self.__is_same_day(d1,before)):
+            return False
+        return before.__le__(d1)
