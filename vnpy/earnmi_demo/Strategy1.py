@@ -45,7 +45,7 @@ class Strategy1(StockStrategy):
         """
 
         #准备线程池，准备数据。
-        self.historyData.getData(market.today())
+        self.historyData.setToday(market.today())
 
 
         pass
