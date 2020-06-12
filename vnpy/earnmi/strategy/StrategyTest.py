@@ -20,7 +20,12 @@ class StrategyTest(StockStrategy):
         """
         决策初始化.
         """
-        self.write_log("on_create")
+
+        if (not self.backtestContext is None):
+            # 从网络上面准备数据。
+            self.write_log(f"on_create from backtestEngine, start={self.backtestContext.start_date},end={self.backtestContext.end_date}")
+        else:
+            self.write_log("on_create")
         pass
 
     def on_destroy(self):

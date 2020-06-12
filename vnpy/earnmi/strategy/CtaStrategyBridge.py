@@ -1,4 +1,4 @@
-from earnmi.strategy.StockStrategy import StockStrategy, Market
+from earnmi.strategy.StockStrategy import StockStrategy, Market, BackTestContext
 from earnmi.strategy.StrategyTest import StrategyTest
 from vnpy.app.cta_strategy import (
     CtaTemplate,
@@ -41,6 +41,14 @@ class CtaStrategyBridage(CtaTemplate,Market):
         # 应该是初始化bar
         # super.callback = self.__on_bar_dump
         self.myStragey.mRunOnBackTest = EngineType.BACKTESTING == self.get_engine_type();
+        if(self.myStragey.mRunOnBackTest):
+            context = BackTestContext()
+            context.start_date = self.cta_engine.start
+            context.end_date = self.cta_engine.end
+            self.myStragey.backtestContext = context
+        else:
+            self.myStragey.backtestContext = None
+
         self.load_bar(0)
 
     def on_start(self):
