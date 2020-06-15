@@ -1,6 +1,8 @@
-from collections import Sequence
+from typing import Sequence
 from datetime import datetime, timedelta
-from ibapi.common import BarData
+
+from vnpy.trader.object import BarData
+
 from vnpy.trader.constant import Exchange, Interval
 from earnmi.data.import_data_from_jqdata import save_bar_data_from_jqdata
 from vnpy.trader.database import database_manager
@@ -19,7 +21,7 @@ class HistoryBarPool:
     __poolBegin:datetime = None
     __poolEnd:datetime = None
     __today:datetime = None
-    __current_pool_data:Sequence = None
+    __current_pool_data = None
     __current_pool_index = -1
 
     __BATCH_SIZE = 200
@@ -61,7 +63,7 @@ class HistoryBarPool:
     """
     返回今天以前的数据
     """
-    def getData(self)-> Sequence:
+    def getData(self)-> Sequence["BarData"]:
         if(self.__current_pool_index >=0):
             begin =  self.__current_pool_index
             end =  self.__current_pool_index + self.__keepN
@@ -112,14 +114,14 @@ class HistoryBarPool:
 
 
 
-    def __loadBefore(self,end:datetime)-> Sequence:
+    def __loadBefore(self,end:datetime)-> Sequence["BarData"]:
         start = end - timedelta(days=self.__BATCH_SIZE)
         exchange = Exchange.SZSE
         if self.__code.startswith("6"):
             exchange = Exchange.SSE
         return database_manager.load_bar_data(self.__code, exchange, Interval.DAILY, start, end)
 
-    def __loadAfter(self,start:datetime) ->Sequence:
+    def __loadAfter(self,start:datetime) ->Sequence["BarData"]:
         end = start +  timedelta(days=self.__BATCH_SIZE)
         exchange = Exchange.SZSE
         if self.__code.startswith("6"):
@@ -133,3 +135,5 @@ class HistoryBarPool:
         if(self.__is_same_day(d1,before)):
             return False
         return before.__le__(d1)
+
+

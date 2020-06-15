@@ -1,5 +1,9 @@
 from abc import abstractmethod, ABC
 from datetime import datetime, timedelta
+from typing import Sequence
+
+from vnpy.trader.object import TradeData,BarData,OrderData
+
 
 class Market:
     """
@@ -38,6 +42,31 @@ class BackTestContext:
     start_date:datetime = None
     end_date:datetime = None
 
+"""
+证券账户
+"""
+class Account:
+
+    """
+    返回某个日期的交易记录
+    """
+    @abstractmethod
+    def getTradeData(date:datetime) -> Sequence["TradeData"]:
+        pass
+
+    """
+    返回某个日期的订单记录
+    """
+    @abstractmethod
+    def getOrderData(date:datetime) -> Sequence["OrderData"]:
+        pass
+
+
+
+
+"""
+股票策略模块
+"""
 class StockStrategy(ABC):
 
     #是否在运行到回撤里面。

@@ -1,4 +1,6 @@
-from earnmi.strategy.StockStrategy import StockStrategy, Market, BackTestContext
+from typing import Sequence
+
+from earnmi.strategy.StockStrategy import StockStrategy, Market, BackTestContext, Account
 from earnmi.strategy.StrategyTest import StrategyTest
 from vnpy.app.cta_strategy import (
     CtaTemplate,
@@ -221,3 +223,5 @@ class CtaStrategyBridage(CtaTemplate,Market):
     def write_log(self, msg):
         print(f"CtaStrategyBridage: {msg}")
         pass
+
+
