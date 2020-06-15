@@ -1,8 +1,8 @@
 from abc import abstractmethod, ABC
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Sequence
 
-from vnpy.trader.object import TradeData,BarData,OrderData
+from vnpy.trader.object import TradeData, OrderData
 
 
 class Portfolio:
@@ -90,7 +90,7 @@ class StockStrategy(ABC):
         pass
 
     @abstractmethod
-    def on_market_prepare_open(self,protfolio:Portfolio):
+    def on_market_prepare_open(self,protfolio:Portfolio,toady:datetime):
         """
             市场准备开始（比如：竞价）.
         """

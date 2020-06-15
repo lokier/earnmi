@@ -110,7 +110,7 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
 
             self.today = bar.datetime
             day = bar.datetime
-            self.myStragey.on_market_prepare_open(self)
+            self.myStragey.on_market_prepare_open(self,self.today)
             self.myStragey.on_market_open(self)
 
             tradeTime = datetime(year=day.year, month=day.month, day=day.day, hour=9, minute=30, second=1)
@@ -217,8 +217,6 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
         else:
             return []
 
-    def today(self) -> datetime:
-        return self.today
 
     def write_log(self, msg):
         print(f"CtaStrategyBridage: {msg}")

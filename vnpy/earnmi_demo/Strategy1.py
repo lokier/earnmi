@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from earnmi.data.HistoryBarPool import HistoryBarPool
-from earnmi.strategy.StockStrategy import StockStrategy, Market
+from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
 
 """
 使用三个指标来：
@@ -39,13 +39,13 @@ class Strategy1(StockStrategy):
         self.write_log("on_destroy")
         pass
 
-    def on_market_prepare_open(self,market:Market):
+    def on_market_prepare_open(self,protfolio:Portfolio,today:datetime):
         """
             市场准备开始（比如：竞价）.
         """
 
         #准备线程池，准备数据。
-        self.historyData.setToday(market.today())
+        self.historyData.setToday(today)
 
 
         pass
@@ -53,13 +53,13 @@ class Strategy1(StockStrategy):
 
 
 
-    def on_market_open(self,market:Market):
+    def on_market_open(self,protfolio:Portfolio):
         """
             市场开市.
         """
         pass
 
-    def on_market_prepare_close(self,market:Market):
+    def on_market_prepare_close(self,protfolio:Portfolio):
         """
             市场准备关市.
         """
@@ -67,14 +67,14 @@ class Strategy1(StockStrategy):
 
         pass
 
-    def on_market_close(self, market: Market):
+    def on_market_close(self, protfolio:Portfolio):
         """
             市场关市.
         """
 
         pass
 
-    def on_bar_per_minute(self, time: datetime, market: Market):
+    def on_bar_per_minute(self, time: datetime, protfolio:Portfolio):
         """
             市场开市后的每分钟。
         """

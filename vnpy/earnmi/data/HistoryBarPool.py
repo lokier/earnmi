@@ -11,7 +11,7 @@ from vnpy.trader.database import database_manager
 
 
 """
-  历史数据池
+  历史数据池(日K线）
 """
 class HistoryBarPool:
 
