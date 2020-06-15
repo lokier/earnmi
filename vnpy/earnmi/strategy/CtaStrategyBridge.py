@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from earnmi.strategy.StockStrategy import StockStrategy, Market, BackTestContext, Account
+from earnmi.strategy.StockStrategy import StockStrategy, BackTestContext, Portfolio
 from earnmi.strategy.StrategyTest import StrategyTest
 from vnpy.app.cta_strategy import (
     CtaTemplate,
@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 from vnpy.trader.constant import Direction, Offset
 
 
-class CtaStrategyBridage(CtaTemplate,Market):
+class CtaStrategyBridage(CtaTemplate,Portfolio):
     myStragey:StockStrategy = StrategyTest()
     __privous_on_bar_datime = None
 

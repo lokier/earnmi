@@ -5,35 +5,50 @@ from typing import Sequence
 from vnpy.trader.object import TradeData,BarData,OrderData
 
 
-class Market:
+class Portfolio:
     """
-        市场.
+        证券账户.
     """
 
     @abstractmethod
-    def buy(self, code:str,price: float, volume: float):
+    def buy(self, code: str, price: float, volume: float):
         """
           买入股票
         """
         pass
 
     @abstractmethod
-    def sell(self,code:str, price: float, volume: float):
+    def sell(self, code: str, price: float, volume: float):
         """
           卖出股票
         """
         pass
 
+
+    pass
+
+"""
+每一个交易日账户
+"""
+class DaliyPortfolio:
+
+    """
+    返回某个日期的交易记录
+    """
     @abstractmethod
-    def today(self)->datetime:
+    def getTradeData(self) -> Sequence["TradeData"]:
         pass
 
+    """
+    返回某个日期的订单记录
+    """
+    @abstractmethod
+    def getOrderData(self) -> Sequence["OrderData"]:
+        pass
 
-class Portfolio:
-    """
-        证券账户.
-    """
-    pass
+    @abstractmethod
+    def today(self) -> datetime:
+        pass
 
 """
 回溯环境
@@ -42,24 +57,6 @@ class BackTestContext:
     start_date:datetime = None
     end_date:datetime = None
 
-"""
-证券账户
-"""
-class Account:
-
-    """
-    返回某个日期的交易记录
-    """
-    @abstractmethod
-    def getTradeData(date:datetime) -> Sequence["TradeData"]:
-        pass
-
-    """
-    返回某个日期的订单记录
-    """
-    @abstractmethod
-    def getOrderData(date:datetime) -> Sequence["OrderData"]:
-        pass
 
 
 
@@ -93,7 +90,7 @@ class StockStrategy(ABC):
         pass
 
     @abstractmethod
-    def on_market_prepare_open(self,market:Market):
+    def on_market_prepare_open(self,protfolio:Portfolio):
         """
             市场准备开始（比如：竞价）.
         """
@@ -101,28 +98,28 @@ class StockStrategy(ABC):
 
 
     @abstractmethod
-    def on_market_open(self,market:Market):
+    def on_market_open(self,protfolio:Portfolio):
         """
             市场开市.
         """
         pass
 
     @abstractmethod
-    def on_market_prepare_close(self,market:Market):
+    def on_market_prepare_close(self,protfolio:Portfolio):
         """
             市场准备关市.
         """
         pass
 
     @abstractmethod
-    def on_market_close(self,market:Market):
+    def on_market_close(self,protfolio:Portfolio):
         """
             市场关市.
         """
         pass
 
     @abstractmethod
-    def on_bar_per_minute(self,time:datetime,market:Market):
+    def on_bar_per_minute(self,time:datetime,protfolio:Portfolio):
         """
             市场开市后的每分钟。
         """

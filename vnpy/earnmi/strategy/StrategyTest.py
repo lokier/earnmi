@@ -1,10 +1,6 @@
-from abc import abstractmethod, ABC
-from copy import copy
 from datetime import datetime
-from typing import Any
 
-from earnmi.strategy.StockStrategy import StockStrategy, Market
-from vnpy.trader.utility import virtual
+from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
 
 
 class StrategyTest(StockStrategy):
@@ -35,20 +31,20 @@ class StrategyTest(StockStrategy):
         self.write_log("on_destroy")
         pass
 
-    def on_market_prepare_open(self,market:Market):
+    def on_market_prepare_open(self,protfolio:Portfolio):
         """
             市场准备开始（比如：竞价）.
         """
         self.write_log("on_market_prepare")
 
-        market.buy("000034",344.23,200)
+        protfolio.buy("000034",344.23,200)
 
         pass
 
 
 
 
-    def on_market_open(self,market:Market):
+    def on_market_open(self,protfolio:Portfolio):
         """
             市场开市.
         """
@@ -56,16 +52,16 @@ class StrategyTest(StockStrategy):
 
         pass
 
-    def on_market_prepare_close(self,market:Market):
+    def on_market_prepare_close(self,protfolio:Portfolio):
         """
             市场准备关市.
         """
         self.write_log("on_market_prepare_close")
-        market.sell("000034",344.23,200)
+        protfolio.sell("000034",344.23,200)
 
         pass
 
-    def on_market_close(self, market: Market):
+    def on_market_close(self,protfolio:Portfolio):
         """
             市场关市.
         """
@@ -73,7 +69,7 @@ class StrategyTest(StockStrategy):
 
         pass
 
-    def on_bar_per_minute(self, time: datetime, market: Market):
+    def on_bar_per_minute(self, time: datetime,protfolio:Portfolio):
         """
             市场开市后的每分钟。
         """
