@@ -44,6 +44,7 @@ class Market:
         if (self._traceItemMap.__contains__(code)):
             self._traceItemMap.__delitem__(code)
 
+    """设置今天的时间"""
     def setToday(self,toady:datetime):
         self._today = toady
         for  traceItem in self._traceItemMap.values() :
@@ -55,9 +56,22 @@ class Market:
         return self._traceItemMap[code].historyPoll.getData();
 
 
+    """返回今天的分钟k线图"""
     def getTodayMinitueBar(self,code:str) -> Sequence["BarData"]:
         self.__checkOk(code)
         return self._traceItemMap[code].mintuesPoll.getData();
+
+    """返回当前的实时价格
+    """
+    def getCurrentPrice(self,code:str)->float:
+        bars = self.getTodayMinitueBar(code)
+        index = 0
+        for i,bar in enumerate(bars):
+            if(self._today > bar.datetime):
+                index = i
+                break
+        return bars[index].close_price
+
 
     def __checkOk(self,code:str):
         if(self._today is None):

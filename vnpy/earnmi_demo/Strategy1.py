@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 
 from earnmi.data.HistoryBarPool import HistoryBarPool
+from earnmi.data.Market import Market
 from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
+from vnpy.trader.utility import ArrayManager
 
 """
 使用三个指标来：
@@ -16,19 +18,25 @@ class Strategy1(StockStrategy):
     ):
        pass
 
+    code = "300004"
+    window_size = 30;
+
 
     def on_create(self):
         """
         决策初始化.
         """
         self.write_log("on_create")
-        self.historyData = HistoryBarPool("300004",30)
+
 
         if( not self.backtestContext is None):
             #从网络上面准备数据。
             startDate = self.backtestContext.start_date  - timedelta(days=100)
             endDate = self.backtestContext.end_date
-            self.historyData.initPool(startDate,endDate)
+            self.market = Market(200, startDate, endDate)
+
+
+        self.market.addTrace(self.code)
 
         pass
 
@@ -43,10 +51,10 @@ class Strategy1(StockStrategy):
         """
             市场准备开始（比如：竞价）.
         """
-
         #准备线程池，准备数据。
-        self.historyData.setToday(today)
-
+        self.market.setToday(today)
+        self.today_has_buy = False
+        self.today_has_sell = False
 
         pass
 
@@ -78,6 +86,24 @@ class Strategy1(StockStrategy):
         """
             市场开市后的每分钟。
         """
-        pass
+        bars =  self.market.getHistory(self.code)
+        if( not bars is None  and bars.__len__()>27):
+            am = ArrayManager(40)
+            for bar in  bars:
+                am.update_bar(bar)
+
+            fast,slow, signol = am.macd( fast_period=12, slow_period=26, signal_period=9,array=True);
+
+            #金叉
+            if(fast[-2] < slow[-2] and fast[-1]>=fast[-1]):
+                if(not self.today_has_buy):
+                    targetPrice = self.market.getCurrentPrice(self.code)
+                    protfolio.buy(self.code,targetPrice,1000)
+                    self.today_has_buy = True
+            elif(fast[-2] > slow[-2] and fast[-1] <= fast[-1]):
+                if(not self.today_has_sell):
+                    targetPrice = self.market.getCurrentPrice(self.code)
+                    protfolio.sell(self.code,targetPrice,1000)
+                    self.today_has_sell = True
 
 

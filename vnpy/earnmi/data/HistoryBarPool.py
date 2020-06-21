@@ -89,7 +89,7 @@ class HistoryBarPool:
         while(beforeBars.__len__() < self.__keepN):
             bars = self.__loadBefore(currentDate)
             if(bars is None or bars.__len__() ==0):
-                return
+                break
             beforeBars = bars + beforeBars
             currentDate = bars[0].datetime + timedelta(days=-1)
 

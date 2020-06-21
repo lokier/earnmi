@@ -2,6 +2,7 @@ from typing import Sequence
 
 from earnmi.strategy.StockStrategy import StockStrategy, BackTestContext, Portfolio
 from earnmi.strategy.StrategyTest import StrategyTest
+from earnmi_demo.Strategy1 import Strategy1
 from vnpy.app.cta_strategy import (
     CtaTemplate,
     StopOrder,
@@ -20,7 +21,7 @@ from vnpy.trader.constant import Direction, Offset
 
 
 class CtaStrategyBridage(CtaTemplate,Portfolio):
-    myStragey:StockStrategy = StrategyTest()
+    myStragey:StockStrategy = Strategy1()
     __privous_on_bar_datime = None
 
     def __init__(self, cta_engine, strategy_name, vt_symbol, setting):
@@ -60,6 +61,8 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
         #self.write_log("策略启动: " + self.get_engine_type().__str__());
         self.isCreated = True
         self.myStragey.on_create()
+        if(self.myStragey.market is None):
+            raise  RuntimeError("must set market")
         #;
 
 
@@ -146,8 +149,6 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
         """
         交割订单
         """
-
-
         for order in list(self.cta_engine.active_limit_orders.values()):
             bar = copy.deepcopy(tradeBar)
             bar.symbol = order.symbol
@@ -162,7 +163,7 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
         """
         Callback of new order data update.
         """
-        self.write_log("on_order")
+       # self.write_log("on_order")
         self.put_event()
 
     def on_trade(self, trade: TradeData):
@@ -204,6 +205,7 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
             """
               买入股票
             """
+            self.write_log(f"buy,code={code},price={price},volume={volume}")
             if self.trading:
                 vt_orderids = self.cta_engine.send_limit_order(code, Direction.LONG, Offset.OPEN, price, volume)
                 return vt_orderids

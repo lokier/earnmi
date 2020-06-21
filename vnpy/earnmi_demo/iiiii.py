@@ -1,15 +1,12 @@
-import string
-from datetime import datetime, timedelta
-import mplfinance as mpf
-import pandas as pd
-from datetime import datetime, timedelta
-from earnmi.chart.Chart import Chart
-from vnpy.trader.constant import Interval, Exchange
-from vnpy.trader.database import database_manager
-from vnpy.trader.object import BarData
+import talib
+import numpy
 
 
+close=[4.7,4.49,4.73,4.71,4.8,4.77,4.8,4.72,4.69,4.46,4.54,4.33,4.48,4.71,4.82,4.87,4.93,4.93,4.94,5.43,5.15,4.89,4.79,4.95,5.01,5.01,5.15,4.97,4.77,4.84,4.8,4.72,4.69,4.46,4.54,4.33,4.48,4.71,4.82,4.87,4.93,4.93,4.94,5.43,5.15,4.89,4.79,4.95,5.01,5.01,5.15,4.97,4.77,4.84,4.8,4.72,4.69,4.46,4.54,4.33,4.48,4.71,4.82,4.87,4.93,4.93,4.94,5.43,5.15,4.89,4.79,4.95,5.01,5.01,5.15,4.97,4.77,4.84,4.8,4.72,4.69,4.46,4.54,4.33,4.48,4.71,4.82,4.87,4.93,4.93,4.94,5.43,5.15,4.89,4.79,4.95,5.01,5.01,5.15,4.97,4.77,4.84,4.8,4.72,4.69,4.46,4.54,4.33,4.48,4.71,4.82,4.87,4.93,4.93,4.94,5.43,5.15,4.89,4.79,4.95,5.01,5.01,5.15,4.97,4.77,4.84,4.8,4.72,4.69,4.46,4.54,4.33,4.48,4.71,4.82];
 
-today = datetime.today()
+macd, signal, hist = talib.MACD(
+    numpy.array(close), fastperiod=12, slowperiod=26, signalperiod=9)
 
-print(today)
+print(macd)
+print(signal)
+print(hist)

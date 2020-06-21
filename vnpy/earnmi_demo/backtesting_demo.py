@@ -25,7 +25,7 @@ engine = BacktestingEngine()
 engine.set_parameters(
     vt_symbol="AAAAAA.SSE",
     interval=Interval.DAILY,
-    start=datetime(2019, 4, 23),
+    start=datetime(2019, 2, 23),
     end=datetime(2019, 4, 24),
     rate=0.3/10000,
     slippage=0.2,
