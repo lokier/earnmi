@@ -3,8 +3,10 @@ import talib
 from vnpy.trader.object import BarData
 from typing import Tuple, Union
 
-
-class IndexManager(object):
+"""
+各种K线指标库
+"""
+class IndexLib(object):
     """
     For:
     1. time series container of bar data
