@@ -1,0 +1,68 @@
+1、backtesting.py
+
+    1)添加方法
+       def cross_limit_order_byBar(self, bar: BarData):
+        """
+        Cross limit order with last bar/tick data.
+        """
+        long_cross_price = bar.low_price
+        short_cross_price = bar.high_price
+        long_best_price = bar.open_price
+        short_best_price = bar.open_price
+        for order in list(self.active_limit_orders.values()):
+            # Push order update with status "not traded" (pending).
+            if order.status == Status.SUBMITTING:
+                order.status = Status.NOTTRADED
+                self.strategy.on_order(order)
+            # Check whether limit orders can be filled.
+            long_cross = (
+                    order.direction == Direction.LONG
+                    and order.price >= long_cross_price
+                    and long_cross_price > 0
+            )
+            short_cross = (
+                    order.direction == Direction.SHORT
+                    and order.price <= short_cross_price
+                    and short_cross_price > 0
+            )
+            if not long_cross and not short_cross:
+                continue
+            if( not (order.symbol == bar.symbol)):
+                continue
+            # Push order udpate with status "all traded" (filled).
+            order.traded = order.volume
+            order.status = Status.ALLTRADED
+            self.strategy.on_order(order)
+
+            self.active_limit_orders.pop(order.vt_orderid)
+
+            # Push trade update
+            self.trade_count += 1
+
+            if long_cross:
+                trade_price = min(order.price, long_best_price)
+                pos_change = order.volume
+            else:
+                trade_price = max(order.price, short_best_price)
+                pos_change = -order.volume
+
+            trade = TradeData(
+                symbol=order.symbol,
+                exchange=order.exchange,
+                orderid=order.orderid,
+                tradeid=str(self.trade_count),
+                direction=order.direction,
+                offset=order.offset,
+                price=trade_price,
+                volume=order.volume,
+                time=self.datetime.strftime("%H:%M:%S"),
+                gateway_name=self.gateway_name,
+            )
+            trade.datetime = self.datetime
+            self.strategy.pos += pos_change
+            self.strategy.on_trade(trade)
+            self.trades[trade.vt_tradeid] = trade
+
+
+    2）修改方法。 def send_limit_order，支持send指定vocde
+    2）
