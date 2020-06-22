@@ -6,7 +6,7 @@ from typing import Tuple, Union
 """
 各种K线指标库
 """
-class IndexLib(object):
+class Indicator(object):
     """
     For:
     1. time series container of bar data
@@ -297,6 +297,13 @@ class IndexLib(object):
             return result
         return result[-1]
 
+    """
+    前33个必须要有值。
+    计算方法：
+       dif =  pd.ewm(price,span=fastperiod) - pd.ewm(price,span=slow_period)
+       dea = pd.ewm(price,span=signal_period)
+       bar = dif - dea #有些地方的bar = (dif-dea)*2，但是talib中MACD的计算是bar = (dif-dea)*1
+    """
     def macd(
         self,
         fast_period: int,
@@ -307,15 +314,15 @@ class IndexLib(object):
         Tuple[np.ndarray, np.ndarray, np.ndarray],
         Tuple[float, float, float]
     ]:
-        """
-        MACD.
-        """
-        macd, signal, hist = talib.MACD(
+        if(self.close.size <=33):
+            raise RuntimeError("bars size must bigger 33!")
+
+        dif, dea, bar = talib.MACD(
             self.close, fast_period, slow_period, signal_period
         )
         if array:
-            return macd, signal, hist
-        return macd[-1], signal[-1], hist[-1]
+            return dif, dea, bar
+        return dif[-1], dea[-1], bar[-1]
 
     def adx(self, n: int, array: bool = False) -> Union[float, np.ndarray]:
         """

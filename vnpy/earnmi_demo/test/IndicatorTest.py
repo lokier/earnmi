@@ -2,7 +2,7 @@ from typing import List
 
 from vnpy.trader.constant import Exchange
 
-from earnmi.chart.IndexLib import IndexLib
+from earnmi.chart.Indicator import IndexLib
 from vnpy.trader.object import BarData
 
 
