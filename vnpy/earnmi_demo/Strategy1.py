@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from earnmi.chart.Indicator import Indicator
 from earnmi.data.HistoryBarPool import HistoryBarPool
 from earnmi.data.Market import Market
 from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
@@ -65,7 +66,25 @@ class Strategy1(StockStrategy):
         """
             市场开市.
         """
-        pass
+        bars = self.market.getHistory(self.code)
+        if (not bars is None and bars.__len__() > 40):
+            indicator = Indicator(40)
+            indicator.update_bar(bars)
+
+            dif, dea, macd_bar = indicator.macd(fast_period=12, slow_period=26, signal_period=9, array=True);
+
+            # 金叉
+            if (macd_bar[-1] > 0 and macd_bar[-2] <= 0):
+                if (not self.today_has_buy):
+                    targetPrice = self.market.getCurrentPrice(self.code)
+                    protfolio.buy(self.code, targetPrice, 1000)
+                    self.today_has_buy = True
+            elif (macd_bar[-1] <= 0 and macd_bar[-2] > 0):
+                if (not self.today_has_sell):
+                    targetPrice = self.market.getCurrentPrice(self.code)
+                    protfolio.sell(self.code, targetPrice, 1000)
+                    self.today_has_sell = True
+
 
     def on_market_prepare_close(self,protfolio:Portfolio):
         """
@@ -86,24 +105,6 @@ class Strategy1(StockStrategy):
         """
             市场开市后的每分钟。
         """
-        bars =  self.market.getHistory(self.code)
-        if( not bars is None  and bars.__len__()>27):
-            am = ArrayManager(40)
-            for bar in  bars:
-                am.update_bar(bar)
 
-            fast,slow, signol = am.macd( fast_period=12, slow_period=26, signal_period=9,array=True);
-
-            #金叉
-            if(fast[-2] < slow[-2] and fast[-1]>=fast[-1]):
-                if(not self.today_has_buy):
-                    targetPrice = self.market.getCurrentPrice(self.code)
-                    protfolio.buy(self.code,targetPrice,1000)
-                    self.today_has_buy = True
-            elif(fast[-2] > slow[-2] and fast[-1] <= fast[-1]):
-                if(not self.today_has_sell):
-                    targetPrice = self.market.getCurrentPrice(self.code)
-                    protfolio.sell(self.code,targetPrice,1000)
-                    self.today_has_sell = True
 
 
