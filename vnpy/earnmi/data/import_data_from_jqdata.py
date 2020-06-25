@@ -8,7 +8,7 @@ from vnpy.trader.object import BarData
 """
   保存数据库。
 """
-def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetime, end_date: datetime):
+def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetime, end_date: datetime)->int:
     exechage = Exchange.SZSE
     vn_code = code+".XSHE"
     if(code.startswith("6")):
@@ -34,6 +34,7 @@ def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetim
 
 
     batch_start = start_date
+    saveCount = 0
     while(batch_start.__lt__(end_date)):
         batch_end = batch_start + timedelta(days = batch_day)
         if(batch_end.__gt__( end_date)):
@@ -68,10 +69,11 @@ def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetim
             gateway_name="DB"
             )
             bars.append(bar)
+        saveCount += bars.__len__()
         print("save size:%d" % bars.__len__())
         database_manager.save_bar_data(bars)
         batch_start = batch_end #+ timedelta(days = 1)
-    pass
+    return saveCount
 
 if(not jq.is_auth()):
     jq.auth('13530336157','Qwer4321') #ID是申请时所填写的手机号；Password为聚宽官网登录密码，新申请用户默认为手机号后6位
@@ -80,6 +82,21 @@ if(not jq.is_auth()):
     print('jq is not auth,exist')
     exit()
 
+if __name__ == "__main__":
+    code = "300004"
+    start = datetime.now() - timedelta(days=600)
+    end = datetime.now()
+    database_manager.clean(code)
+    count = save_bar_data_from_jqdata(code, Interval.DAILY, start_date=start, end_date=end)
+
+    exchange = Exchange.SZSE
+    if (code.startswith("6")):
+        exchange = Exchange.SSE
+
+    db_data = database_manager.load_bar_data(code, exchange, Interval.DAILY, start, end)
+
+    print(f"db.size={db_data.__len__()},count ={count}")
+    assert count == len(db_data)
 # start main
 
 # start_day = datetime.strptime("2018-03-29","%Y-%m-%d")

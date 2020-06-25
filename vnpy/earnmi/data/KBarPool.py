@@ -1,3 +1,4 @@
+import functools
 from datetime import datetime,timedelta
 from typing import Sequence, Any, Tuple
 
@@ -5,6 +6,14 @@ from vnpy.trader.object import BarData
 from vnpy.trader.constant import Exchange, Interval
 from earnmi.data.import_data_from_jqdata import save_bar_data_from_jqdata
 from vnpy.trader.database import database_manager
+
+
+# def barcmp(bar1,bar2):
+#     if bar1.datetime < bar2.datetime:
+#         return 1
+#     elif bar1.datetime > bar2.datetime:
+#         return -1
+#     return 0
 
 class KBarPool:
 
@@ -50,10 +59,10 @@ class KBarPool:
             data = self.__pool_data[index]
             if addingCount == 0:
                 if data.datetime < end:
-                    ret.append(data)
+                    ret.insert(0,data)
                     addingCount = 1
             else:
-                ret.append(data)
+                ret.insert(0,data)
                 addingCount = addingCount+1
             if(addingCount >= count):
                 break
@@ -126,6 +135,7 @@ class KBarPool:
 
         pool_start, pool_end, poll_data = self.__makePollSize(theStart, theEnd)
 
+        ##前面缓存
         while len(poll_data)< count:
             theEnd = theStart - timedelta(days=1)
             theStart = theEnd - timedelta(days=366)
@@ -135,7 +145,8 @@ class KBarPool:
             theStart = start2
             if (len(dataList2) < 1):
                 break
-            poll_data.extend(dataList2)
+            dataList2.extend(poll_data)
+            poll_data = dataList2
 
         if(len(poll_data)<1000 - 365):
             theStart = end +  timedelta(days=1)
@@ -172,15 +183,18 @@ class KBarPool:
         if self.__code.startswith("6"):
             exchange = Exchange.SSE
         pool_data = database_manager.load_bar_data(self.__code, exchange, Interval.DAILY, start, end)
+        #list.sort(pool_data,)
         return start,end,pool_data
+
 
 
 
 if __name__ == "__main__":
     code = "300004"
 
-    pool2 = KBarPool(code)
-    barsFromNet = pool2.getDataFrom(datetime.now() - timedelta(days=600), datetime.now())
+
+    print("------------------------------")
+
 
     pool1 = KBarPool(code)
 
@@ -188,15 +202,40 @@ if __name__ == "__main__":
 
     toaday = datetime.now()
     bars = pool1.getData(toaday,300)
+
+    preivoubar = None
+    for bar in bars:
+       assert bar.datetime < toaday
+       if preivoubar:
+           assert preivoubar.datetime < bar.datetime
+       preivoubar = bar
+
     print(len(bars))
     assert len(bars) == 300
 
     print("下面从缓存取，不应该有从网络里面取")
     bars = pool1.getData(toaday,200)
+    preivoubar = None
+    for bar in bars:
+        assert bar.datetime < toaday
+        if preivoubar:
+            assert preivoubar.datetime < bar.datetime
+        preivoubar = bar
+
     assert len(bars) == 200
     barsFromCache = pool1.getDataFrom(datetime.now() - timedelta(days=600),datetime.now())
+    preivoubar = None
+    for bar in barsFromCache:
+        assert bar.datetime < toaday
+        if  preivoubar:
+            assert preivoubar.datetime < bar.datetime
+        preivoubar = bar
 
     print(len(barsFromCache))
+
+    pool2 = KBarPool(code)
+    barsFromNet = pool2.getDataFrom(datetime.now() - timedelta(days=600), datetime.now())
+
     print(len(barsFromNet))
 
 
