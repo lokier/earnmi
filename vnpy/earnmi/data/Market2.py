@@ -106,15 +106,16 @@ class Market2:
 
     def removeNotice(self,code:str):
         if (self.isNotice(code)):
-            self.__notice_data_map.__delitem__(str)
+            self.__notice_data_map.__delitem__(code)
 
     def isNotice(self,code:str)->bool:
-        return self.__notice_data_map.__contains__(str)
+        return self.__notice_data_map.__contains__(code)
 
     def getNoticeData(self, code: str, key: str) -> Any:
         if(not self.isNotice(code)):
             raise RuntimeError(f"{code} is not in notice map")
-        return self.__notice_data_map[code][key]
+        notice_data = self.__notice_data_map[code]
+        return notice_data.get(key)
 
     def putNoticeData(self, code: str, key: str, value:Any):
         if (not self.isNotice(code)):

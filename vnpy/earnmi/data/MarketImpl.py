@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Sequence
 from earnmi.data.HistoryBarPool import HistoryBarPool
+from earnmi.data.KBarPool import KBarPool
 from earnmi.data.Market2 import Market2
 from vnpy.trader.object import BarData, TickData
 
@@ -14,21 +15,26 @@ class HistoryImpl(Market2.History):
     def getKbars(self, code: str, count: int) -> Sequence["BarData"]:
         if(count >= 1000):
             raise RuntimeError(f"count must < 1000")
-        today = self.market.getCurrentTradeDay()
+        today = self.market.getToday()
         if(today is None):
             raise RuntimeError("market doese not set current time")
-        pass
+        bar_pool = self.getKBarPool(code)
+        return bar_pool.getData(today,count)
 
     def getKbarFrom(self, code: str, start: datetime) -> Sequence["BarData"]:
-        today = self.market.getCurrentTradeDay()
+        today = self.market.getToday()
         if (today is None):
             raise RuntimeError("market doese not set current time")
-        pass
+        if(start >= today):
+            raise RuntimeError("start time must be < today")
 
-    def _getHistoryBarPool(self,code:str)->HistoryBarPool:
+        bar_pool = self.getKBarPool(code)
+        return bar_pool.getDataFrom(start,today)
+
+    def getKBarPool(self,code:str)->KBarPool:
         bar_poll = self.market.getNoticeData(code,"history_bar_poll")
         if bar_poll is None:
-            bar_poll = HistoryBarPool(code,200)
+            bar_poll = KBarPool(code)
             self.market.putNoticeData(code,"history_bar_poll",bar_poll)
         return bar_poll
 
