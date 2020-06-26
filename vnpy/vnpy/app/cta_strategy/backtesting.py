@@ -276,20 +276,21 @@ class BacktestingEngine:
         day_count = 0
         ix = 0
 
-        for ix, data in enumerate(self.history_data):
-            if self.datetime and data.datetime.day != self.datetime.day:
-                day_count += 1
-                if day_count >= self.days:
-                    break
+        if self.days > 0:
+            for ix, data in enumerate(self.history_data):
+                if self.datetime and data.datetime.day != self.datetime.day:
+                    day_count += 1
+                    if day_count >= self.days:
+                        break
 
-            self.datetime = data.datetime
+                self.datetime = data.datetime
 
-            try:
-                self.callback(data)
-            except Exception:
-                self.output("触发异常，回测终止")
-                self.output(traceback.format_exc())
-                return
+                try:
+                    self.callback(data)
+                except Exception:
+                    self.output("触发异常，回测终止")
+                    self.output(traceback.format_exc())
+                    return
 
         self.strategy.inited = True
         self.output("策略初始化完成")
