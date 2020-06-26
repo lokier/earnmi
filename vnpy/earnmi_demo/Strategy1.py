@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta
 
 from earnmi.chart.Indicator import Indicator
-from earnmi.data.HistoryBarPool import HistoryBarPool
 from earnmi.data.Market import Market
 from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
-from vnpy.trader.utility import ArrayManager
 
 """
 使用三个指标来：

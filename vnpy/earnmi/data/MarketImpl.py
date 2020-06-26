@@ -3,14 +3,14 @@ from typing import Sequence
 
 from earnmi.data.KBarMintuePool import KBarMintuePool
 from earnmi.data.KBarPool import KBarPool
-from earnmi.data.Market2 import Market2
+from earnmi.data.Market import Market
 from vnpy.trader.object import BarData, TickData
 
 
-class RealTimeImpl(Market2.RealTime):
-    market: Market2 = None
+class RealTimeImpl(Market.RealTime):
+    market: Market = None
 
-    def __init__(self, market: Market2):
+    def __init__(self, market: Market):
         self.market = market
 
     def getTick(self, code: str) -> TickData:
@@ -72,10 +72,10 @@ class RealTimeImpl(Market2.RealTime):
         return bar_poll
 
 
-class HistoryImpl(Market2.History):
-    market:Market2 = None
+class HistoryImpl(Market.History):
+    market:Market = None
 
-    def __init__(self, market:Market2):
+    def __init__(self, market:Market):
         self.market = market
 
     def getKbars(self, code: str, count: int) -> Sequence["BarData"]:
@@ -107,7 +107,7 @@ class HistoryImpl(Market2.History):
 
 
 
-class MarketImpl(Market2):
+class MarketImpl(Market):
 
     history:HistoryImpl =None
     realtime:RealTimeImpl = None
@@ -116,10 +116,10 @@ class MarketImpl(Market2):
         self.history = HistoryImpl(self)
         self.realtime = RealTimeImpl(self)
 
-    def getRealTime(self) -> Market2.RealTime:
+    def getRealTime(self) -> Market.RealTime:
         return self.realtime
 
-    def getHistory(self) -> Market2.History:
+    def getHistory(self) -> Market.History:
         return self.history
 
     def nextTradeDay(self):

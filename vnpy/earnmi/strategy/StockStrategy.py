@@ -1,9 +1,7 @@
 from abc import abstractmethod, ABC
 from datetime import datetime
 from typing import Sequence
-
 from earnmi.data.Market import Market
-from earnmi.data.Market2 import Market2
 from vnpy.trader.object import TradeData, OrderData
 
 
@@ -71,7 +69,7 @@ class StockStrategy(ABC):
     #是否在运行到回撤里面。
     mRunOnBackTest = False
     backtestContext:BackTestContext = None
-    market:Market2 = None
+    market:Market = None
 
     def __init__(
             self
