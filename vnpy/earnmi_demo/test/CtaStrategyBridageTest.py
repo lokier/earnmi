@@ -40,6 +40,9 @@ class StrategyTest(StockStrategy):
         self.market_open_count = 0
         self.market = MarketImpl()
 
+
+        self.market.addNotice("601318") ##工商银行
+
         if (not self.backtestContext is None):
             # 从网络上面准备数据。
             self.write_log(f"on_create from backtestEngine, start={self.backtestContext.start_date},end={self.backtestContext.end_date}")
@@ -58,7 +61,6 @@ class StrategyTest(StockStrategy):
         """
             市场准备开始（比如：竞价）.
         """
-        self.write_log("on_market_prepare")
         assert is_same_day(toady,self.market.getToday())
 
         if(self.start_trade_time is None) :
@@ -75,15 +77,20 @@ class StrategyTest(StockStrategy):
             市场开市.
         """
         self.market_open_count = self.market_open_count + 1
-        print("on_market_open")
 
+        # 中国平安601318 在datetime(2019, 2, 26, 10, 28)时刻，最低到达 low_price=67.15
+        # 中国平安601318 在datetime(2019, 2, 27, 9, 48)时刻，最高到达 high_price=68.57
+        if(is_same_day(datetime(2019, 2, 26, 10, 28),self.market.getToday())):
+            protfolio.buy("601318",67.15,10000)
+
+        if (is_same_day(datetime(2019, 2, 27, 10, 28), self.market.getToday())):
+            protfolio.sell("601318", 68.57, 10000)
         pass
 
     def on_market_prepare_close(self,protfolio:Portfolio):
         """
             市场准备关市.
         """
-        self.write_log("on_market_prepare_close")
         protfolio.sell("000034",344.23,200)
 
         pass
@@ -92,7 +99,6 @@ class StrategyTest(StockStrategy):
         """
             市场关市.
         """
-        self.write_log("on_market_close")
 
         pass
 
@@ -141,6 +147,6 @@ assert is_same_day(datetime(year=2019,month=4,day=24),strategy.end_trade_time)
 
 assert  strategy.market_open_count == 42
 
-#engine.show_chart()
+engine.show_chart()
 
 
