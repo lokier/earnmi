@@ -4,6 +4,7 @@ from earnmi.strategy.CtaStrategyBridge import CtaStrategyBridage
 from earnmi.strategy.FundsFavouriteStrategy import FundsFavouriteStrategy
 from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
 from earnmi.strategy.TestMultiStrategy import TestMultiStrategy
+from vnpy.app.cta_strategy import StopOrder
 from vnpy.app.cta_strategy.strategies.test_strategy import TestStrategy
 from vnpy.event import Event
 from vnpy.trader.constant import Interval
@@ -13,6 +14,9 @@ from vnpy.app.cta_strategy.strategies.atr_rsi_strategy import (
     AtrRsiStrategy
 )
 from datetime import datetime
+
+from vnpy.trader.object import OrderData, TradeData
+
 
 def is_same_day(d1: datetime, d2: datetime) -> bool:
     return d1.day == d2.day and d1.month == d2.month and d1.year == d2.year
@@ -91,7 +95,6 @@ class StrategyTest(StockStrategy):
         """
             市场准备关市.
         """
-        protfolio.sell("000034",344.23,200)
 
         pass
 
@@ -110,6 +113,25 @@ class StrategyTest(StockStrategy):
 
         #self.write_log(f"     on_bar_per_minute:{time}" )
         pass
+
+    def on_order(self, order: OrderData):
+        print(f"{self.market.getToday()}：onOrder: {order}")
+
+
+    def on_trade(self, trade: TradeData):
+        print(f"{self.market.getToday()}：on_trade: {trade}")
+
+        # 中国平安601318 在datetime(2019, 2, 26, 10, 28)时刻，最低到达 low_price=67.15
+        # 中国平安601318 在datetime(2019, 2, 27, 9, 48)时刻，最高到达 high_price=68.57
+        buy_trade_time = datetime(2019, 2, 26, 10, 28)
+        # if (is_same_day(buy_trade_time, self.market.getToday())):
+        #     assert trade.time >= buy_trade_time.
+        #
+        # if (is_same_minitue(datetime(2019, 2, 27, 10, 28), self.market.getToday())):
+        #     protfolio.sell("601318", 68.57, 10000)
+
+    def on_stop_order(self, stop_order: StopOrder):
+        print(f"{self.market.getToday()}：on_stop_order: {stop_order}")
 
 
 ###------------------main---------------------------

@@ -192,11 +192,13 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
         交割订单
         """
         for order in list(self.cta_engine.active_limit_orders.values()):
-            bar = copy.deepcopy(tradeBar)
-            bar.symbol = order.symbol
-            bar.low_price = order.price - 0.01
-            bar.high_price = order.price + 0.01
-            bar.open_price = order.price
+
+            bar = self.myStrategy.market.getRealTime().getKBar(order.symbol);
+
+            if( bar is None):
+                ###还没开始，或者已经停牌
+                continue
+
             self.cta_engine.cross_limit_order_byBar(bar)
 
         pass
@@ -206,21 +208,21 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
         Callback of new order data update.
         """
        # self.write_log("on_order")
+        self.myStrategy.on_order(order)
         self.put_event()
 
     def on_trade(self, trade: TradeData):
         """
         Callback of new trade data update.
         """
-        self.write_log("on_trade")
-
+        self.myStrategy.on_trade(trade)
         self.put_event()
 
     def on_stop_order(self, stop_order: StopOrder):
         """
         Callback of stop order update.
         """
-        self.write_log("on_stop_order")
+        self.myStrategy.on_stop_order(stop_order)
         self.put_event()
 
     def test_market_order(self):
@@ -256,6 +258,7 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
 
     def sell(self, code: str, price: float, volume: float):
         if self.trading:
+            self.write_log(f"sell,code={code},price={price},volume={volume}")
             vt_orderids = self.cta_engine.send_limit_order(code, Direction.SHORT, Offset.CLOSE, price, volume)
             return vt_orderids
         else:

@@ -2,6 +2,7 @@ from abc import abstractmethod, ABC
 from datetime import datetime
 from typing import Sequence
 from earnmi.data.Market import Market
+from vnpy.app.cta_strategy import StopOrder
 from vnpy.trader.object import TradeData, OrderData
 
 
@@ -124,6 +125,15 @@ class StockStrategy(ABC):
         """
             市场开市后的每分钟。
         """
+        pass
+
+    def on_order(self, order: OrderData):
+        pass
+
+    def on_trade(self, trade: TradeData):
+        pass
+
+    def on_stop_order(self, stop_order: StopOrder):
         pass
 
     def write_log(self,msg):
