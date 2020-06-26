@@ -65,4 +65,5 @@
 
 
     2）修改方法。 def send_limit_order，支持send指定vocde
-    2）
+    3）修改方法：run_backtesting
+        在for ix, data in enumerate(self.history_data):上面添加if self.days > 0:判断

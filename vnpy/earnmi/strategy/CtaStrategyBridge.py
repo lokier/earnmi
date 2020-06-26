@@ -1,5 +1,6 @@
 from typing import Sequence
 
+from earnmi.data.import_tradeday_from_jqdata import TRAY_DAY_VT_SIMBOL, TRAY_DAY_SIMBOL, save_tradeday_from_jqdata
 from earnmi.strategy.StockStrategy import StockStrategy, BackTestContext, Portfolio
 from earnmi.strategy.StrategyTest import StrategyTest
 from earnmi_demo.Strategy1 import Strategy1
@@ -17,21 +18,34 @@ import copy
 from vnpy.app.cta_strategy.base import EngineType
 from datetime import datetime, timedelta
 
-from vnpy.trader.constant import Direction, Offset
+from vnpy.trader.constant import Direction, Offset, Interval, Exchange
+from vnpy.trader.database import database_manager
 
 
 class CtaStrategyBridage(CtaTemplate,Portfolio):
-    myStragey:StockStrategy = Strategy1()
+    myStrategy:StockStrategy = None
     __privous_on_bar_datime = None
 
     def __init__(self, cta_engine, strategy_name, vt_symbol, setting):
         """"""
         super(CtaStrategyBridage, self).__init__(
-            cta_engine, strategy_name, vt_symbol, setting
+            cta_engine, strategy_name, TRAY_DAY_VT_SIMBOL, setting
         )
-        #self.myStrategy = StrategyTest()
+        strategy = setting['strategy']
+
+        if(strategy is None):
+            raise RuntimeError("must set setting: 'strategy' ")
+
+        if ( not isinstance(strategy,StockStrategy)):
+            raise RuntimeError("must set setting: 'strategy' is StockStrategy object  ")
+
+        self.myStrategy = strategy
         self.isCreated = False
         self.today= None
+
+        if (self.myStrategy is None):
+            raise RuntimeError("must set setting: 'strategy' ")
+
 
     def __on_bar_dump(self, bar: BarData):
         pass
@@ -43,16 +57,40 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
         # self.write_log("策略初始化")
         # 应该是初始化bar
         # super.callback = self.__on_bar_dump
-        self.myStragey.mRunOnBackTest = EngineType.BACKTESTING == self.get_engine_type();
-        if(self.myStragey.mRunOnBackTest):
+        self.myStrategy.mRunOnBackTest = EngineType.BACKTESTING == self.get_engine_type();
+        if(self.myStrategy.mRunOnBackTest):
             context = BackTestContext()
             context.start_date = self.cta_engine.start
             context.end_date = self.cta_engine.end
-            self.myStragey.backtestContext = context
+            self.myStrategy.backtestContext = context
+            if(self.cta_engine.interval != Interval.DAILY):
+                raise RuntimeError(f"error interval : {self.cta_engine.interval}")
+            self.__init_tradeDay(context.start_date,context.end_date)
+
         else:
-            self.myStragey.backtestContext = None
+            self.myStrategy.backtestContext = None
 
         self.load_bar(0)
+
+    def __init_tradeDay(self,start:datetime,end:datetime):
+
+        code = TRAY_DAY_SIMBOL
+
+        db_bar_start = database_manager.get_oldest_bar_data(code,Exchange.SSE,Interval.DAILY)
+        db_bar_end = database_manager.get_newest_bar_data(code,Exchange.SSE,Interval.DAILY)
+
+        print(f"CtaStrategyBridage: __init_tradeDay(), start={start},end={end}")
+
+        if((not db_bar_start is None ) and (not db_bar_end is None)):
+            if(start >= db_bar_start.datetime and end <= db_bar_end.datetime):
+                return
+
+        print(f"CtaStrategyBridage: __init_tradeDay(), update tradeDay!!!!")
+        database_manager.delete_bar_data(code,Exchange.SSE,Interval.DAILY)
+
+        start = start - timedelta(days=15)
+        end = end + timedelta(days=15)
+        save_tradeday_from_jqdata(start,end)
 
     def on_start(self):
         """
@@ -60,8 +98,8 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
         """
         #self.write_log("策略启动: " + self.get_engine_type().__str__());
         self.isCreated = True
-        self.myStragey.on_create()
-        if(self.myStragey.market is None):
+        self.myStrategy.on_create()
+        if(self.myStrategy.market is None):
             raise  RuntimeError("must set market")
         #;
 
@@ -71,7 +109,7 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
         Callback when strategy is stopped.
         """
         self.isCreated = False
-        self.myStragey.on_destroy()
+        self.myStrategy.on_destroy()
         #self.write_log("策略停止")
 
     def on_tick(self, tick: TickData):
@@ -112,15 +150,18 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
             self.cta_engine.cancel_all(self)
 
             self.today = bar.datetime
+            self.myStrategy.market.setToday(bar.datetime)
             day = bar.datetime
-            self.myStragey.on_market_prepare_open(self,self.today)
-            self.myStragey.on_market_open(self)
+
+            self.myStrategy.on_market_prepare_open(self,self.today)
+            self.myStrategy.on_market_open(self)
 
             tradeTime = datetime(year=day.year, month=day.month, day=day.day, hour=9, minute=30, second=1)
             end_date = datetime(year=day.year, month=day.month, day=day.day, hour=11, minute=30, second=1)
 
             while (tradeTime.__le__(end_date)):
-                self.myStragey.on_bar_per_minute(tradeTime,self)
+                self.myStrategy.market.setToday(tradeTime)
+                self.myStrategy.on_bar_per_minute(tradeTime,self)
                 tradeBar = copy.deepcopy(bar)
                 tradeBar.datetime = tradeTime
                 self.__cross_order_by_per_miniute(tradeBar)
@@ -129,14 +170,15 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
             tradeTime = datetime(year=day.year, month=day.month, day=day.day, hour=13, minute=0, second=1)
             end_date = datetime(year=day.year, month=day.month, day=day.day, hour=15, minute=0, second=1)
             while (tradeTime.__le__(end_date)):
-                self.myStragey.on_bar_per_minute(tradeTime,self)
+                self.myStrategy.market.setToday(tradeTime)
+                self.myStrategy.on_bar_per_minute(tradeTime,self)
                 tradeBar = copy.deepcopy(bar)
                 tradeBar.datetime = tradeTime
                 self.__cross_order_by_per_miniute(tradeBar)
                 tradeTime = tradeTime + timedelta(minutes=1)
 
-            self.myStragey.on_market_prepare_close(self)
-            self.myStragey.on_market_close(self)
+            self.myStrategy.on_market_prepare_close(self)
+            self.myStrategy.on_market_close(self)
 
             pass
 

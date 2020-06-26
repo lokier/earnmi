@@ -5,10 +5,7 @@ from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
 
 class StrategyTest(StockStrategy):
 
-    def __init__(
-            self,
-
-    ):
+    def __init__(self):
        pass
 
 
@@ -73,7 +70,7 @@ class StrategyTest(StockStrategy):
         """
             市场开市后的每分钟。
         """
-        self.write_log(f"on_bar_per_minute:{time}" )
+        self.write_log(f"     on_bar_per_minute:{time}" )
         pass
 
 

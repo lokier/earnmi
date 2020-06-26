@@ -13,10 +13,7 @@ from vnpy.trader.utility import ArrayManager
 """
 class Strategy1(StockStrategy):
 
-    def __init__(
-            self,
-
-    ):
+    def __init__(self):
        pass
 
     code = "300004"

@@ -2,7 +2,7 @@ from typing import List
 
 from vnpy.trader.constant import Exchange
 
-from earnmi.chart.Indicator import IndexLib
+from earnmi.chart.Indicator import Indicator
 from vnpy.trader.object import BarData
 
 
@@ -61,7 +61,7 @@ bar4 = BarData(
     low_price=0
 )
 
-indexes = IndexLib(100)
+indexes = Indicator(100)
 assert indexes.inited == False
 
 bars55 = buidildBars(55)
@@ -114,7 +114,7 @@ assert indexes.open_array[53] == 54
 assert indexes.open_array[54] == 0
 
 bars60 = buidildBars(60)
-indexes = IndexLib(100)
+indexes = Indicator(100)
 indexes.update_bar(bars60)
 indexes.update_bar(bars55)
 assert indexes.count == 115
@@ -124,14 +124,14 @@ assert indexes.open_array[-55] == 0
 assert indexes.open_array[-56] == 59
 
 bars255 = buidildBars(255)
-indexes = IndexLib(100)
+indexes = Indicator(100)
 indexes.update_bar(bars255)
 assert indexes.count == 255
 assert indexes.inited == True
 assert indexes.open_array[-1] == 254
 
 bars100 = buidildBars(100)
-indexes = IndexLib(100)
+indexes = Indicator(100)
 indexes.update_bar(bars100)
 assert indexes.count == 100
 assert indexes.inited == True

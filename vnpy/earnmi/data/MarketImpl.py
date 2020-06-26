@@ -4,7 +4,6 @@ from typing import Sequence
 from earnmi.data.KBarMintuePool import KBarMintuePool
 from earnmi.data.KBarPool import KBarPool
 from earnmi.data.Market2 import Market2
-from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData, TickData
 
 
@@ -109,16 +108,6 @@ class HistoryImpl(Market2.History):
 
 
 class MarketImpl(Market2):
-    class RealtimeImpl(Market2.RealTime):
-        def getTick(self, code: str) -> TickData:
-            pass
-
-        def getKBar(self, code: str) -> BarData:
-            pass
-
-        def getTime(self) -> datetime:
-            pass
-
 
     history:HistoryImpl =None
     realtime:RealTimeImpl = None
@@ -134,14 +123,10 @@ class MarketImpl(Market2):
         return self.history
 
     def nextTradeDay(self):
-        pass
+        raise RuntimeError("umimplement")
 
     def privoueTradeDay(self):
-        pass
-
-    def getCurrentTradeDay(self) -> datetime:
-        pass
-
+        raise RuntimeError("umimplement")
 
 
     def _checkOk(self, code: str):

@@ -5,10 +5,13 @@ from vnpy.trader.constant import Interval, Exchange
 from vnpy.trader.database import database_manager
 from vnpy.trader.object import BarData
 
+TRAY_DAY_SIMBOL = "AAAAAA"
+TRAY_DAY_VT_SIMBOL = "AAAAAA.SSE"
+
 """
   导入指定时间范围的交易。 数据保存到：AAAAAA:SSE
 """
-def save_bar_data_from_jqdata(start_date: datetime, end_date: datetime):
+def save_tradeday_from_jqdata(start_date: datetime, end_date: datetime):
     exechage = Exchange.SSE
 
     code = "AAAAAA"
@@ -45,26 +48,27 @@ def save_bar_data_from_jqdata(start_date: datetime, end_date: datetime):
         batch_start = batch_end + timedelta(days = 1)
     pass
 
-if(not jq.is_auth()):
-    jq.auth('13530336157','Qwer4321') #ID是申请时所填写的手机号；Password为聚宽官网登录密码，新申请用户默认为手机号后6位
+if __name__ == "__main__":
+    if(not jq.is_auth()):
+        jq.auth('13530336157','Qwer4321') #ID是申请时所填写的手机号；Password为聚宽官网登录密码，新申请用户默认为手机号后6位
 
-if(not jq.is_auth()):
-    print('jq is not auth,exist')
-    exit()
+    if(not jq.is_auth()):
+        print('jq is not auth,exist')
+        exit()
 
-# start main
 
-# start_day = datetime.strptime("2010-01-01","%Y-%m-%d")
-# end_day = datetime.strptime("2020-03-29","%Y-%m-%d")
-#
-# if(not jq.is_auth()):
-#     jq.auth('13530336157','Qwer4321') #ID是申请时所填写的手机号；Password为聚宽官网登录密码，新申请用户默认为手机号后6位
-#
-# if(not jq.is_auth()):
-#     print('jq is not auth,exist')
-#     exit()
-# print('jq is auth')
-#
-# code = 'AAAAAA'
-# database_manager.clean(code)
-# save_bar_data_from_jqdata(start_date=start_day,end_date=end_day)
+    start = datetime(2019, 2, 23)
+    end = datetime(2019, 4, 24)
+
+    if(not jq.is_auth()):
+        jq.auth('13530336157','Qwer4321') #ID是申请时所填写的手机号；Password为聚宽官网登录密码，新申请用户默认为手机号后6位
+
+    if(not jq.is_auth()):
+        print('jq is not auth,exist')
+        exit()
+    print('jq is auth')
+
+    code = 'AAAAAA'
+    database_manager.clean(code)
+    save_tradeday_from_jqdata(start_date=start,end_date=end)
+    database_manager.clean(code)

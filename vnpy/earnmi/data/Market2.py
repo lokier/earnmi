@@ -74,7 +74,7 @@ class Market2:
         pass
 
     """
-       状态跳转到下个交易日
+       状态跳转到上个交易日
     """
     @abstractmethod
     def privoueTradeDay(self):
