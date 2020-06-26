@@ -14,25 +14,16 @@ class Market2:
         """
             返回当前Tick数据。
         """
-
         @abstractmethod
         def getTick(self, code: str) -> TickData:
             pass
 
         """
-            返回当前的分钟K线图。
+        返回 今天[hour,mintue,second]到现在的k线图。（24小时）
         """
 
         @abstractmethod
-        def getKBar(self, code: str) -> BarData:
-            pass
-
-        """
-        返回 今天[hour,mintue,second]到现在得k线图。（24小时）
-        """
-
-        @abstractmethod
-        def getKBar(self, code: str, hour: int, minute: int, second: int) -> BarData:
+        def getKBar(self, code: str, hour: int = 0, minute: int= 0, second: int = 30) -> BarData:
             pass
 
         @abstractmethod

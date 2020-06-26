@@ -39,4 +39,6 @@ class MinuteBarPool:
 
 
 
+if __name__ == "__main__":
+    code = "300004"
 

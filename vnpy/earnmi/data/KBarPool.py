@@ -172,16 +172,19 @@ class KBarPool:
 
     def __makePollSize(self,start:datetime,end:datetime) ->Tuple[datetime, datetime, Sequence["BarData"]]:
         print(f"__makePollSize:{start}, {end}")
-        database_manager.clean(self.__code)
+
+        exchange = Exchange.SZSE
+        if self.__code.startswith("6"):
+            exchange = Exchange.SSE
+
+        database_manager.delete_bar_data(self.__code,exchange,Interval.DAILY)
         detal_day = (end-start).days
         extraDay = 365 - detal_day
         if(extraDay > 0):
             end = end + timedelta(days=extraDay)
         save_bar_data_from_jqdata(self.__code, Interval.DAILY, start_date=start, end_date=end)
 
-        exchange = Exchange.SZSE
-        if self.__code.startswith("6"):
-            exchange = Exchange.SSE
+
         pool_data = database_manager.load_bar_data(self.__code, exchange, Interval.DAILY, start, end)
         #list.sort(pool_data,)
         return start,end,pool_data

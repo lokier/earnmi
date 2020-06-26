@@ -1,9 +1,76 @@
 from datetime import datetime
 from typing import Sequence
-from earnmi.data.HistoryBarPool import HistoryBarPool
+
+from earnmi.data.KBarMintuePool import KBarMintuePool
 from earnmi.data.KBarPool import KBarPool
 from earnmi.data.Market2 import Market2
+from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData, TickData
+
+
+class RealTimeImpl(Market2.RealTime):
+    market: Market2 = None
+
+    def __init__(self, market: Market2):
+        self.market = market
+
+    def getTick(self, code: str) -> TickData:
+        raise RuntimeError("unimplment yet!")
+
+    def getKBar(self, code: str, hour: int = 0, minute: int = 1, second: int= 1) -> BarData:
+        today = self.market.getToday()
+        if (today is None):
+            raise RuntimeError("market doese not set current time")
+
+        pool = self.getKBarMintuePool(code)
+        bars  = pool.getAtDay(today)
+        if len(bars) == 0:
+            return None
+
+        start = datetime(year=today.year,month=today.month,day=today.day,hour=hour,minute = minute,second = second)
+        if(start > today):
+            return None
+
+        ret_bar = None
+        for bar in bars:
+            if bar.datetime >= start and bar.datetime <= today:
+                if ret_bar is None:
+                    ret_bar = BarData(
+                        symbol=code,
+                        exchange=bar.exchange,
+                        datetime=None,
+                        interval = bar.interval,
+                        gateway_name=bar.gateway_name,
+                        open_price=bar.open_price,
+                        high_price=bar.high_price,
+                        low_price=bar.low_price,
+                        volume = bar.volume,
+                        open_interest = bar.open_interest,
+                        close_price=  bar.close_price
+                    )
+                    ret_bar.datetime = today
+                else :
+                    ret_bar.high_price = max(ret_bar.high_price, bar.high_price)
+                    ret_bar.low_price = min(ret_bar.low_price, bar.low_price)
+                    ret_bar.close_price = bar.close_price
+                    ret_bar.volume += int(bar.volume)
+                    ret_bar.open_interest = bar.open_interest
+
+        return ret_bar
+
+
+
+    def getTime(self) -> datetime:
+        return self.market.getToday()
+
+
+
+    def getKBarMintuePool(self,code:str)->KBarMintuePool:
+        bar_poll = self.market.getNoticeData(code,"real_time_bar_poll")
+        if bar_poll is None:
+            bar_poll = KBarMintuePool(code)
+            self.market.putNoticeData(code,"real_time_bar_poll",bar_poll)
+        return bar_poll
 
 
 class HistoryImpl(Market2.History):
@@ -54,12 +121,14 @@ class MarketImpl(Market2):
 
 
     history:HistoryImpl =None
+    realtime:RealTimeImpl = None
 
     def __init__(self):
         self.history = HistoryImpl(self)
+        self.realtime = RealTimeImpl(self)
 
     def getRealTime(self) -> Market2.RealTime:
-        pass
+        return self.realtime
 
     def getHistory(self) -> Market2.History:
         return self.history
