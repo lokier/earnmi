@@ -124,11 +124,11 @@ class StrategyTest(StockStrategy):
         # 中国平安601318 在datetime(2019, 2, 26, 10, 28)时刻，最低到达 low_price=67.15
         # 中国平安601318 在datetime(2019, 2, 27, 9, 48)时刻，最高到达 high_price=68.57
         buy_trade_time = datetime(2019, 2, 26, 10, 28)
-        # if (is_same_day(buy_trade_time, self.market.getToday())):
-        #     assert trade.time >= buy_trade_time.
-        #
+        if (is_same_day(buy_trade_time, self.market.getToday())):
+             assert self.market.getToday() >= buy_trade_time
+
         # if (is_same_minitue(datetime(2019, 2, 27, 10, 28), self.market.getToday())):
-        #     protfolio.sell("601318", 68.57, 10000)
+        #      protfolio.sell("601318", 68.57, 10000)
 
     def on_stop_order(self, stop_order: StopOrder):
         print(f"{self.market.getToday()}：on_stop_order: {stop_order}")
@@ -161,14 +161,16 @@ engine.set_parameters(
 engine.add_strategy(CtaStrategyBridage, { "strategy":strategy})
 engine.load_data()
 engine.run_backtesting()
-df = engine.calculate_result()
-engine.calculate_statistics()
+# df = engine.calculate_result()
+# engine.calculate_statistics()
 
 assert is_same_day(datetime(year=2019,month=2,day=25),strategy.start_trade_time)
 assert is_same_day(datetime(year=2019,month=4,day=24),strategy.end_trade_time)
 
 assert  strategy.market_open_count == 42
 
-engine.show_chart()
+for trade in engine.trades.values():
+    print(trade)
+
 
 
