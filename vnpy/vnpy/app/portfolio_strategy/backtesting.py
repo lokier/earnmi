@@ -181,18 +181,19 @@ class BacktestingEngine:
         day_count = 0
         ix = 0
 
-        for ix, dt in enumerate(dts):
-            if self.datetime and dt.day != self.datetime.day:
-                day_count += 1
-                if day_count >= self.days:
-                    break
+        if(self.days > 0):
+            for ix, dt in enumerate(dts):
+                if self.datetime and dt.day != self.datetime.day:
+                    day_count += 1
+                    if day_count >= self.days:
+                        break
 
-            try:
-                self.new_bars(dt)
-            except Exception:
-                self.output("触发异常，回测终止")
-                self.output(traceback.format_exc())
-                return
+                try:
+                    self.new_bars(dt)
+                except Exception:
+                    self.output("触发异常，回测终止")
+                    self.output(traceback.format_exc())
+                    return
 
         self.strategy.inited = True
         self.output("策略初始化完成")
@@ -350,7 +351,6 @@ class BacktestingEngine:
                 sharpe_ratio = daily_return / return_std * np.sqrt(240)
             else:
                 sharpe_ratio = 0
-
             return_drawdown_ratio = -total_return / max_ddpercent
 
         # Output
@@ -518,6 +518,72 @@ class BacktestingEngine:
                 order.direction == Direction.SHORT
                 and order.price <= short_cross_price
                 and short_cross_price > 0
+            )
+
+            if not long_cross and not short_cross:
+                continue
+
+            # Push order update with status "all traded" (filled).
+            order.traded = order.volume
+            order.status = Status.ALLTRADED
+            self.strategy.update_order(order)
+
+            self.active_limit_orders.pop(order.vt_orderid)
+
+            # Push trade update
+            self.trade_count += 1
+
+            if long_cross:
+                trade_price = min(order.price, long_best_price)
+            else:
+                trade_price = max(order.price, short_best_price)
+
+            trade = TradeData(
+                symbol=order.symbol,
+                exchange=order.exchange,
+                orderid=order.orderid,
+                tradeid=str(self.trade_count),
+                direction=order.direction,
+                offset=order.offset,
+                price=trade_price,
+                volume=order.volume,
+                time=self.datetime.strftime("%H:%M:%S"),
+                gateway_name=self.gateway_name,
+            )
+            trade.datetime = self.datetime
+
+            self.strategy.update_trade(trade)
+            self.trades[trade.vt_tradeid] = trade
+
+    def cross_limit_order_by_bar(self, bar:BarData) -> None:
+        """
+        Cross limit order with last bar/tick data.
+        """
+        for order in list(self.active_limit_orders.values()):
+            if not bar.symbol.__eq__(order.symbol):
+                continue
+
+            long_cross_price = bar.low_price
+            short_cross_price = bar.high_price
+            long_best_price = bar.open_price
+            short_best_price = bar.open_price
+
+            # Push order update with status "not traded" (pending).
+            if order.status == Status.SUBMITTING:
+                order.status = Status.NOTTRADED
+                self.strategy.update_order(order)
+
+            # Check whether limit orders can be filled.
+            long_cross = (
+                    order.direction == Direction.LONG
+                    and order.price >= long_cross_price
+                    and long_cross_price > 0
+            )
+
+            short_cross = (
+                    order.direction == Direction.SHORT
+                    and order.price <= short_cross_price
+                    and short_cross_price > 0
             )
 
             if not long_cross and not short_cross:

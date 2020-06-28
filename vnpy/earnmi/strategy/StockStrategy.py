@@ -11,6 +11,13 @@ class Portfolio:
         证券账户.
     """
 
+    """
+       返回剩余资金
+    """
+    @abstractmethod
+    def getValidCapital(self)->float:
+        pass
+
     @abstractmethod
     def buy(self, code: str, price: float, volume: float):
         """

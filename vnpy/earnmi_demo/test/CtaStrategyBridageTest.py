@@ -1,18 +1,11 @@
 from earnmi.data.MarketImpl import MarketImpl
 from earnmi.data.import_tradeday_from_jqdata import TRAY_DAY_VT_SIMBOL
-from earnmi.strategy.CtaStrategyBridge import CtaStrategyBridage
-from earnmi.strategy.FundsFavouriteStrategy import FundsFavouriteStrategy
+from earnmi.strategy.StockStrategyBridge import StockStrategyBridge
 from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
-from earnmi.strategy.TestMultiStrategy import TestMultiStrategy
 from vnpy.app.cta_strategy import StopOrder
-from vnpy.app.cta_strategy.strategies.test_strategy import TestStrategy
-from vnpy.event import Event
 from vnpy.trader.constant import Interval
+from vnpy.app.portfolio_strategy import BacktestingEngine
 
-from vnpy.app.cta_strategy.backtesting import BacktestingEngine, OptimizationSetting
-from vnpy.app.cta_strategy.strategies.atr_rsi_strategy import (
-    AtrRsiStrategy
-)
 from datetime import datetime
 
 from vnpy.trader.object import OrderData, TradeData
@@ -81,27 +74,28 @@ class StrategyTest(StockStrategy):
             市场开市.
         """
         self.market_open_count = self.market_open_count + 1
+        self.on_bar_per_minute_count = 0
 
         # 中国平安601318 在datetime(2019, 2, 26, 10, 28)时刻，最低到达 low_price=67.15
         # 中国平安601318 在datetime(2019, 2, 27, 9, 48)时刻，最高到达 high_price=68.57
         if(is_same_day(datetime(2019, 2, 26, 10, 28),self.market.getToday())):
-            protfolio.buy("601318",67.15,10000)
+            protfolio.buy("601318",67.15,100)
 
-        if (is_same_day(datetime(2019, 2, 27, 10, 28), self.market.getToday())):
-            protfolio.sell("601318", 68.57, 10000)
+        if (is_same_day(datetime(2019, 2, 27, 9, 48), self.market.getToday())):
+            protfolio.sell("601318", 68.54, 100)
         pass
 
     def on_market_prepare_close(self,protfolio:Portfolio):
         """
             市场准备关市.
         """
-
         pass
 
     def on_market_close(self,protfolio:Portfolio):
         """
             市场关市.
         """
+        assert self.on_bar_per_minute_count > 200
 
         pass
 
@@ -109,7 +103,15 @@ class StrategyTest(StockStrategy):
         """
             市场开市后的每分钟。
         """
+        self.on_bar_per_minute_count = self.on_bar_per_minute_count + 1
+
         assert is_same_minitue(time,self.market.getToday())
+        assert time.hour >= 9  #9点后开市
+        if(time.hour > 9 or (time.hour==9 and time.minute > 32)):
+            ##开市之后的实时信息不应该为none
+            bar = self.market.getRealTime().getKBar("601318")
+            assert not bar is None
+
 
         #self.write_log(f"     on_bar_per_minute:{time}" )
         pass
@@ -148,21 +150,22 @@ end = datetime(2019, 4, 24)
 
 
 engine.set_parameters(
-    vt_symbol=TRAY_DAY_VT_SIMBOL,
+    vt_symbols=[TRAY_DAY_VT_SIMBOL],
     interval=Interval.DAILY,
     start=start,
     end=end,
-    rate=0.3/10000,
-    slippage=0.2,
-    size=300,
-    pricetick=0.2,
+    rates={TRAY_DAY_VT_SIMBOL:0.3/10000},  #交易佣金
+    slippages={TRAY_DAY_VT_SIMBOL:0.1},  # 滑点
+    sizes={TRAY_DAY_VT_SIMBOL:100},  #一手的交易单位
+    priceticks={TRAY_DAY_VT_SIMBOL:0.01},  #四舍五入的精度
     capital=1_000_000,
 )
-engine.add_strategy(CtaStrategyBridage, { "strategy":strategy})
+engine.add_strategy(StockStrategyBridge, { "strategy":strategy})
 engine.load_data()
 engine.run_backtesting()
-# df = engine.calculate_result()
-# engine.calculate_statistics()
+df = engine.calculate_result()
+engine.calculate_statistics()
+engine.show_chart()
 
 assert is_same_day(datetime(year=2019,month=2,day=25),strategy.start_trade_time)
 assert is_same_day(datetime(year=2019,month=4,day=24),strategy.end_trade_time)
@@ -171,6 +174,5 @@ assert  strategy.market_open_count == 42
 
 for trade in engine.trades.values():
     print(trade)
-
 
 

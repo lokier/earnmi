@@ -75,12 +75,7 @@ def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetim
         batch_start = batch_end #+ timedelta(days = 1)
     return saveCount
 
-if(not jq.is_auth()):
-    jq.auth('13530336157','Qwer4321') #ID是申请时所填写的手机号；Password为聚宽官网登录密码，新申请用户默认为手机号后6位
 
-if(not jq.is_auth()):
-    print('jq is not auth,exist')
-    exit()
 
 if __name__ == "__main__":
     code = "300004"
