@@ -29,7 +29,7 @@ class jqSdk(object):
         security = jq.get_security_info(jqCode, date=None)
         return security.start_date
 
-    def get(self):
+    def get(self) ->jq:
         self.checkOk()
         return jq
 

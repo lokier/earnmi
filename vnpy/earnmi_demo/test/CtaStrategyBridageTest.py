@@ -79,10 +79,13 @@ class StrategyTest(StockStrategy):
         # 中国平安601318 在datetime(2019, 2, 26, 10, 28)时刻，最低到达 low_price=67.15
         # 中国平安601318 在datetime(2019, 2, 27, 9, 48)时刻，最高到达 high_price=68.57
         if(is_same_day(datetime(2019, 2, 26, 10, 28),self.market.getToday())):
-            protfolio.buy("601318",67.15,100)
+            assert protfolio.buy("601318",67.15,100) == True
+            assert protfolio.buy("601318",67.15,100) == False  ##钱不够
+
 
         if (is_same_day(datetime(2019, 2, 27, 9, 48), self.market.getToday())):
-            protfolio.sell("601318", 68.54, 100)
+            assert protfolio.sell("601318", 68.54, 120) == False  ##持仓数不够
+            assert protfolio.sell("601318", 68.54, 100) == True
         pass
 
     def on_market_prepare_close(self,protfolio:Portfolio):

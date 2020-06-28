@@ -19,14 +19,14 @@ class Portfolio:
         pass
 
     @abstractmethod
-    def buy(self, code: str, price: float, volume: float):
+    def buy(self, code: str, price: float, volume: float)->bool:
         """
           买入股票
         """
         pass
 
     @abstractmethod
-    def sell(self, code: str, price: float, volume: float):
+    def sell(self, code: str, price: float, volume: float) ->bool:
         """
           卖出股票
         """

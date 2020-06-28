@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
-import jqdatasdk as jq
 import numpy as np
+
+from earnmi.uitl.jqSdk import jqSdk
 from vnpy.trader.constant import Interval, Exchange
 from vnpy.trader.database import database_manager
 from vnpy.trader.object import BarData
@@ -19,6 +20,7 @@ def save_tradeday_from_jqdata(start_date: datetime, end_date: datetime):
     interval = Interval.DAILY
 
     batch_start = start_date
+    jq = jqSdk.get()
     while(batch_start.__lt__(end_date)):
         batch_end = batch_start + timedelta(days = batch_day)
         if(batch_end.__gt__( end_date)):
@@ -49,24 +51,12 @@ def save_tradeday_from_jqdata(start_date: datetime, end_date: datetime):
     pass
 
 if __name__ == "__main__":
-    if(not jq.is_auth()):
-        jq.auth('13530336157','Qwer4321') #ID是申请时所填写的手机号；Password为聚宽官网登录密码，新申请用户默认为手机号后6位
 
-    if(not jq.is_auth()):
-        print('jq is not auth,exist')
-        exit()
 
 
     start = datetime(2019, 2, 23)
     end = datetime(2019, 4, 24)
 
-    if(not jq.is_auth()):
-        jq.auth('13530336157','Qwer4321') #ID是申请时所填写的手机号；Password为聚宽官网登录密码，新申请用户默认为手机号后6位
-
-    if(not jq.is_auth()):
-        print('jq is not auth,exist')
-        exit()
-    print('jq is auth')
 
     code = 'AAAAAA'
     database_manager.clean(code)

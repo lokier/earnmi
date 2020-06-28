@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
-import jqdatasdk as jq
 import numpy as np
+
+from earnmi.uitl.jqSdk import jqSdk
 from vnpy.trader.constant import Interval, Exchange
 from vnpy.trader.database import database_manager
 from vnpy.trader.object import BarData
@@ -32,6 +33,7 @@ def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetim
         jq_frequency = '1d'
 
 
+    jq = jqSdk.get()
 
     batch_start = start_date
     saveCount = 0

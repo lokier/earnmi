@@ -3,6 +3,7 @@ from typing import Sequence, List, Dict
 from earnmi.data.import_tradeday_from_jqdata import TRAY_DAY_VT_SIMBOL, TRAY_DAY_SIMBOL, save_tradeday_from_jqdata
 from earnmi.strategy.StockStrategy import StockStrategy, BackTestContext, Portfolio
 from earnmi.strategy.StrategyTest import StrategyTest
+from earnmi.uitl.utils import utils
 from earnmi_demo.Strategy1 import Strategy1
 from vnpy.app.cta_strategy import StopOrder
 from vnpy.app.portfolio_strategy import StrategyTemplate, StrategyEngine, BacktestingEngine
@@ -269,7 +270,7 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
         self.myStrategy.on_trade(trade)
 
 
-    def buy(self, code: str, price: float, volume: float):
+    def buy(self, code: str, price: float, volume: float) ->bool:
         """
         买入股票
         """
@@ -286,7 +287,7 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
 
             if(need_capital >= self._valid_captical):
                 print(f"     ==> buy {code} fail,可用资金不够：需要：{need_capital},可用{self._valid_captical}")
-                return
+                return False
             self._valid_captical = self._valid_captical -  need_capital
             vt_order_id = super().buy(symbol, price, volume, False)
             self.__order_summitting_price[vt_order_id[0]] = need_capital
@@ -294,8 +295,9 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
         else:
             super().buy(symbol, price, volume, False)
 
+        return True
 
-    def sell(self, code: str, price: float, volume: float):
+    def sell(self, code: str, price: float, volume: float)->bool:
         symbol = self.__to_vt_symbol(code)
 
         if self.myStrategy.mRunOnBackTest == True:
@@ -306,7 +308,7 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
 
             if(hasVolume < volume):
                 print(f"     <== sell {code} fail,仓位不够：需要：{volume},可用{hasVolume}")
-                return
+                return False
 
             self.__daylyTradeSymbolset[code] = True
             self.strategy_engine.priceticks[symbol] = self.strategy_engine.priceticks[TRAY_DAY_VT_SIMBOL]
@@ -316,6 +318,8 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
             super().sell(symbol,price,volume,False)
         else:
             super().sell(symbol,price,volume,False)
+
+        return True
 
     def getValidCapital(self) -> float:
         if self.myStrategy.mRunOnBackTest == True:
@@ -327,10 +331,5 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
         pass
 
     def __to_vt_symbol(self,code:str)->str:
-        if( not code.__contains__(".")):
-            symbol = f"{code}.SZSE"
-            if code.startswith("6"):
-                symbol = f"{code}.SSE"
-            return symbol
-        return code
+       return utils.to_vt_symbol(code)
 
