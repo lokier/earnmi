@@ -3,7 +3,7 @@ from earnmi.data.import_tradeday_from_jqdata import TRAY_DAY_VT_SIMBOL
 from earnmi.strategy.StockStrategyBridge import StockStrategyBridge
 from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
 from vnpy.app.cta_strategy import StopOrder
-from vnpy.trader.constant import Interval
+from vnpy.trader.constant import Interval, Direction
 from vnpy.app.portfolio_strategy import BacktestingEngine
 
 from datetime import datetime
@@ -23,6 +23,7 @@ class StrategyTest(StockStrategy):
     market_open_count = 0
     start_trade_time = None
     end_trade_time =None
+    final_valid_capital = 0;
 
     def __init__(
             self,
@@ -78,14 +79,21 @@ class StrategyTest(StockStrategy):
 
         # 中国平安601318 在datetime(2019, 2, 26, 10, 28)时刻，最低到达 low_price=67.15
         # 中国平安601318 在datetime(2019, 2, 27, 9, 48)时刻，最高到达 high_price=68.57
+
         if(is_same_day(datetime(2019, 2, 26, 10, 28),self.market.getToday())):
             assert protfolio.buy("601318",67.15,100) == True
             assert protfolio.buy("601318",67.15,100) == False  ##钱不够
+            assert protfolio.buy("601318", 67.15, 1) == True
 
 
         if (is_same_day(datetime(2019, 2, 27, 9, 48), self.market.getToday())):
             assert protfolio.sell("601318", 68.54, 120) == False  ##持仓数不够
-            assert protfolio.sell("601318", 68.54, 100) == True
+            assert protfolio.sell("601318", 68.54, 55) == True
+            assert protfolio.sell("601318", 68.54, 46) == True
+
+        if (is_same_day(datetime(2019, 2, 28, 10, 48), self.market.getToday())):
+            assert protfolio.buy("601318", 67.40, 120) == True
+
         pass
 
     def on_market_prepare_close(self,protfolio:Portfolio):
@@ -100,7 +108,11 @@ class StrategyTest(StockStrategy):
         """
         assert self.on_bar_per_minute_count > 200
 
+        self.final_valid_capital = protfolio.getValidCapital()
+
         pass
+
+    __sell_time_01_tag = False
 
     def on_bar_per_minute(self, time: datetime,protfolio:Portfolio):
         """
@@ -116,6 +128,13 @@ class StrategyTest(StockStrategy):
             assert not bar is None
 
 
+        # 中国平安601318 在datetime(2019, 3, 25, 13, 10)时刻，从最高价71到一个新底69.75, 后面再到一个新的高点。70.38左右
+        sell_time_01 =  datetime(2019, 3, 25, 13, 10)
+        if not self.__sell_time_01_tag:
+            if(is_same_day(sell_time_01,time) and sell_time_01 >= time):
+                protfolio.sell("601318",69.75,120)
+                self.__sell_time_01_tag = True
+
         #self.write_log(f"     on_bar_per_minute:{time}" )
         pass
 
@@ -128,6 +147,9 @@ class StrategyTest(StockStrategy):
 
         # 中国平安601318 在datetime(2019, 2, 26, 10, 28)时刻，最低到达 low_price=67.15
         # 中国平安601318 在datetime(2019, 2, 27, 9, 48)时刻，最高到达 high_price=68.57
+        # 中国平安601318 在datetime(2019, 3, 25, 13, 10)时刻，从最高价71到一个新底69.75, 后面再到一个新的高点。7.38左右
+
+        datetime(2019, 3, 25, 1)
         buy_trade_time = datetime(2019, 2, 26, 10, 28)
         if (is_same_day(buy_trade_time, self.market.getToday())):
              assert self.market.getToday() >= buy_trade_time
@@ -168,14 +190,21 @@ engine.load_data()
 engine.run_backtesting()
 df = engine.calculate_result()
 engine.calculate_statistics()
-engine.show_chart()
 
 assert is_same_day(datetime(year=2019,month=2,day=25),strategy.start_trade_time)
 assert is_same_day(datetime(year=2019,month=4,day=24),strategy.end_trade_time)
 
 assert  strategy.market_open_count == 42
+assert len(engine.trades) == 6
 
-for trade in engine.trades.values():
-    print(trade)
 
+print(f"final_valid_capital:{strategy.final_valid_capital}")
+for dt,v in engine.trades.items():
+    trade:TradeData = v
+    trage_tag = "买"
+    if(trade.direction == Direction.SHORT):
+        trage_tag = "卖"
+    print(f"order_id={trade.vt_orderid},{trage_tag}:{trade.volume},price:{trade.price},time={trade.time}")
+
+engine.show_chart()
 
