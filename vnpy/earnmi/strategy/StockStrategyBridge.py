@@ -216,7 +216,7 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
         orderSymbolSet = list(symobSet.keys())
 
         for symbol in orderSymbolSet:
-            bar = self.myStrategy.market.getRealTime().getKBar(symbol);
+            bar = self.myStrategy.market.getRealTime().getTick(symbol)
             if( bar is None):
                 ###还没开始，或者已经停牌
                 continue

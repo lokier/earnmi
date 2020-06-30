@@ -15,7 +15,7 @@ class Market:
             返回当前Tick数据。
         """
         @abstractmethod
-        def getTick(self, code: str) -> TickData:
+        def getTick(self, code: str) -> BarData:
             pass
 
         """

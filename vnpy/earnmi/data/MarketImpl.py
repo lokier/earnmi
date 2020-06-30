@@ -13,7 +13,7 @@ class RealTimeImpl(Market.RealTime):
     def __init__(self, market: Market):
         self.market = market
 
-    def getTick(self, code: str) -> TickData:
+    def getTick(self, code: str) -> BarData:
         today = self.market.getToday()
 
         if (today is None):
@@ -40,22 +40,7 @@ class RealTimeImpl(Market.RealTime):
                        minitue_bar = bar
             else:
                 break
-        if minitue_bar is None:
-            return None
-        return TickData(
-            name = minitue_bar.gateway_name,
-            volume = minitue_bar.volume,
-            open_interest = minitue_bar.open_interest,
-            last_price = minitue_bar.close_price,
-            last_volume = minitue_bar.volume,
-            open_price = minitue_bar.open_price,
-            high_price = minitue_bar.high_price,
-            low_price = minitue_bar.low_price,
-            gateway_name = minitue_bar.gateway_name,
-            symbol=minitue_bar.symbol,
-            exchange= minitue_bar.exchange,
-            datetime = minitue_bar.datetime
-        );
+        return minitue_bar;
 
 
     def getKBar(self, code: str, hour: int = 0, minute: int = 1, second: int= 1) -> BarData:
