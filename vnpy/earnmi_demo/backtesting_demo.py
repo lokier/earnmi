@@ -1,17 +1,10 @@
 #%%
 from earnmi.data.import_tradeday_from_jqdata import TRAY_DAY_VT_SIMBOL
-from earnmi.strategy.CtaStrategyBridge import CtaStrategyBridage
-from earnmi.strategy.FundsFavouriteStrategy import FundsFavouriteStrategy
-from earnmi.strategy.TestMultiStrategy import TestMultiStrategy
+from earnmi.strategy.StockStrategyBridge import StockStrategyBridge
 from earnmi_demo.Strategy1 import Strategy1
-from vnpy.app.cta_strategy.strategies.test_strategy import TestStrategy
+from vnpy.app.portfolio_strategy import BacktestingEngine
 from vnpy.event import Event
 from vnpy.trader.constant import Interval
-
-from vnpy.app.cta_strategy.backtesting import BacktestingEngine, OptimizationSetting
-from vnpy.app.cta_strategy.strategies.atr_rsi_strategy import (
-    AtrRsiStrategy
-)
 from datetime import datetime
 
 from vnpy.trader.event import EVENT_LOG
@@ -22,20 +15,23 @@ def printLog(event:Event):
 
 #%%
 engine = BacktestingEngine()
-#engine.register(EVENT_LOG, printLog)
+
+
+start = datetime(2019, 2, 23)
+end = datetime(2019, 4, 24)
 
 engine.set_parameters(
-    vt_symbol=TRAY_DAY_VT_SIMBOL,
+    vt_symbols=[TRAY_DAY_VT_SIMBOL],
     interval=Interval.DAILY,
-    start=datetime(2019, 2, 23),
-    end=datetime(2019, 4, 24),
-    rate=0.3/10000,
-    slippage=0.2,
-    size=300,
-    pricetick=0.2,
+    start=start,
+    end=end,
+    rates={TRAY_DAY_VT_SIMBOL:0.3/10000},  #交易佣金
+    slippages={TRAY_DAY_VT_SIMBOL:0.1},  # 滑点
+    sizes={TRAY_DAY_VT_SIMBOL:100},  #一手的交易单位
+    priceticks={TRAY_DAY_VT_SIMBOL:0.01},  #四舍五入的精度
     capital=1_000_000,
 )
-engine.add_strategy(CtaStrategyBridage, {"strategy":Strategy1()})
+engine.add_strategy(StockStrategyBridge, { "strategy":Strategy1()})
 
 #%%
 engine.load_data()

@@ -1,10 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Sequence
 
 from earnmi.data.KBarMintuePool import KBarMintuePool
 from earnmi.data.KBarPool import KBarPool
 from earnmi.data.Market import Market
-from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData, TickData
 
 
@@ -15,7 +14,45 @@ class RealTimeImpl(Market.RealTime):
         self.market = market
 
     def getTick(self, code: str) -> TickData:
-        raise RuntimeError("unimplment yet!")
+        today = self.market.getToday()
+
+        if (today is None):
+            raise RuntimeError("market doese not set current time")
+
+        pool = self.getKBarMintuePool(code)
+        bars = pool.getAtDay(today)
+        if len(bars) == 0:
+            return None
+        minitue_bar:BarData = None
+        start = today - timedelta(seconds=59)
+        end = today + timedelta(seconds=59)
+
+        for bar in bars:
+            if bar.datetime < start:
+                continue
+            if  bar.datetime <= end:
+               if minitue_bar is None:
+                   minitue_bar = bar
+               else:
+                   delta1 = abs(today - minitue_bar.datetime)
+                   delta2 = abs(today -bar.datetime)
+                   if delta2 < delta1:
+                       minitue_bar = bar
+            else:
+                break
+        if minitue_bar is None:
+            return None
+        return TickData(
+            name = minitue_bar.symbol,
+            volume = minitue_bar.volume,
+            open_interest = minitue_bar.open_interest,
+            last_price = minitue_bar.close_price,
+            last_volume = minitue_bar.volume,
+            open_price = minitue_bar.open_price,
+            high_price = minitue_bar.high_price,
+            low_price = minitue_bar.low_price,
+        );
+
 
     def getKBar(self, code: str, hour: int = 0, minute: int = 1, second: int= 1) -> BarData:
 
@@ -23,34 +60,6 @@ class RealTimeImpl(Market.RealTime):
 
         if (today is None):
             raise RuntimeError("market doese not set current time")
-
-        # buy_trade_time = datetime(2019, 2, 26, 10, 28)
-        # sell_trade_time = datetime(2019, 2, 27, 1, 5)
-        # if (today >= sell_trade_time):
-        #     bar = BarData(
-        #         symbol=code,
-        #         exchange=Exchange.SSE,
-        #         datetime=None,
-        #         gateway_name="unkonw",
-        #         open_price=67.99,
-        #         high_price=68.58,
-        #         low_price=68.10,
-        #         close_price=68.20
-        #     )
-        #     return bar
-        # elif (today >= buy_trade_time):
-        #     bar = BarData(
-        #         symbol=code,
-        #         exchange=Exchange.SSE,
-        #         datetime=None,
-        #         gateway_name="unkonw",
-        #         open_price=67.45,
-        #         high_price=67.90,
-        #         low_price=67.15,
-        #         close_price=67.50
-        #
-        #     )
-        #     return bar
 
         pool = self.getKBarMintuePool(code)
         bars  = pool.getAtDay(today)
