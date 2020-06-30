@@ -30,9 +30,11 @@ high_price_bar = db_data[0]
 
 index = 0
 for i in range(len(db_data)):
-    print(db_data[i])
-    if db_data[index].low_price > db_data[i].low_price:
+    print(f"{db_data[i].datetime}:open = {db_data[i].open_price},close={db_data[i].close_price}")
+    if db_data[index].high_price < db_data[i].high_price:
         index = i
+
+print(f"high: {db_data[index].datetime}:open = {db_data[index].open_price},close={db_data[index].close_price}")
 
 chart = Chart()
 chart.setBarData(db_data)

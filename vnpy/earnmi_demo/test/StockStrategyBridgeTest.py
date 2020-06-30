@@ -121,7 +121,7 @@ class StrategyTest(StockStrategy):
 
         pass
 
-    __sell_time_01_tag = False
+    sell_time_01_tag = False
 
     def on_bar_per_minute(self, time: datetime,protfolio:Portfolio):
         """
@@ -149,12 +149,15 @@ class StrategyTest(StockStrategy):
 
 
 
-        # 中国平安601318 在datetime(2019, 3, 25, 13, 10)时刻，从最高价71到一个新底69.75, 后面再到一个新的高点。70.38左右
-        sell_time_01 =  datetime(2019, 3, 25, 13, 10)
-        if not self.__sell_time_01_tag:
-            if(is_same_day(sell_time_01,time) and sell_time_01 >= time):
-                protfolio.sell("601318",69.75,120)
-                self.__sell_time_01_tag = True
+        # 中国平安601318
+        # 2019-03-25 10:35:00:open = 71.03,close=70.96 一天最高点
+        # 2019-03-25 13:12:00:open = 69.97,close=69.79  下午开盘的一个低点
+        # 2019-03-25 13:47:00:open = 70.33,close=70.41   下午的一个高点
+        sell_time_01 =  datetime(2019, 3, 25, 13, 12)
+        if not self.sell_time_01_tag:
+            if(utils.is_same_minitue(sell_time_01,datetime)):
+                protfolio.sell("601318",70.35,120)
+                self.sell_time_01_tag = True
 
         #self.write_log(f"     on_bar_per_minute:{time}" )
         # 中国平安601318 在datetime(2019, 2, 26, 10, 28)时刻，最低到达 low_price=67.15
@@ -172,6 +175,7 @@ class StrategyTest(StockStrategy):
 
     sell_at_2019_2_27_9_48 = False
     buy_at_2019_2_26_10_28 = False
+    sell_at_2019_3_25_13_47 = False
 
     def on_trade(self, trade: TradeData):
         print(f"{self.market.getToday()}：on_trade: {trade}")
@@ -188,6 +192,14 @@ class StrategyTest(StockStrategy):
         if (utils.is_same_time(self.market.getToday(),datetime(2019, 2, 27, 9, 48),deltaMinitue=1,deltaSecond=2)):
             self.sell_at_2019_2_27_9_48 = True
             assert utils.isEqualFloat(68.57, trade.price, 0.5)  # 成交价格在68.57中间
+
+        # 中国平安601318
+        # 2019-03-25 10:35:00:open = 71.03,close=70.96 一天最高点
+        # 2019-03-25 13:12:00:open = 69.97,close=69.79  下午开盘的一个低点
+        # 2019-03-25 13:47:00:open = 70.33,close=70.41   下午的一个高点
+        if (utils.is_same_time(self.market.getToday(),datetime(2019, 3, 25, 13, 47),deltaMinitue=4,deltaSecond=2)):
+            self.sell_at_2019_3_25_13_47 = True
+            assert utils.isEqualFloat(70.36, trade.price, 0.5)  # 成交价格在68.57中间
 
     def on_stop_order(self, stop_order: StopOrder):
         print(f"{self.market.getToday()}：on_stop_order: {stop_order}")
@@ -237,6 +249,9 @@ assert is_same_day(datetime(year=2019,month=4,day=24),strategy.end_trade_time)
 assert  strategy.market_open_count == 42
 assert  strategy.sell_at_2019_2_27_9_48 == True
 assert  strategy.buy_at_2019_2_26_10_28 == True
+assert  strategy.sell_time_01_tag == True
+assert  strategy.sell_at_2019_3_25_13_47 == True
+
 assert len(engine.trades) == 8
 
 
