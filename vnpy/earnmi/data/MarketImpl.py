@@ -43,7 +43,7 @@ class RealTimeImpl(Market.RealTime):
         if minitue_bar is None:
             return None
         return TickData(
-            name = minitue_bar.symbol,
+            name = minitue_bar.gateway_name,
             volume = minitue_bar.volume,
             open_interest = minitue_bar.open_interest,
             last_price = minitue_bar.close_price,
@@ -51,6 +51,10 @@ class RealTimeImpl(Market.RealTime):
             open_price = minitue_bar.open_price,
             high_price = minitue_bar.high_price,
             low_price = minitue_bar.low_price,
+            gateway_name = minitue_bar.gateway_name,
+            symbol=minitue_bar.symbol,
+            exchange= minitue_bar.exchange,
+            datetime = minitue_bar.datetime
         );
 
 

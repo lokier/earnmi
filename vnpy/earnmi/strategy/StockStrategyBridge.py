@@ -143,10 +143,9 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
             bar.close_price = 100
             bar.open_interest = 0
 
-            self.today = bar.datetime
-            self.myStrategy.market.setToday(bar.datetime)
-            day = bar.datetime
-
+            day = datetime(year=bar.datetime.year, month=bar.datetime.month, day=bar.datetime.day, hour=9, minute=25, second=1)
+            self.today = day
+            self.myStrategy.market.setToday(self.today)
             self.myStrategy.on_market_prepare_open(self,self.today)
             self.myStrategy.on_market_open(self)
 
@@ -154,6 +153,7 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
             end_date = datetime(year=day.year, month=day.month, day=day.day, hour=11, minute=30, second=1)
 
             while (tradeTime.__le__(end_date)):
+                self.today = tradeTime
                 self.myStrategy.market.setToday(tradeTime)
                 self.myStrategy.on_bar_per_minute(tradeTime,self)
                 tradeBar = copy.deepcopy(bar)
@@ -164,6 +164,7 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
             tradeTime = datetime(year=day.year, month=day.month, day=day.day, hour=13, minute=0, second=1)
             end_date = datetime(year=day.year, month=day.month, day=day.day, hour=15, minute=0, second=1)
             while (tradeTime.__le__(end_date)):
+                self.today = tradeTime
                 self.myStrategy.market.setToday(tradeTime)
                 self.myStrategy.on_bar_per_minute(tradeTime,self)
                 tradeBar = copy.deepcopy(bar)
