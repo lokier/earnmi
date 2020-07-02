@@ -1,14 +1,10 @@
-from typing import Sequence, List, Dict
+from typing import List, Dict
 
 from earnmi.data.import_tradeday_from_jqdata import TRAY_DAY_VT_SIMBOL, TRAY_DAY_SIMBOL, save_tradeday_from_jqdata
 from earnmi.strategy.StockStrategy import StockStrategy, BackTestContext, Portfolio
-from earnmi.strategy.StrategyTest import StrategyTest
 from earnmi.uitl.utils import utils
-from earnmi_demo.Strategy1 import Strategy1
-from vnpy.app.cta_strategy import StopOrder
 from vnpy.app.portfolio_strategy import StrategyTemplate, StrategyEngine, BacktestingEngine
 
-from time import time
 import copy
 from datetime import datetime, timedelta
 
@@ -16,9 +12,14 @@ from vnpy.trader.constant import Interval, Exchange, Status, Direction
 from vnpy.trader.database import database_manager
 from vnpy.trader.object import TickData, BarData, OrderData, TradeData
 
+class TradeOrderHold:
+    symbol:str
+
+    pass
+
+
 
 class StockStrategyBridge(StrategyTemplate,Portfolio):
-
 
     myStrategy:StockStrategy = None
     __privous_on_bar_datime = None
@@ -89,13 +90,13 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
         db_bar_start = database_manager.get_oldest_bar_data(code,Exchange.SSE,Interval.DAILY)
         db_bar_end = database_manager.get_newest_bar_data(code,Exchange.SSE,Interval.DAILY)
 
-        print(f"CtaStrategyBridage: __init_tradeDay(), start={start},end={end}")
+        print(f"StrategyBridage: __init_tradeDay(), start={start},end={end}")
 
         if((not db_bar_start is None ) and (not db_bar_end is None)):
             if(start >= db_bar_start.datetime and end <= db_bar_end.datetime):
                 return
 
-        print(f"CtaStrategyBridage: __init_tradeDay(), update tradeDay!!!!")
+        print(f"StrategyBridage: __init_tradeDay(), update tradeDay!!!!")
         database_manager.delete_bar_data(code,Exchange.SSE,Interval.DAILY)
 
         start = start - timedelta(days=15)
@@ -145,7 +146,9 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
 
             day = datetime(year=bar.datetime.year, month=bar.datetime.month, day=bar.datetime.day, hour=9, minute=25, second=1)
             self.today = day
+            self.strategy_engine.datetime = day
             self.myStrategy.market.setToday(self.today)
+
             self.myStrategy.on_market_prepare_open(self,self.today)
             self.myStrategy.on_market_open(self)
 
@@ -154,6 +157,7 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
 
             while (tradeTime.__le__(end_date)):
                 self.today = tradeTime
+                self.strategy_engine.datetime = tradeTime
                 self.myStrategy.market.setToday(tradeTime)
                 self.myStrategy.on_bar_per_minute(tradeTime,self)
                 tradeBar = copy.deepcopy(bar)
@@ -165,6 +169,7 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
             end_date = datetime(year=day.year, month=day.month, day=day.day, hour=15, minute=0, second=1)
             while (tradeTime.__le__(end_date)):
                 self.today = tradeTime
+                self.strategy_engine.datetime = tradeTime
                 self.myStrategy.market.setToday(tradeTime)
                 self.myStrategy.on_bar_per_minute(tradeTime,self)
                 tradeBar = copy.deepcopy(bar)
@@ -254,6 +259,10 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
                 elif (order.direction == Direction.SHORT):
                     new_valid_caption = (1 - self._commit_rate) * order.price * order.volume  * self._a_hand_size
                     self._valid_captical = self._valid_captical+ new_valid_caption
+                    holdOrder = self.__holding_orders.get(order.symbol)
+                    assert not holdOrder is None
+                    holdOrder.volume = holdOrder.volume - order.volume
+
 
             elif order.status == Status.NOTTRADED or order.status == Status.SUBMITTING:
                 pass
@@ -326,6 +335,8 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
         if self.myStrategy.mRunOnBackTest == True:
             return self._valid_captical
 
+    def getHoldCapital(self) -> float:
+        pass
 
     def write_log(self, msg):
         print(f"CtaStrategyBridage: {msg}")

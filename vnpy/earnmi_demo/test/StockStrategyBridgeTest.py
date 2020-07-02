@@ -155,7 +155,7 @@ class StrategyTest(StockStrategy):
         # 2019-03-25 13:47:00:open = 70.33,close=70.41   下午的一个高点
         sell_time_01 =  datetime(2019, 3, 25, 13, 12)
         if not self.sell_time_01_tag:
-            if(utils.is_same_minitue(sell_time_01,datetime)):
+            if(utils.is_same_minitue(sell_time_01,time)):
                 protfolio.sell("601318",70.35,120)
                 self.sell_time_01_tag = True
 
