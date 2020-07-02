@@ -27,6 +27,7 @@ class StrategyTest(StockStrategy):
     start_trade_time = None
     end_trade_time =None
     final_valid_capital = 0;
+    portfolio: Portfolio = None
 
     def __init__(
             self,
@@ -61,6 +62,7 @@ class StrategyTest(StockStrategy):
     daily_pre_tick:TickData = None
 
     def on_market_prepare_open(self,protfolio:Portfolio,toady:datetime):
+        self.portfolio = protfolio
         """
             市场准备开始（比如：竞价）.
         """
@@ -119,6 +121,10 @@ class StrategyTest(StockStrategy):
 
         self.final_valid_capital = protfolio.getValidCapital()
 
+        # 中国平安601318 在datetime(2019, 2, 26, 10, 28)时刻，最低到达 low_price=67.15
+        if utils.is_same_day(datetime(2019, 2, 26),self.market.getToday()):
+             #当天已经买入121*100股，持有仓位资金不为0
+             assert  protfolio.getHoldCapital() > 810700
         pass
 
     sell_time_01_tag = False
@@ -184,7 +190,6 @@ class StrategyTest(StockStrategy):
         # 中国平安601318 在datetime(2019, 2, 27, 9, 48)时刻，最高到达 high_price=68.57，到达卖出价
         # 中国平安601318 在datetime(2019, 3, 25, 13, 10)时刻，从最高价71到一个新底69.75, 后面再到一个新的高点。7.38左右
 
-        datetime(2019, 3, 25, 1)
         if(utils.is_same_time(datetime(2019, 2, 26, 10, 28),self.market.getToday(),deltaSecond=30)):
             self.buy_at_2019_2_26_10_28 = True
             assert utils.isEqualFloat(67.15,trade.price,0.5) #成交价格在67.15中间
@@ -236,6 +241,8 @@ df = engine.calculate_result()
 engine.calculate_statistics()
 
 print(f"final_valid_capital:{strategy.final_valid_capital}")
+print(f"final_total_capital:{strategy.portfolio.getTotalCapital()}")
+
 for dt,v in engine.trades.items():
     trade:TradeData = v
     trage_tag = "买"

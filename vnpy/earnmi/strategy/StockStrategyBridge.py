@@ -229,6 +229,7 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
 
             self.strategy_engine.cross_limit_order_by_bar(bar)
 
+        self.__refresh_holde_order_price()
         pass
 
     def update_order(self, order: OrderData) -> None:
@@ -335,8 +336,23 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
         if self.myStrategy.mRunOnBackTest == True:
             return self._valid_captical
 
-    def getHoldCapital(self) -> float:
-        pass
+    def getHoldCapital(self,refresh:bool = False)->float:
+        if self.myStrategy.mRunOnBackTest == True:
+
+            if(refresh):
+                self.__refresh_holde_order_price()
+
+            hold_captital = 0
+            for hold_order in list(self.__holding_orders.values()):
+                if hold_order.volume > 0:
+                    hold_captital = hold_order.volume  * hold_order.price * self._a_hand_size
+            return hold_captital
+
+    def __refresh_holde_order_price(self):
+        for hold_order in list(self.__holding_orders.values()):
+            if hold_order.volume > 0:
+                hold_order.price = self.myStrategy.market.getRealTime().getTick(hold_order.symbol).close_price
+
 
     def write_log(self, msg):
         print(f"CtaStrategyBridage: {msg}")

@@ -22,11 +22,11 @@ class Portfolio:
       返回持仓资金
     """
     @abstractmethod
-    def getHoldCapital(self)->float:
+    def getHoldCapital(self,refresh:bool = False)->float:
         pass
 
     def getTotalCapital(self)->float:
-        return self.getHoldCapital() + self.getHoldCapital()
+        return self.getHoldCapital() + self.getValidCapital()
 
     @abstractmethod
     def buy(self, code: str, price: float, volume: float)->bool:
