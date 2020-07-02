@@ -42,8 +42,13 @@ class Portfolio:
         """
         pass
 
+    """
+       持有股票手数
+    """
+    @abstractmethod
+    def getHoldVolume(self, code):
+        pass
 
-    pass
 
 """
 每一个交易日账户

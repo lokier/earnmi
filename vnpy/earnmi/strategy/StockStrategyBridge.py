@@ -283,7 +283,6 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
                         self.__holding_orders[order.symbol] = holdOrder
 
                     holdOrder.volume = holdOrder.volume + order.volume
-
                     assert not order_price is None
                 elif (order.direction == Direction.SHORT):
                     new_valid_caption = (1 - self._commit_rate) * order.price * order.volume  * self._a_hand_size
@@ -375,6 +374,12 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
                 if hold_order.volume > 0:
                     hold_captital = hold_order.volume  * hold_order.price * self._a_hand_size
             return hold_captital
+
+    def getHoldVolume(self, code):
+        for hold_order in list(self.__holding_orders.values()):
+            if(hold_order.symbol == code):
+                return hold_order.volume;
+        return 0
 
     def __refresh_holde_order_price(self):
         for hold_order in list(self.__holding_orders.values()):
