@@ -1,10 +1,12 @@
 #%%
+from vnpy.trader.object import TradeData
+
 from earnmi.data.import_tradeday_from_jqdata import TRAY_DAY_VT_SIMBOL
 from earnmi.strategy.StockStrategyBridge import StockStrategyBridge
 from earnmi_demo.Strategy1 import Strategy1
 from vnpy.app.portfolio_strategy import BacktestingEngine
 from vnpy.event import Event
-from vnpy.trader.constant import Interval
+from vnpy.trader.constant import Interval, Direction
 from datetime import datetime
 
 from vnpy.trader.event import EVENT_LOG
@@ -38,6 +40,16 @@ engine.load_data()
 engine.run_backtesting()
 df = engine.calculate_result()
 engine.calculate_statistics()
+
+
+for dt,v in engine.trades.items():
+    trade:TradeData = v
+    trage_tag = "买"
+    if(trade.direction == Direction.SHORT):
+        trage_tag = "卖"
+    print(f"{trade.datetime}:order_id={trade.vt_orderid},{trage_tag}:{trade.volume},price:{trade.price},time={trade.time}")
+
+
 engine.show_chart()
 
 # setting = OptimizationSetting()

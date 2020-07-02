@@ -248,7 +248,7 @@ for dt,v in engine.trades.items():
     trage_tag = "买"
     if(trade.direction == Direction.SHORT):
         trage_tag = "卖"
-    print(f"order_id={trade.vt_orderid},{trage_tag}:{trade.volume},price:{trade.price},time={trade.time}")
+    print(f"{trade.datetime}:order_id={trade.vt_orderid},{trage_tag}:{trade.volume},price:{trade.price},time={trade.time}")
 
 assert is_same_day(datetime(year=2019,month=2,day=25),strategy.start_trade_time)
 assert is_same_day(datetime(year=2019,month=4,day=24),strategy.end_trade_time)
