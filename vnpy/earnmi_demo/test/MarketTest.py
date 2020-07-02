@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from earnmi.data.MarketImpl import MarketImpl
+from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 
 
@@ -110,9 +111,14 @@ def historyTest():
 
     pre_bares = None
     for todayBar in todayListBar:
-        today = todayBar.datetime
+        today = datetime(year=todayBar.datetime.year,month=todayBar.datetime.month,day=todayBar.datetime.day,minute=1)
         market2.setToday(today)
         bars1 = market2.getHistory().getKbars(code, 100);
+
+        ##最后一个bar不应该包含今天：
+        assert not utils.is_same_day( bars1[-1].datetime,today)
+
+
         assert len(bars1) == 100
         pre_bar = None
         for bar in bars1:
@@ -136,6 +142,6 @@ def historyTest():
 
 
 basicTest()
-#historyTest()
+historyTest()
 realTimeTest()
 

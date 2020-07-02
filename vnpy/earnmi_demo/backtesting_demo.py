@@ -33,7 +33,8 @@ engine.set_parameters(
     priceticks={TRAY_DAY_VT_SIMBOL:0.01},  #四舍五入的精度
     capital=1_000_000,
 )
-engine.add_strategy(StockStrategyBridge, { "strategy":Strategy1()})
+strategy = Strategy1()
+engine.add_strategy(StockStrategyBridge, { "strategy":strategy})
 
 #%%
 engine.load_data()
@@ -49,6 +50,7 @@ for dt,v in engine.trades.items():
         trage_tag = "卖"
     print(f"{trade.datetime}:order_id={trade.vt_orderid},{trage_tag}:{trade.volume},price:{trade.price},time={trade.time}")
 
+print(f"final_total_capital:{strategy.backtestContext.capital}")
 
 engine.show_chart()
 

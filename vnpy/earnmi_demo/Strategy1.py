@@ -56,28 +56,7 @@ class Strategy1(StockStrategy):
         """
             市场开市.
         """
-        self.__history_bar100 = self.market.getHistory().getKbars(self.code,100);
-        assert  len(self.__history_bar100) == 100
 
-        if (not self.__history_bar100 is None):
-
-            bars = self.__history_bar100
-
-            indicator = Indicator(40)
-            indicator.update_bar(bars)
-            dif, dea, macd_bar = indicator.macd(fast_period=12, slow_period=26, signal_period=9, array=True);
-
-            # 金叉
-            if (macd_bar[-1] > 0 and macd_bar[-2] <= 0):
-                if (not self.today_has_buy):
-                    targetPrice = bars[-1].close_price # 上一个交易日的收盘价作为买如价
-                    if protfolio.buy(self.code, targetPrice, 100):
-                        self.today_has_buy = True
-            elif (macd_bar[-1] <= 0 and macd_bar[-2] > 0):
-                if (not self.today_has_sell):
-                    targetPrice = bars[-1].close_price
-                    if protfolio.sell(self.code, targetPrice, 100):
-                        self.today_has_sell = True
 
 
     def on_market_prepare_close(self,protfolio:Portfolio):
@@ -99,6 +78,41 @@ class Strategy1(StockStrategy):
         """
             市场开市后的每分钟。
         """
+        #每天两点半的后尝试去做交易。
+        if time.hour==14 and time.minute ==30:
+            self.__history_bar100 = self.market.getHistory().getKbars(self.code,100);
+            assert  len(self.__history_bar100) == 100
+            bars = self.__history_bar100
+
+            todayBar = self.market.getRealTime().getKBar(self.code)
+
+            indicator = Indicator(40)
+            indicator.update_bar(bars)
+            dif, dea, macd_bar = indicator.macd(fast_period=12, slow_period=26, signal_period=9, array=True);
 
 
 
+            if (not self.today_has_buy):
+                # 预测金叉
+                todayBar.close_price = todayBar.close_price * 1.01
+                indicator.update_bar(todayBar)
+                dif, dea, predict_macd_bar = indicator.macd(fast_period=12, slow_period=26, signal_period=9,
+                                                            array=True);
+                print(f"[{self.market.getToday()}]:bar={macd_bar[-1]},predic_bar={predict_macd_bar[-1]}")
+
+                if (predict_macd_bar[-1] > 0 and macd_bar[-1] <= 0):
+                    targetPrice = todayBar.close_price  # 上一个交易日的收盘价作为买如价
+                    print(f"   gold cross!!!")
+                    if protfolio.buy(self.code, targetPrice, 100):
+                        self.today_has_buy = True
+            elif (not self.today_has_sell):
+                todayBar.close_price = todayBar.close_price * 0.99
+                indicator.update_bar(todayBar)
+                dif, dea, predict_macd_bar = indicator.macd(fast_period=12, slow_period=26, signal_period=9,
+                                                            array=True);
+                print(f"[{self.market.getToday()}]:bar={macd_bar[-1]},predic_bar={predict_macd_bar[-1]}")
+                if (predict_macd_bar[-1] <= 0 and macd_bar[-1] > 0):
+                    targetPrice = todayBar.close_price
+                    print(f"   dead cross!!!")
+                    if protfolio.sell(self.code, targetPrice, 100):
+                        self.today_has_sell = True

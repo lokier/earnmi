@@ -98,6 +98,7 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
             context.size = self._a_hand_size
             context.rate = self._commit_rate
             context.slippage = self.strategy_engine.slippages[TRAY_DAY_VT_SIMBOL]
+            context.capital = self.strategy_engine.capital
 
 
             self.myStrategy.backtestContext = context
@@ -218,6 +219,8 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
             ##情况当前订单
             self.__cancel_all_order()
             self.__order_summitting_price.clear()
+
+            self.myStrategy.backtestContext.capital = self.getTotalCapital()
 
             pass
 

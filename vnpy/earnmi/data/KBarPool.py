@@ -2,6 +2,7 @@ import functools
 from datetime import datetime,timedelta
 from typing import Sequence, Any, Tuple
 
+from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 from vnpy.trader.constant import Exchange, Interval
 from earnmi.data.import_data_from_jqdata import save_bar_data_from_jqdata
@@ -39,7 +40,7 @@ class KBarPool:
         if (not self.__pool_data is None):
             the_count = 0
             for data in self.__pool_data:
-                if(data.datetime< end):
+                if data.datetime < end and not utils.is_same_day(data.datetime,end):
                     the_count = the_count + 1
                     if the_count >= count:
                         in_poll = True
@@ -58,7 +59,7 @@ class KBarPool:
             index = pool_size - i -1
             data = self.__pool_data[index]
             if addingCount == 0:
-                if data.datetime < end:
+                if data.datetime < end and not utils.is_same_day(data.datetime,end):
                     ret.insert(0,data)
                     addingCount = 1
             else:
@@ -93,7 +94,7 @@ class KBarPool:
                     isAdding = True
                     ret.append(data)
             else:
-                if(data.datetime>=end):
+                if( utils.is_same_day(data.datetime,end) or data.datetime>=end):
                     break;
                 else:
                     ret.append(data)

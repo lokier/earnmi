@@ -79,6 +79,7 @@ class BackTestContext:
     rate = 0.0
     slippage = 0.0
     inverse = False
+    capital = 0
 
 
 
