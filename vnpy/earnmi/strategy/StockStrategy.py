@@ -74,7 +74,11 @@ class DaliyPortfolio:
 class BackTestContext:
     start_date:datetime = None
     end_date:datetime = None
-
+    daily_results:{}
+    size = 100
+    rate = 0.0
+    slippage = 0.0
+    inverse = False
 
 
 

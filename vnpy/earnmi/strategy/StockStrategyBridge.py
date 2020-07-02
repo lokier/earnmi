@@ -17,7 +17,26 @@ class TradeOrderHold:
 
     pass
 
+class Daily_Result:
+    date:datetime = None
+    trade_count = 0
+    turnover = 0
+    commission = 0
+    slippage = 0
+    trading_pnl = 0
+    holding_pnl = 0
+    total_pn = 0
+    net_pn = 0
 
+"""
+turnover = trade.volume * size * trade.price   持有仓位资金。
+self.slippage += trade.volume * size * slippage   滑点的损失值。
+self.commission += turnover * rate    交易费用
+self.holding_pnl = self.start_pos * (self.close_price - self.pre_close) * size  * 当天持仓盈利（未交易的情况）
+self.trading_pnl += pos_change * (self.close_price - trade.price) * size    交易后的持仓盈利
+self.total_pnl = self.trading_pnl + self.holding_pnl  当天盈利
+self.net_pnl = self.total_pnl - self.commission - self.slippage  扣除费用之后的盈利
+"""
 
 class StockStrategyBridge(StrategyTemplate,Portfolio):
 
@@ -71,9 +90,15 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
             context = BackTestContext()
             context.start_date = self.strategy_engine.start
             context.end_date = self.strategy_engine.end
+
+
             self._valid_captical = self.strategy_engine.capital
             self._commit_rate = self.strategy_engine.rates[TRAY_DAY_VT_SIMBOL]
             self._a_hand_size = self.strategy_engine.sizes[TRAY_DAY_VT_SIMBOL]
+            context.size = self._a_hand_size
+            context.rate = self._commit_rate
+            context.slippage = self.strategy_engine.slippages[TRAY_DAY_VT_SIMBOL]
+
 
             self.myStrategy.backtestContext = context
             self.__init_tradeDay(context.start_date,context.end_date)
