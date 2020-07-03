@@ -11,7 +11,7 @@ class Position:
     symobl: str
     is_long: bool = True
     pos_total: int = 0
-    pos_available: int = 0
+    pos_lock: int = 0  #冻结的仓位
 
 class Portfolio:
     """
@@ -68,12 +68,14 @@ class Portfolio:
     """
        做多持仓情况
     """
+    @abstractmethod
     def getLongPosition(self, code) -> Position:
         pass
 
     """
         做空持仓清空
     """
+    @abstractmethod
     def getShortPosition(self,code) -> Position:
         pass
 
