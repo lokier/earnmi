@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import List, Dict
 
 from earnmi.data.Market import Market
@@ -27,11 +28,16 @@ self.net_pnl = self.total_pnl - self.commission - self.slippage  扣除费用之
 
 class PortfolioImpl(Portfolio):
 
-    class Locking_Data:
+    """
+    每日交易冻结资金，
+    """
+    @dataclass
+    class TradingLocking:
         order_id: str
         code:str
         lock_price: float = 0.0  # 冻结的资金。
         lock_pos: float = 0.0  # 冻结的筹码。
+        commit:float = 0.0  #交易费用
 
 
     """
@@ -41,17 +47,18 @@ class PortfolioImpl(Portfolio):
     strategy: StrategyTemplate
     market:Market
 
-    commit_rate = 0.0  # 交易费用
+    commit_rate = 0.0  # 交易费率
     a_hand_size = 0.0  # 每手有多少个
     valid_captical = 0.0 #可用资金
     slippage = 0.0
     pricetick=0.01  #四舍五入的精度
+    commit_total = 0  #交易总费用
 
     __daylyTradeCodeSet = {} # 每天有交易的code
-    __locking_data:dict[str, Locking_Data] = {}  #冻结的资金或者筹码
 
-    __longPositions:dict[str,Position] = {}
-    __shortPositions:dict[str,Position] = {}
+    __locking_data:Dict[str, TradingLocking] = {}  #冻结的资金或者筹码
+    __longPositions:Dict[str,Position] = {}
+    __shortPositions:Dict[str,Position] = {}
 
     def __init__(
             self,
@@ -68,35 +75,26 @@ class PortfolioImpl(Portfolio):
         self.strategy = strategy
         self.market = market
 
-    def getLongPosition(self, code) -> Position:
-        return self.getLongPositionBySymbol(utils.to_vt_symbol(code),code)
 
-    def getLongPositionBySymbol(self, symbol:str,code:str = None) -> Position:
-        pos = self.__longPositions.get(symbol)
+    def getLongPosition(self, code:str) -> Position:
+        pos = self.__longPositions.get(code)
         if(pos is None):
-            if code is None:
-                raise RuntimeError("none error")
             pos = Position(code = code, is_long=True)
             pos.price = 0
-            pos.symobl = symbol
-            self.__longPositions[symbol] = pos
+            self.__longPositions[code] = pos
         return pos
 
     """
         做空持仓清空
     """
-    def getShortPosition(self, code) -> Position:
-        return self.getShortPositionBySymbol(utils.to_vt_symbol(code))
 
-    def getShortPositionBySymbol(self, symbol:str,code:str = None) -> Position:
-        pos = self.__shortPositions.get(symbol)
+
+    def getShortPosition(self, code:str) -> Position:
+        pos = self.__shortPositions.get(code)
         if (pos is None):
-            if code is None:
-                raise RuntimeError("none error")
             pos = Position(code=code, is_long=False)
             pos.price = 0
-            pos.symobl = symbol
-            self.__shortPositions[symbol] = pos
+            self.__shortPositions[code] = pos
         return pos
 
     def buy(self, code: str, price: float, volume: float) ->bool:
@@ -113,7 +111,7 @@ class PortfolioImpl(Portfolio):
         vt_order_ids = self.strategy.buy(symbol, price, volume, False)
 
         ###冻结资金
-        lockingDagta = PortfolioImpl.Locking_Data(order_id = vt_order_ids[0], code=code)
+        lockingDagta = PortfolioImpl.TradingLocking(order_id = vt_order_ids[0], code=code)
         lockingDagta.lock_price = need_capital
         self.__locking_data[lockingDagta.order_id] = lockingDagta
 
@@ -122,7 +120,7 @@ class PortfolioImpl(Portfolio):
 
     def sell(self, code: str, price: float, volume: float)->bool:
 
-        hasVolume = self.getLongPosition(code).pos_available / self.a_hand_size
+        hasVolume = self.getLongPosition(code).getPosAvailable() / self.a_hand_size
 
         if (hasVolume < volume):
             print(f"     <== sell {code} fail,仓位不够：需要：{volume},可用{hasVolume}")
@@ -132,7 +130,7 @@ class PortfolioImpl(Portfolio):
         vt_order_ids = self.strategy.sell(symbol, price, volume, False)
 
         ###冻结仓位，今天不可以再交易
-        lockingDagta = PortfolioImpl.Locking_Data(order_id=vt_order_ids[0], code=code)
+        lockingDagta = PortfolioImpl.TradingLocking(order_id=vt_order_ids[0], code=code)
         lockingDagta.lock_pos = volume * self.a_hand_size
         self.__locking_data[lockingDagta.order_id] = lockingDagta
 
@@ -168,20 +166,39 @@ class PortfolioImpl(Portfolio):
 
     def getHoldCapital(self,refresh:bool = False)->float:
 
-        if (refresh):
+        if refresh:
             self._refresh_holde_order_price()
 
         hold_captital = 0
-        for hold_order in list(self.__holding_orders.values()):
-            if hold_order.volume > 0:
-                hold_captital = hold_order.volume * hold_order.price * self.a_hand_size
+        ##做多持仓
+        for pos in list(self.__longPositions.values()):
+            hold_captital += pos.price * pos.pos_total
+        ##做空持筹码
+        for pos in list(self.__shortPositions.values()):
+            hold_captital += pos.price * pos.pos_total
+
         return hold_captital
+
+
+    def getTotalCapital(self) -> float:
+        # 可用资金 + 冻结资金
+        # 做多持仓市值
+        # 做空冻结资金 - 做空持仓市值
+
+        return self.getHoldCapital()+ self.getValidCapital() - self.commit_total
+
 
     def _on_today_start(self):
         ##新的一天是所有订单是空的
         assert len(self.engine.active_limit_orders) == 0
         self.__locking_data.clear()
         self.__daylyTradeCodeSet.clear()
+        ##做多持仓
+        for pos in list(self.__longPositions.values()):
+            pos.pos_lock = 0
+        ##做空持筹码
+        for pos in list(self.__shortPositions.values()):
+            pos.pos_lock = 0
 
     def _on_today_end(self,bars: Dict[str, BarData]):
         self.cancel_all_order()
@@ -227,7 +244,7 @@ class PortfolioImpl(Portfolio):
                 assert not locking_data is None
 
                 ##增加仓位
-                pos = self.getLongPositionBySymbol(order.symbol)
+                pos = self.getLongPosition(order.symbol)
                 new_pos_size = order.volume * self.a_hand_size
                 pos.pos_total += new_pos_size
                 pos.pos_lock += new_pos_size
@@ -238,7 +255,7 @@ class PortfolioImpl(Portfolio):
                 self.valid_captical = self.valid_captical + new_valid_caption
 
                 ##减少仓位
-                pos = self.getLongPositionBySymbol(order.symbol)
+                pos = self.getLongPosition(order.symbol)
                 pos_size = order.volume * self.a_hand_size
                 pos.pos_total -= pos_size
                 assert pos.pos_total>= 0
@@ -253,10 +270,11 @@ class PortfolioImpl(Portfolio):
 
     def _refresh_holde_order_price(self):
 
+        for pos in list(self.__longPositions.values()):
+            pos.price = self.market.getRealTime().getTick(pos.code).close_price
 
-        for hold_order in list(self.__holding_orders.values()):
-            if hold_order.volume > 0:
-                hold_order.price = self.market.getRealTime().getTick(hold_order.symbol).close_price
+        for pos in list(self.__shortPositions.values()):
+            pos.price = self.market.getRealTime().getTick(pos.code).close_price
 
 
 

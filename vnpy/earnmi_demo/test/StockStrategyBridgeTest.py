@@ -1,3 +1,5 @@
+from typing import Sequence
+
 from earnmi.data.MarketImpl import MarketImpl
 from earnmi.data.import_tradeday_from_jqdata import TRAY_DAY_VT_SIMBOL
 from earnmi.strategy.StockStrategyBridge import StockStrategyBridge
@@ -100,8 +102,8 @@ class StrategyTest(StockStrategy):
         if (is_same_day(datetime(2019, 2, 27, 9, 48), self.market.getToday())):
             position = protfolio.getLongPosition("601318")
             assert position.is_long == True
-            assert position.pos_total == 101
-            assert position.pos_available == 101  # 昨天买入的，所以今天可用
+            assert position.pos_total == 121*100
+            assert position.getPosAvailable() == 121*100  # 昨天买入的，所以今天可用
 
             assert protfolio.sell("601318", 68.54, 500) == False  ##持仓数不够
             assert protfolio.sell("601318", 68.54, 55) == True
@@ -120,7 +122,8 @@ class StrategyTest(StockStrategy):
         assert time.hour == 14 and time.minute== 57
 
         # 最开始datetime(2019, 2, 26, 10, 28)买入100股，由于A股T+1的限制，是不可以当天卖的
-        assert protfolio.sell("601318",67.00,100) == False
+        if( utils.is_same_day(datetime(2019, 2, 26, 10, 28),time)):
+            assert protfolio.sell("601318",67.00,100) == False
 
 
         pass
@@ -142,8 +145,8 @@ class StrategyTest(StockStrategy):
              assert  protfolio.getHoldCapital() > 810700
              position = protfolio.getLongPosition("601318")
              assert  position.is_long == True
-             assert  position.pos_total ==101
-             assert  position.pos_available == 0  # 因为今天才交易，可用仓位为0
+             assert  position.pos_total == 121*100
+             assert  position.getPosAvailable() == 0  # 因为今天才交易，可用仓位为0
         pass
 
     sell_time_01_tag = False
@@ -204,7 +207,6 @@ class StrategyTest(StockStrategy):
 
     def on_trade(self, trade: TradeData):
         print(f"{self.market.getToday()}：on_trade: {trade}")
-
         # 中国平安601318 在datetime(2019, 2, 26, 10, 28)时刻，最低到达 low_price=67.15,到达买入价
         # 中国平安601318 在datetime(2019, 2, 27, 9, 48)时刻，最高到达 high_price=68.57，到达卖出价
         # 中国平安601318 在datetime(2019, 3, 25, 13, 10)时刻，从最高价71到一个新底69.75, 后面再到一个新的高点。7.38左右
@@ -248,7 +250,7 @@ engine.set_parameters(
     start=start,
     end=end,
     rates={TRAY_DAY_VT_SIMBOL:0.3/10000},  #交易佣金
-    slippages={TRAY_DAY_VT_SIMBOL:0.1},  # 滑点
+    slippages={TRAY_DAY_VT_SIMBOL:0.001},  # 滑点
     sizes={TRAY_DAY_VT_SIMBOL:100},  #一手的交易单位
     priceticks={TRAY_DAY_VT_SIMBOL:0.01},  #四舍五入的精度
     capital=1_000_000,

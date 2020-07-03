@@ -8,10 +8,14 @@ from vnpy.trader.object import TradeData, OrderData
 
 @dataclass
 class Position:
-    symobl: str
+    code: str
     is_long: bool = True
     pos_total: int = 0
     pos_lock: int = 0  #冻结的仓位
+
+    """返回可用仓位"""
+    def getPosAvailable(self):
+        return self.pos_total - self.pos_lock
 
 class Portfolio:
     """
@@ -34,8 +38,9 @@ class Portfolio:
     """
     返回资金总市值
     """
+    @abstractmethod
     def getTotalCapital(self)->float:
-        return self.getHoldCapital() + self.getValidCapital()
+        pass
 
     @abstractmethod
     def buy(self, code: str, price: float, volume: float)->bool:
