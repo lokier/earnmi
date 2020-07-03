@@ -1,14 +1,21 @@
 from abc import abstractmethod, ABC
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Sequence
 from earnmi.data.Market import Market
 from vnpy.app.cta_strategy import StopOrder
 from vnpy.trader.object import TradeData, OrderData
 
+@dataclass
+class Position:
+    symobl: str
+    is_long: bool = True
+    pos_total: int = 0
+    pos_available: int = 0
 
 class Portfolio:
     """
-        证券账户.
+        账户信息.
     """
 
     """
@@ -19,12 +26,14 @@ class Portfolio:
         pass
 
     """"
-      返回持仓资金
+      返回持仓市值
     """
     @abstractmethod
     def getHoldCapital(self,refresh:bool = False)->float:
         pass
-
+    """
+    返回资金总市值
+    """
     def getTotalCapital(self)->float:
         return self.getHoldCapital() + self.getValidCapital()
 
@@ -42,36 +51,32 @@ class Portfolio:
         """
         pass
 
-    """
-       持有股票手数
-    """
     @abstractmethod
-    def getHoldVolume(self, code):
-        pass
-
-
-"""
-每一个交易日账户
-"""
-class DaliyPortfolio:
-
-    """
-    返回某个日期的交易记录
-    """
-    @abstractmethod
-    def getTradeData(self) -> Sequence["TradeData"]:
-        pass
-
-    """
-    返回某个日期的订单记录
-    """
-    @abstractmethod
-    def getOrderData(self) -> Sequence["OrderData"]:
+    def short(self, code: str, price: float, volume: float) -> bool:
+        """
+          做空股票：开仓
+        """
         pass
 
     @abstractmethod
-    def today(self) -> datetime:
+    def cover(self, code: str, price: float, volume: float) ->bool:
+        """
+        做空股票：平仓
+        """
         pass
+
+    """
+       做多持仓情况
+    """
+    def getLongPosition(self, code) -> Position:
+        pass
+
+    """
+        做空持仓清空
+    """
+    def getShortPosition(self,code) -> Position:
+        pass
+
 
 """
 回溯环境
@@ -79,12 +84,12 @@ class DaliyPortfolio:
 class BackTestContext:
     start_date:datetime = None
     end_date:datetime = None
-    daily_results:{}
-    size = 100
-    rate = 0.0
-    slippage = 0.0
-    inverse = False
-    capital = 0
+    # daily_results:{}
+    # size = 100
+    # rate = 0.0
+    # slippage = 0.0
+    # inverse = False
+    # capital = 0
 
 
 

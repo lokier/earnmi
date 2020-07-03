@@ -1,5 +1,6 @@
 from typing import List, Dict
 
+from earnmi.data.Market import Market
 from earnmi.data.import_tradeday_from_jqdata import TRAY_DAY_VT_SIMBOL, TRAY_DAY_SIMBOL, save_tradeday_from_jqdata
 from earnmi.strategy.StockStrategy import StockStrategy, BackTestContext, Portfolio
 from earnmi.uitl.utils import utils
@@ -12,21 +13,7 @@ from vnpy.trader.constant import Interval, Exchange, Status, Direction
 from vnpy.trader.database import database_manager
 from vnpy.trader.object import TickData, BarData, OrderData, TradeData
 
-class TradeOrderHold:
-    symbol:str
 
-    pass
-
-class Daily_Result:
-    date:datetime = None
-    trade_count = 0
-    turnover = 0
-    commission = 0
-    slippage = 0
-    trading_pnl = 0
-    holding_pnl = 0
-    total_pn = 0
-    net_pn = 0
 
 """
 turnover = trade.volume * size * trade.price   持有仓位资金。
@@ -38,20 +25,174 @@ self.total_pnl = self.trading_pnl + self.holding_pnl  当天盈利
 self.net_pnl = self.total_pnl - self.commission - self.slippage  扣除费用之后的盈利
 """
 
-class StockStrategyBridge(StrategyTemplate,Portfolio):
+class PortfolioImpl(Portfolio):
+    """
+    账户交易资金
+    """
+    engine:StrategyEngine
+    strategy: StrategyTemplate
+    market:Market
+
+    commit_rate = 0.0  # 交易费用
+    a_hand_size = 0.0  # 每手有多少个
+    valid_captical = 0.0 #可用资金
+    slippage = 0.0
+    pricetick=0.01  #四舍五入的精度
+
+
+    __daylyTradeCodeSet = {} # 每天有交易的code
+    __order_summitting_price = {}
+    __holding_orders = {}
+
+    def __init__(
+            self,
+            engine: StrategyEngine,
+            strategy:StrategyTemplate,
+            market: Market
+    ):
+        self.engine = engine
+        self.valid_captical = self.engine.capital
+        self.commit_rate = self.engine.rates[TRAY_DAY_VT_SIMBOL]
+        self.a_hand_size = self.engine.sizes[TRAY_DAY_VT_SIMBOL]
+        self.slippage = self.engine.slippages[TRAY_DAY_VT_SIMBOL]
+        self.pricetick =self.engine.priceticks[TRAY_DAY_VT_SIMBOL]
+        self.strategy = strategy
+        self.market = market
+
+    def buy(self, code: str, price: float, volume: float) ->bool:
+        """
+        买入股票
+        """
+        need_capital = (1 + self.commit_rate) * price * volume * self.a_hand_size
+        if (need_capital >= self.valid_captical):
+            print(f"     ==> buy {code} fail,可用资金不够：需要：{need_capital},可用{self.valid_captical}")
+            return False
+        symbol = utils.to_vt_symbol(code)
+        self.__initTrade(code,symbol)
+        self.valid_captical = self.valid_captical - need_capital
+        vt_order_id = self.strategy.buy(symbol, price, volume, False)
+        self.__order_summitting_price[vt_order_id[0]] = need_capital
+
+
+        return True
+
+    def sell(self, code: str, price: float, volume: float)->bool:
+
+        hasVolume = 0
+        holdOrder = self.__holding_orders.get(code)
+        if not holdOrder is None:
+            hasVolume = holdOrder.volume
+
+        if (hasVolume < volume):
+            print(f"     <== sell {code} fail,仓位不够：需要：{volume},可用{hasVolume}")
+            return False
+        symbol = utils.to_vt_symbol(code)
+        self.__initTrade(code,symbol)
+        self.strategy.sell(symbol, price, volume, False)
+
+        return True
+
+    def short(self, code: str, price: float, volume: float) -> bool:
+        """
+          做空股票：开仓
+        """
+        pass
+
+    def cover(self, code: str, price: float, volume: float) -> bool:
+        """
+        做空股票：平仓
+        """
+        pass
+
+    def __initTrade(self,code:str, symbol: str):
+        self.engine.priceticks[symbol] = self.pricetick
+        self.engine.rates[symbol] = self.commit_rate
+        self.engine.slippages[symbol] = self.slippage
+        self.engine.sizes[symbol] = self.a_hand_size
+        self.__daylyTradeCodeSet[code] = True
+
+
+    def getValidCapital(self) -> float:
+        return self.valid_captical
+
+    def getHoldCapital(self,refresh:bool = False)->float:
+
+        if (refresh):
+            self._refresh_holde_order_price()
+
+        hold_captital = 0
+        for hold_order in list(self.__holding_orders.values()):
+            if hold_order.volume > 0:
+                hold_captital = hold_order.volume * hold_order.price * self.a_hand_size
+        return hold_captital
+
+    def _on_today_start(self):
+        self.__order_summitting_price.clear()
+        self.__daylyTradeCodeSet.clear()
+
+    def _on_today_end(self,bars: Dict[str, BarData]):
+        code_ids = list(self.__daylyTradeCodeSet.keys())
+        for code in code_ids:
+            bar = self.market.getRealTime().getKBar(code)
+            if (not bar is None):
+                symbol = utils.to_vt_symbol(code)
+                bars[symbol] = bar
+        self.__daylyTradeCodeSet.clear()
+        self.__order_summitting_price.clear()
+
+    def _on_update_trade(self, trade: TradeData) -> None:
+        """
+        Callback of new trade data update.
+        """
+
+    def _on_update_order(self, order: OrderData) -> None:
+        if (order.status == Status.CANCELLED or order.status == Status.REJECTED):
+
+            if (order.direction == Direction.LONG):
+                order_price = self.__order_summitting_price.pop(order.vt_orderid)
+                assert not order_price is None
+                self.valid_captical = self.valid_captical + order_price
+            pass
+        elif order.status == Status.PARTTRADED:
+            # 回撤中，没有部分成交的情况
+            assert False
+        elif order.status == Status.ALLTRADED:
+            if (order.direction == Direction.LONG):
+                order_price = self.__order_summitting_price.pop(order.vt_orderid)
+                holdOrder = self.__holding_orders.get(order.symbol)
+                if holdOrder is None:
+                    holdOrder = copy.deepcopy(order)
+                    holdOrder.volume = 0
+                    self.__holding_orders[order.symbol] = holdOrder
+
+                holdOrder.volume = holdOrder.volume + order.volume
+                assert not order_price is None
+            elif (order.direction == Direction.SHORT):
+                new_valid_caption = (1 - self.commit_rate) * order.price * order.volume * self.a_hand_size
+                self.valid_captical = self.valid_captical + new_valid_caption
+                holdOrder = self.__holding_orders.get(order.symbol)
+                assert not holdOrder is None
+                holdOrder.volume = holdOrder.volume - order.volume
+
+
+        elif order.status == Status.NOTTRADED or order.status == Status.SUBMITTING:
+            pass
+        else:
+            ##回撤中，没有其它为处理的情况
+            assert False
+
+    def _refresh_holde_order_price(self):
+        for hold_order in list(self.__holding_orders.values()):
+            if hold_order.volume > 0:
+                hold_order.price = self.market.getRealTime().getTick(hold_order.symbol).close_price
+
+
+
+class StockStrategyBridge(StrategyTemplate):
 
     myStrategy:StockStrategy = None
     __privous_on_bar_datime = None
-
-    __daylyTradeSymbolset = {} # 每天有交易的code
-    __vt_symbol_for_back_testing = {}
-
-    _valid_captical = 0.0
-
-    _commit_rate = 0.0 #交易费用
-    _a_hand_size = 0.0 #每手有多少个
-    __order_summitting_price = {}
-    __holding_orders = {}
+    __portfolio:PortfolioImpl = None
 
     def __init__(
             self,
@@ -61,7 +202,6 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
             setting: dict
     ):
         super().__init__(strategy_engine, [TRAY_DAY_VT_SIMBOL], vt_symbols, setting)
-
         strategy = setting['strategy']
 
         if(strategy is None):
@@ -86,24 +226,14 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
         # 应该是初始化bar
         # super.callback = self.__on_bar_dump
         self.myStrategy.mRunOnBackTest = isinstance(self.strategy_engine,BacktestingEngine)
+
         if(self.myStrategy.mRunOnBackTest):
             context = BackTestContext()
             context.start_date = self.strategy_engine.start
             context.end_date = self.strategy_engine.end
 
-
-            self._valid_captical = self.strategy_engine.capital
-            self._commit_rate = self.strategy_engine.rates[TRAY_DAY_VT_SIMBOL]
-            self._a_hand_size = self.strategy_engine.sizes[TRAY_DAY_VT_SIMBOL]
-            context.size = self._a_hand_size
-            context.rate = self._commit_rate
-            context.slippage = self.strategy_engine.slippages[TRAY_DAY_VT_SIMBOL]
-            context.capital = self.strategy_engine.capital
-
-
             self.myStrategy.backtestContext = context
             self.__init_tradeDay(context.start_date,context.end_date)
-            self.__holding_orders.clear()
         else:
             self.myStrategy.backtestContext = None
 
@@ -138,7 +268,8 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
         self.myStrategy.on_create()
         if(self.myStrategy.market is None):
             raise  RuntimeError("must set market")
-        #;
+        self.__portfolio = PortfolioImpl(self.strategy_engine,self,self.myStrategy.market)
+
 
 
     def on_stop(self):
@@ -160,8 +291,9 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
         if (self.myStrategy.mRunOnBackTest):
 
             self.__cancel_all_order()
-            self.__order_summitting_price.clear()
-            self.__daylyTradeSymbolset.clear()
+            self.__portfolio._on_today_start()
+
+
             bar = bars[TRAY_DAY_VT_SIMBOL]
 
             bar.low_price = 100
@@ -175,52 +307,50 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
             self.strategy_engine.datetime = day
             self.myStrategy.market.setToday(self.today)
 
-            self.myStrategy.on_market_prepare_open(self,self.today)
-            self.myStrategy.on_market_open(self)
+            self.myStrategy.on_market_prepare_open(self.__portfolio,self.today)
+            self.myStrategy.on_market_open(self.__portfolio)
 
             tradeTime = datetime(year=day.year, month=day.month, day=day.day, hour=9, minute=30, second=1)
             end_date = datetime(year=day.year, month=day.month, day=day.day, hour=11, minute=30, second=1)
 
             while (tradeTime.__le__(end_date)):
                 self.today = tradeTime
-                self.strategy_engine.datetime = tradeTime
-                self.myStrategy.market.setToday(tradeTime)
-                self.myStrategy.on_bar_per_minute(tradeTime,self)
-                tradeBar = copy.deepcopy(bar)
-                tradeBar.datetime = tradeTime
-                self.__cross_order_by_per_miniute(tradeBar)
+                self.strategy_engine.datetime = self.today
+                self.myStrategy.market.setToday(self.today)
+                self.myStrategy.on_bar_per_minute(tradeTime,self.__portfolio)
+                self.__cross_order_by_per_miniute()
                 tradeTime = tradeTime + timedelta(minutes=1)
 
             tradeTime = datetime(year=day.year, month=day.month, day=day.day, hour=13, minute=0, second=1)
-            end_date = datetime(year=day.year, month=day.month, day=day.day, hour=15, minute=0, second=1)
+            end_date = datetime(year=day.year, month=day.month, day=day.day, hour=14, minute=26, second=1)
             while (tradeTime.__le__(end_date)):
                 self.today = tradeTime
-                self.strategy_engine.datetime = tradeTime
-                self.myStrategy.market.setToday(tradeTime)
-                self.myStrategy.on_bar_per_minute(tradeTime,self)
-                tradeBar = copy.deepcopy(bar)
-                tradeBar.datetime = tradeTime
-                self.__cross_order_by_per_miniute(tradeBar)
+                self.strategy_engine.datetime = self.today
+                self.myStrategy.market.setToday(self.today)
+                self.myStrategy.on_bar_per_minute(tradeTime,self.__portfolio)
+                self.__cross_order_by_per_miniute()
                 tradeTime = tradeTime + timedelta(minutes=1)
 
-            self.myStrategy.on_market_prepare_close(self)
-            self.myStrategy.on_market_close(self)
+            #parea close
+            self.today = datetime(year=day.year, month=day.month, day=day.day, hour=14, minute=57, second=1)
+            self.strategy_engine.datetime = self.today
+            self.myStrategy.market.setToday(self.today)
+            self.myStrategy.on_market_prepare_close(self.__portfolio)
+            self.__cross_order_by_per_miniute()
 
-            ###每次成完之后，把订单里的成交情况放在bars里面
-            code_ids = list(self.__daylyTradeSymbolset.keys())
-            for code in code_ids:
-                self.__vt_symbol_for_back_testing[self.__to_vt_symbol(code)] = True
-                bar = self.myStrategy.market.getRealTime().getKBar(code)
-                if(not bar is None):
-                    symbol = self.__to_vt_symbol(code)
-                    bars[symbol] = bar
-            self.__daylyTradeSymbolset.clear()
+
+            #close
+            self.today = datetime(year=day.year, month=day.month, day=day.day, hour=15, minute=0, second=1)
+            self.strategy_engine.datetime = self.today
+            self.myStrategy.market.setToday(self.today)
+            self.myStrategy.on_market_close(self.__portfolio)
+            self.__cross_order_by_per_miniute()
+
+            self.__portfolio._on_today_end(bars)
 
             ##情况当前订单
             self.__cancel_all_order()
-            self.__order_summitting_price.clear()
 
-            self.myStrategy.backtestContext.capital = self.getTotalCapital()
 
             pass
 
@@ -237,7 +367,7 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
             self.strategy_engine.cancel_order(self, vt_orderid)
 
 
-    def __cross_order_by_per_miniute(self, tradeBar: BarData):
+    def __cross_order_by_per_miniute(self):
         """
         交割订单
         """
@@ -254,50 +384,14 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
                 ###还没开始，或者已经停牌
                 continue
 
-
             self.strategy_engine.cross_limit_order_by_bar(bar)
 
-        self.__refresh_holde_order_price()
+        self.__portfolio._refresh_holde_order_price()
         pass
 
     def update_order(self, order: OrderData) -> None:
         super().update_order(order)
-        if self.myStrategy.mRunOnBackTest == True:
-            if(order.status == Status.CANCELLED or order.status == Status.REJECTED ):
-
-                if(order.direction ==Direction.LONG):
-                    order_price = self.__order_summitting_price.pop(order.vt_orderid)
-                    assert  not order_price is None
-                    self._valid_captical = self._valid_captical + order_price
-                pass
-            elif order.status == Status.PARTTRADED:
-                #回撤中，没有部分成交的情况
-                assert False
-            elif order.status == Status.ALLTRADED:
-                if (order.direction == Direction.LONG):
-                    order_price = self.__order_summitting_price.pop(order.vt_orderid)
-                    holdOrder = self.__holding_orders.get(order.symbol)
-                    if holdOrder is None:
-                        holdOrder = copy.deepcopy(order)
-                        holdOrder.volume = 0
-                        self.__holding_orders[order.symbol] = holdOrder
-
-                    holdOrder.volume = holdOrder.volume + order.volume
-                    assert not order_price is None
-                elif (order.direction == Direction.SHORT):
-                    new_valid_caption = (1 - self._commit_rate) * order.price * order.volume  * self._a_hand_size
-                    self._valid_captical = self._valid_captical+ new_valid_caption
-                    holdOrder = self.__holding_orders.get(order.symbol)
-                    assert not holdOrder is None
-                    holdOrder.volume = holdOrder.volume - order.volume
-
-
-            elif order.status == Status.NOTTRADED or order.status == Status.SUBMITTING:
-                pass
-            else :
-                ##回撤中，没有其它为处理的情况
-                assert False
-
+        self.__portfolio._on_update_order(order)
         self.myStrategy.on_order(order)
 
     def update_trade(self, trade: TradeData) -> None:
@@ -305,92 +399,14 @@ class StockStrategyBridge(StrategyTemplate,Portfolio):
         Callback of new trade data update.
         """
         super().update_trade(trade)
+        self.__portfolio._on_update_trade(trade)
         self.myStrategy.on_trade(trade)
 
-
-    def buy(self, code: str, price: float, volume: float) ->bool:
-        """
-        买入股票
-        """
-        symbol = self.__to_vt_symbol(code)
-
-        if self.myStrategy.mRunOnBackTest == True:
-            self.__daylyTradeSymbolset[code] = True
-            self.strategy_engine.priceticks[symbol] = self.strategy_engine.priceticks[TRAY_DAY_VT_SIMBOL]
-            self.strategy_engine.rates[symbol] = self.strategy_engine.rates[TRAY_DAY_VT_SIMBOL]
-            self.strategy_engine.slippages[symbol] = self.strategy_engine.slippages[TRAY_DAY_VT_SIMBOL]
-            self.strategy_engine.sizes[symbol] = self.strategy_engine.sizes[TRAY_DAY_VT_SIMBOL]
-
-            need_capital =  (1 + self._commit_rate) * price * volume * self._a_hand_size
-
-            if(need_capital >= self._valid_captical):
-                print(f"     ==> buy {code} fail,可用资金不够：需要：{need_capital},可用{self._valid_captical}")
-                return False
-            self._valid_captical = self._valid_captical -  need_capital
-            vt_order_id = super().buy(symbol, price, volume, False)
-            self.__order_summitting_price[vt_order_id[0]] = need_capital
-
-        else:
-            super().buy(symbol, price, volume, False)
-
-        return True
-
-    def sell(self, code: str, price: float, volume: float)->bool:
-        symbol = self.__to_vt_symbol(code)
-
-        if self.myStrategy.mRunOnBackTest == True:
-            hasVolume = 0
-            holdOrder = self.__holding_orders.get(code)
-            if not holdOrder is None:
-                hasVolume = holdOrder.volume
-
-            if(hasVolume < volume):
-                print(f"     <== sell {code} fail,仓位不够：需要：{volume},可用{hasVolume}")
-                return False
-
-            self.__daylyTradeSymbolset[code] = True
-            self.strategy_engine.priceticks[symbol] = self.strategy_engine.priceticks[TRAY_DAY_VT_SIMBOL]
-            self.strategy_engine.rates[symbol] = self.strategy_engine.rates[TRAY_DAY_VT_SIMBOL]
-            self.strategy_engine.slippages[symbol] = self.strategy_engine.slippages[TRAY_DAY_VT_SIMBOL]
-            self.strategy_engine.sizes[symbol] = self.strategy_engine.sizes[TRAY_DAY_VT_SIMBOL]
-            super().sell(symbol,price,volume,False)
-        else:
-            super().sell(symbol,price,volume,False)
-
-        return True
-
-    def getValidCapital(self) -> float:
-        if self.myStrategy.mRunOnBackTest == True:
-            return self._valid_captical
-
-    def getHoldCapital(self,refresh:bool = False)->float:
-        if self.myStrategy.mRunOnBackTest == True:
-
-            if(refresh):
-                self.__refresh_holde_order_price()
-
-            hold_captital = 0
-            for hold_order in list(self.__holding_orders.values()):
-                if hold_order.volume > 0:
-                    hold_captital = hold_order.volume  * hold_order.price * self._a_hand_size
-            return hold_captital
-
-    def getHoldVolume(self, code):
-        for hold_order in list(self.__holding_orders.values()):
-            if(hold_order.symbol == code):
-                return hold_order.volume;
-        return 0
-
-    def __refresh_holde_order_price(self):
-        for hold_order in list(self.__holding_orders.values()):
-            if hold_order.volume > 0:
-                hold_order.price = self.myStrategy.market.getRealTime().getTick(hold_order.symbol).close_price
 
 
     def write_log(self, msg):
         print(f"CtaStrategyBridage: {msg}")
         pass
 
-    def __to_vt_symbol(self,code:str)->str:
-       return utils.to_vt_symbol(code)
+
 

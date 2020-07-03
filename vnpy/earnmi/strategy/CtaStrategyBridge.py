@@ -265,6 +265,8 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
             return []
 
 
+
+
     def write_log(self, msg):
         print(f"CtaStrategyBridage: {msg}")
         pass

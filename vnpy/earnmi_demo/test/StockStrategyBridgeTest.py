@@ -98,6 +98,11 @@ class StrategyTest(StockStrategy):
 
 
         if (is_same_day(datetime(2019, 2, 27, 9, 48), self.market.getToday())):
+            position = protfolio.getLongPosition("601318")
+            assert position.is_long == True
+            assert position.pos_total == 101
+            assert position.pos_available == 101  # 昨天买入的，所以今天可用
+
             assert protfolio.sell("601318", 68.54, 500) == False  ##持仓数不够
             assert protfolio.sell("601318", 68.54, 55) == True
             assert protfolio.sell("601318", 68.54, 46) == True
@@ -111,12 +116,22 @@ class StrategyTest(StockStrategy):
         """
             市场准备关市.
         """
+        time = self.market.getToday()
+        assert time.hour == 14 and time.minute== 57
+
+        # 最开始datetime(2019, 2, 26, 10, 28)买入100股，由于A股T+1的限制，是不可以当天卖的
+        assert protfolio.sell("601318",67.00,100) == False
+
+
         pass
 
     def on_market_close(self,protfolio:Portfolio):
         """
             市场关市.
         """
+        time = self.market.getToday()
+        assert time.hour == 15 and time.minute == 0
+
         assert self.on_bar_per_minute_count > 200
 
         self.final_valid_capital = protfolio.getValidCapital()
@@ -125,6 +140,10 @@ class StrategyTest(StockStrategy):
         if utils.is_same_day(datetime(2019, 2, 26),self.market.getToday()):
              #当天已经买入121*100股，持有仓位资金不为0
              assert  protfolio.getHoldCapital() > 810700
+             position = protfolio.getLongPosition("601318")
+             assert  position.is_long == True
+             assert  position.pos_total ==101
+             assert  position.pos_available == 0  # 因为今天才交易，可用仓位为0
         pass
 
     sell_time_01_tag = False

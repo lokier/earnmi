@@ -13,12 +13,12 @@ from vnpy.trader.object import TradeData
 """
 
 @dataclass
-class Data_Item:
+class Long_Data_Item:
     symbol:str
     start_time:datetime  #金叉出现时间
-    buy_price:float
+    start_price:float
     end_time:datetime = None  #死叉出现时间
-    sell_price:float = -1
+    end_price:float = -1
     max_price:float = -1
     max_price_time:datetime = None
     max_price_day:int = -1  # 到底最高价经过多长时间
@@ -34,6 +34,27 @@ class Data_Item:
     max_pnl_21_more_day:int = -1  # 盈利21%多久
     to_deal_cross_day:int = 0  #到底死叉的时间
 
+@dataclass
+class Short_Data_Item:
+    symbol: str
+    start_time: datetime  # 金叉出现时间
+    start_price: float
+    end_time: datetime = None  # 死叉出现时间
+    end_price: float = -1
+    min_price: float = -1
+    min_price_time: datetime = None
+    min_price_day: int = -1  # 到底最高价经过多长时间
+    min_pnl_3_day: int = -1  # 盈利3%多久
+    min_pnl_5_day: int = -1  # 盈利5%多久
+    min_pnl_7_day: int = -1  # 盈利7%多久
+    min_pnl_9_day: int = -1  # 盈利9%多久
+    min_pnl_11_day: int = -1  # 盈利11%多久
+    min_pnl_13_day: int = -1  # 盈利13%多久
+    min_pnl_15_day: int = -1  # 盈利15%多久
+    min_pnl_17_day: int = -1  # 盈利17%多久
+    min_pnl_19_day: int = -1  # 盈利19%多久
+    min_pnl_21_more_day: int = -1  # 盈利21%多久
+    to_deal_cross_day: int = 0  # 到底死叉的时间
 
 
 
@@ -43,8 +64,8 @@ class macd(StockStrategy):
        pass
     codes = ["300004"]
 
-    data_item_list = []   #数据
-    data_item_activie = {}
+    long_data_item_list = []   #数据
+    long_data_item_activie = {}
 
     def on_create(self):
         """
@@ -72,7 +93,7 @@ class macd(StockStrategy):
         indicator = Indicator(40)
         for code in self.codes:
             bars = self.market.getHistory().getKbars(code, 100);
-            actvity_data_item = self.data_item_activie.get(code)
+            actvity_data_item = self.long_data_item_activie.get(code)
             indicator.update_bar(bars)
             dif, dea, macd_bar = indicator.macd(fast_period=12, slow_period=26, signal_period=9, array=True);
 
@@ -93,27 +114,27 @@ class macd(StockStrategy):
     def on_trade(self, trade: TradeData):
         if trade.direction == Direction.LONG:
             #买入
-            old_data_item = self.data_item_activie.get(trade.symbol)
+            old_data_item = self.long_data_item_activie.get(trade.symbol)
             assert  old_data_item is None
-            data_item = Data_Item(symbol=trade.symbol,buy_price=trade.price,start_time=trade.datetime)
-            self.data_item_activie[trade.symbol] = data_item
+            data_item = Long_Data_Item(symbol=trade.symbol, start_price=trade.price, start_time=trade.datetime)
+            self.long_data_item_activie[trade.symbol] = data_item
         elif trade.direction == Direction.SHORT:
             #卖出
-            data_item:Data_Item = self.data_item_activie.pop(trade.symbol)
+            data_item:Long_Data_Item = self.long_data_item_activie.pop(trade.symbol)
             assert not data_item is None
             data_item.end_time = trade.datetime
-            data_item.sell_price = trade.price
+            data_item.end_price = trade.price
             self.__update_data_item(data_item)
-            self.data_item_list.append(data_item)
+            self.long_data_item_list.append(data_item)
 
 
 
     def __update_data_item_all(self):
-        for data_item in self.data_item_activie.values():
+        for data_item in self.long_data_item_activie.values():
             self.__update_data_item(data_item)
 
 
-    def __update_data_item(self,data_item:Data_Item):
+    def __update_data_item(self, data_item:Long_Data_Item):
         today = self.market.getToday()
         delta_day = (today - data_item.start_time).days
 
@@ -121,7 +142,7 @@ class macd(StockStrategy):
            today_bar = self.market.getRealTime().getKBar(data_item.symbol)
            max_price = today_bar.high_price
         else:
-           max_price = data_item.sell_price
+           max_price = data_item.end_price
            data_item.to_deal_cross_day = delta_day
 
         if max_price > data_item.max_price:
@@ -129,7 +150,7 @@ class macd(StockStrategy):
             data_item.max_price_time = today
             data_item.max_price_day = delta_day
 
-        delta_pnl = (data_item.max_price - data_item.buy_price) / data_item.buy_price
+        delta_pnl = (data_item.max_price - data_item.start_price) / data_item.start_price
 
         if(delta_pnl >= 0.03 and data_item.max_pnl_3_day < 0):
             data_item.max_pnl_3_day = delta_day
@@ -201,7 +222,7 @@ if __name__ == "__main__":
     engine = BacktestingEngine()
 
     start = datetime(2019, 2, 23)
-    end = datetime(2019, 4, 24)
+    end = datetime(2020, 4, 24)
 
     engine.set_parameters(
         vt_symbols=[TRAY_DAY_VT_SIMBOL],
@@ -223,7 +244,7 @@ if __name__ == "__main__":
     df = engine.calculate_result()
     engine.calculate_statistics()
 
-    for data_item in strategy.data_item_list:
+    for data_item in strategy.long_data_item_list:
         print(data_item)
         # print(f"symbol={data_item.symbol},start_price={data_item.buy_price},max_price={data_item.max_price},end_price={data_item.end_price}"
         #       f"")
