@@ -47,12 +47,12 @@ class PortfolioImpl(Portfolio):
     strategy: StrategyTemplate
     market:Market
 
+    valid_captical = 0.0 #可用资金
+
     commit_rate = 0.0  # 交易费率
     a_hand_size = 0.0  # 每手有多少个
-    valid_captical = 0.0 #可用资金
     slippage = 0.0
     pricetick=0.01  #四舍五入的精度
-    commit_total = 0  #交易总费用
 
     __daylyTradeCodeSet = {} # 每天有交易的code
 
@@ -120,7 +120,8 @@ class PortfolioImpl(Portfolio):
 
     def sell(self, code: str, price: float, volume: float)->bool:
 
-        hasVolume = self.getLongPosition(code).getPosAvailable() / self.a_hand_size
+        longPos = self.getLongPosition(code)
+        hasVolume = longPos.getPosAvailable() / self.a_hand_size
 
         if (hasVolume < volume):
             print(f"     <== sell {code} fail,仓位不够：需要：{volume},可用{hasVolume}")
@@ -132,6 +133,7 @@ class PortfolioImpl(Portfolio):
         ###冻结仓位，今天不可以再交易
         lockingDagta = PortfolioImpl.TradingLocking(order_id=vt_order_ids[0], code=code)
         lockingDagta.lock_pos = volume * self.a_hand_size
+        longPos.pos_lock +=  volume * self.a_hand_size
         self.__locking_data[lockingDagta.order_id] = lockingDagta
 
         return True
@@ -140,13 +142,43 @@ class PortfolioImpl(Portfolio):
         """
           做空股票：开仓
         """
-        pass
+        need_capital = (1 + self.commit_rate) * price * volume * self.a_hand_size
+        if (need_capital >= self.valid_captical):
+            print(f"     ==> short {code} fail,可用资金不够：需要：{need_capital},可用{self.valid_captical}")
+            return False
+        symbol = utils.to_vt_symbol(code)
+        self.__initTrade(code, symbol)
+        self.valid_captical = self.valid_captical - need_capital
+        vt_order_ids = self.strategy.short(symbol, price, volume, False)
+
+        ###冻结资金
+        lockingDagta = PortfolioImpl.TradingLocking(order_id=vt_order_ids[0], code=code)
+        lockingDagta.lock_price = need_capital
+        self.__locking_data[lockingDagta.order_id] = lockingDagta
+        return True
+
 
     def cover(self, code: str, price: float, volume: float) -> bool:
         """
         做空股票：平仓
         """
-        pass
+        shortPos = self.getShortPosition(code)
+        hasVolume = shortPos.getPosAvailable() / self.a_hand_size
+
+        if (hasVolume < volume):
+            print(f"     <== cover {code} fail,仓位不够：需要：{volume},可用{hasVolume}")
+            return False
+        symbol = utils.to_vt_symbol(code)
+        self.__initTrade(code, symbol)
+        vt_order_ids = self.strategy.cover(symbol, price, volume, False)
+
+        ###冻结仓位，今天不可以再交易
+        lockingDagta = PortfolioImpl.TradingLocking(order_id=vt_order_ids[0], code=code)
+        lockingDagta.lock_pos = volume * self.a_hand_size
+        shortPos.pos_lock += volume * self.a_hand_size
+        self.__locking_data[lockingDagta.order_id] = lockingDagta
+
+        return True
 
     def __initTrade(self,code:str, symbol: str):
         self.engine.priceticks[symbol] = self.pricetick
@@ -185,7 +217,7 @@ class PortfolioImpl(Portfolio):
         # 做多持仓市值
         # 做空冻结资金 - 做空持仓市值
 
-        return self.getHoldCapital()+ self.getValidCapital() - self.commit_total
+        return self.getHoldCapital()+ self.getValidCapital()
 
 
     def _on_today_start(self):
@@ -228,11 +260,20 @@ class PortfolioImpl(Portfolio):
         is_cover = order.direction == Direction.LONG and order.offset == Offset.CLOSE
 
         if (order.status == Status.CANCELLED or order.status == Status.REJECTED):
-            if (is_buy or is_short):
+            if is_buy or is_short:
                 #恢复冻结的资金
                 locking_data = self.__locking_data.pop(order.vt_orderid)
                 assert not locking_data is None
                 self.valid_captical = self.valid_captical + locking_data.lock_price
+            if is_cover or is_sell:
+                #恢复冻结的仓位
+                locking_data = self.__locking_data.pop(order.vt_orderid)
+                assert not locking_data is None
+                pos = self.getLongPosition(order.symbol)
+                if is_cover:
+                    pos = self.getShortPosition(order.symbol)
+                pos.pos_lock -= locking_data.lock_pos
+
             pass
         elif order.status == Status.PARTTRADED:
             # 回撤中，没有部分成交的情况
@@ -258,8 +299,31 @@ class PortfolioImpl(Portfolio):
                 pos = self.getLongPosition(order.symbol)
                 pos_size = order.volume * self.a_hand_size
                 pos.pos_total -= pos_size
+                pos.pos_lock -= pos_size
                 assert pos.pos_total>= 0
                 assert pos.pos_total>= pos.pos_lock
+            elif is_short:
+                ##冻结资金生效
+                locking_data = self.__locking_data.pop(order.vt_orderid)
+                assert not locking_data is None
+
+                ##增加仓位
+                pos = self.getShortPosition(order.symbol)
+                new_pos_size = order.volume * self.a_hand_size
+                pos.pos_total += new_pos_size
+                pos.pos_lock += new_pos_size
+            elif is_cover:
+                # 新可用资金
+                new_valid_caption = (1 - self.commit_rate) * order.price * order.volume * self.a_hand_size
+                self.valid_captical = self.valid_captical + new_valid_caption
+
+                ##减少仓位
+                pos = self.getShortPosition(order.symbol)
+                pos_size = order.volume * self.a_hand_size
+                pos.pos_total -= pos_size
+                pos.pos_lock -= pos_size
+                assert pos.pos_total >= 0
+                assert pos.pos_total >= pos.pos_lock
 
 
         elif order.status == Status.NOTTRADED or order.status == Status.SUBMITTING:

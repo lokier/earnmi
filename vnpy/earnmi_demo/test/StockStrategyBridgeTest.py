@@ -6,7 +6,7 @@ from earnmi.strategy.StockStrategyBridge import StockStrategyBridge
 from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
 from earnmi.uitl.utils import utils
 from vnpy.app.cta_strategy import StopOrder
-from vnpy.trader.constant import Interval, Direction
+from vnpy.trader.constant import Interval, Direction, Offset
 from vnpy.app.portfolio_strategy import BacktestingEngine
 
 from datetime import datetime
@@ -88,8 +88,18 @@ class StrategyTest(StockStrategy):
         self.market_open_count = self.market_open_count + 1
         self.on_bar_per_minute_count = 0
 
+
+        if(is_same_day(datetime(2019, 2, 23),self.market.getToday())):
+            ###刚刚开始，没有任何持仓
+            assert protfolio.sell("601318",67.15,100) == False
+            assert protfolio.cover("601318",67.15,100) == False
+
+
+
+
         # 中国平安601318 在datetime(2019, 2, 26, 10, 28)时刻，最低到达 low_price=67.15
         # 中国平安601318 在datetime(2019, 2, 27, 9, 48)时刻，最高到达 high_price=68.57
+        # 中国平安601318 在datetime(2019, 2, 28)时刻，9点40分左右到最低点66.8，10:47最高到达68.08，然后14:00后面出现新的第二低点67.2-67.4
 
         self.daily_pre_tick = self.market.getRealTime().getTick("601318")
 
@@ -97,6 +107,10 @@ class StrategyTest(StockStrategy):
             assert protfolio.buy("601318",67.15,100) == True
             assert protfolio.buy("601318",67.15,100) == False  ##钱不够
             assert protfolio.buy("601318", 67.15, 1) == True
+            assert protfolio.buy("601318", 67.10, 1) == True   ##价格过低，能委托成功，但没发成交
+            assert protfolio.buy("601318", 66.10, 1) == True   ##价格过低，能委托成功，但没发成交
+            assert protfolio.buy("601318", 66.10, 1) == True   ##价格过低，能委托成功，但没发成交
+
 
 
         if (is_same_day(datetime(2019, 2, 27, 9, 48), self.market.getToday())):
@@ -108,6 +122,10 @@ class StrategyTest(StockStrategy):
             assert protfolio.sell("601318", 68.54, 500) == False  ##持仓数不够
             assert protfolio.sell("601318", 68.54, 55) == True
             assert protfolio.sell("601318", 68.54, 46) == True
+
+            assert protfolio.short("601318",68.54,10) == True  ###开始做空买入在datetime(2019, 2, 27, 9, 48)时刻，最高到达 high_price=68.57
+            assert protfolio.short("601318", 68.70, 1) == True   ##价格过低，能委托成功，但没发成交
+
 
         if (is_same_day(datetime(2019, 2, 28, 10, 48), self.market.getToday())):
             assert protfolio.buy("601318", 67.40, 120) == True
@@ -196,36 +214,63 @@ class StrategyTest(StockStrategy):
         if(utils.is_same_time(datetime(2019, 2, 27, 9, 48),self.market.getToday(),deltaSecond=30)):
             protfolio.sell("601318", 60.75, 20) ##测试交割价格在68.57附近
 
+        ###开始做空买入在datetime(2019, 2, 27, 9, 48)时刻，最高到达 high_price=68.57
+        # 中国平安601318 在datetime(2019, 2, 28)时刻，9点40分左右到最低点66.8，10:47最高到达68.08，然后14:00后面出现新的第二低点67.2-67.4
+        if(utils.is_same_time(datetime(2019, 2, 28, 11, 00),self.market.getToday(),deltaSecond=30)):
+           assert protfolio.cover("601318", 67.3, 10) == True ## 11点后开始平仓，以当天第二低价格平仓
+
         pass
 
     def on_order(self, order: OrderData):
         print(f"{self.market.getToday()}：onOrder: {order}")
 
     sell_at_2019_2_27_9_48 = False
-    buy_at_2019_2_26_10_28 = False
+    buy_at_2019_2_26_10_28 = 0
     sell_at_2019_3_25_13_47 = False
+    short_at_2019_2_27_9_48 = False
+    cover_at_2019_2_28_14_more = False
 
     def on_trade(self, trade: TradeData):
         print(f"{self.market.getToday()}：on_trade: {trade}")
         # 中国平安601318 在datetime(2019, 2, 26, 10, 28)时刻，最低到达 low_price=67.15,到达买入价
         # 中国平安601318 在datetime(2019, 2, 27, 9, 48)时刻，最高到达 high_price=68.57，到达卖出价
         # 中国平安601318 在datetime(2019, 3, 25, 13, 10)时刻，从最高价71到一个新底69.75, 后面再到一个新的高点。7.38左右
+        # 中国平安601318 在datetime(2019, 2, 28)时刻，9点40分左右到最低点66.8，10:47最高到达68.08，然后14:00后面出现新的第二低点67.2-67.4
+
+        is_buy = trade.direction == Direction.LONG and trade.offset == Offset.OPEN
+        is_sell = trade.direction == Direction.SHORT and trade.offset == Offset.CLOSE
+        is_short = trade.direction == Direction.SHORT and trade.offset == Offset.OPEN
+        is_cover = trade.direction == Direction.LONG and trade.offset == Offset.CLOSE
 
         if(utils.is_same_time(datetime(2019, 2, 26, 10, 28),self.market.getToday(),deltaSecond=30)):
-            self.buy_at_2019_2_26_10_28 = True
-            assert utils.isEqualFloat(67.15,trade.price,0.5) #成交价格在67.15中间
+            if is_buy:
+                self.buy_at_2019_2_26_10_28 = self.buy_at_2019_2_26_10_28+1
+                assert utils.isEqualFloat(67.15,trade.price,0.5) #成交价格在67.15中间
+
+        if (utils.is_same_day(datetime(2019, 2, 28), self.market.getToday())):
+            if is_cover:
+                assert self.cover_at_2019_2_28_14_more == False
+                self.cover_at_2019_2_28_14_more = True
+                assert utils.isEqualFloat(67.3,trade.price,0.5) #成交价格在67.15中间
+
 
         if (utils.is_same_time(self.market.getToday(),datetime(2019, 2, 27, 9, 48),deltaMinitue=1,deltaSecond=2)):
-            self.sell_at_2019_2_27_9_48 = True
-            assert utils.isEqualFloat(68.57, trade.price, 0.5)  # 成交价格在68.57中间
+            if is_sell:
+                self.sell_at_2019_2_27_9_48 = True
+                assert utils.isEqualFloat(68.57, trade.price, 0.5)  # 成交价格在68.57中间
+            if is_short:
+                self.short_at_2019_2_27_9_48 = True
+                assert utils.isEqualFloat(68.57, trade.price, 0.5)  # 成交价格在68.57中间
+
 
         # 中国平安601318
         # 2019-03-25 10:35:00:open = 71.03,close=70.96 一天最高点
         # 2019-03-25 13:12:00:open = 69.97,close=69.79  下午开盘的一个低点
         # 2019-03-25 13:47:00:open = 70.33,close=70.41   下午的一个高点
         if (utils.is_same_time(self.market.getToday(),datetime(2019, 3, 25, 13, 47),deltaMinitue=4,deltaSecond=2)):
-            self.sell_at_2019_3_25_13_47 = True
-            assert utils.isEqualFloat(70.36, trade.price, 0.5)  # 成交价格在68.57中间
+            if is_sell:
+                self.sell_at_2019_3_25_13_47 = True
+                assert utils.isEqualFloat(70.36, trade.price, 0.5)  # 成交价格在68.57中间
 
     def on_stop_order(self, stop_order: StopOrder):
         print(f"{self.market.getToday()}：on_stop_order: {stop_order}")
@@ -276,12 +321,20 @@ assert is_same_day(datetime(year=2019,month=4,day=24),strategy.end_trade_time)
 
 assert  strategy.market_open_count == 42
 assert  strategy.sell_at_2019_2_27_9_48 == True
-assert  strategy.buy_at_2019_2_26_10_28 == True
+assert  strategy.buy_at_2019_2_26_10_28 == 3
 assert  strategy.sell_time_01_tag == True
 assert  strategy.sell_at_2019_3_25_13_47 == True
+assert  strategy.short_at_2019_2_27_9_48 == True
+assert  strategy.cover_at_2019_2_28_14_more == True
 
-assert len(engine.trades) == 8
+###账号里面没有任何筹码
+assert  strategy.portfolio.getLongPosition("601318").pos_total == 0
+assert  strategy.portfolio.getShortPosition("601318").pos_total == 0
+assert  strategy.portfolio.getHoldCapital() < 0.00001
 
+
+
+assert len(engine.trades) == 10
 
 
 
