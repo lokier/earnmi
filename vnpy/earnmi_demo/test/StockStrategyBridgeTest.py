@@ -326,18 +326,24 @@ strategy = StrategyTest()
 """
 start = datetime(2019, 2, 23)
 end = datetime(2019, 4, 24)
-
+slippage = 0.001
+commission = 3/10000
+capital = 1_000_000
+def compute_commission(price:float,volume,slippage:float = slippage,commission:float = commission):
+    s = volume * 100 * slippage * price
+    commission = volume *  100 * price * commission
+    return commission + s
 
 engine.set_parameters(
     vt_symbols=[TRAY_DAY_VT_SIMBOL],
     interval=Interval.DAILY,
     start=start,
     end=end,
-    rates={TRAY_DAY_VT_SIMBOL:0.3/10000},  #交易佣金
-    slippages={TRAY_DAY_VT_SIMBOL:0.001},  # 滑点
+    rates={TRAY_DAY_VT_SIMBOL:commission},  #交易佣金
+    slippages={TRAY_DAY_VT_SIMBOL:slippage},  # 滑点
     sizes={TRAY_DAY_VT_SIMBOL:100},  #一手的交易单位
     priceticks={TRAY_DAY_VT_SIMBOL:0.01},  #四舍五入的精度
-    capital=1_000_000,
+    capital=capital,
 )
 engine.add_strategy(StockStrategyBridge, { "strategy":strategy})
 engine.load_data()
@@ -347,13 +353,31 @@ engine.calculate_statistics()
 
 print(f"final_valid_capital:{strategy.final_valid_capital}")
 print(f"final_total_capital:{strategy.portfolio.getTotalCapital()}")
+print(f"total_commison:{strategy.backtestContext.commission}")
 
+total_free = 0.0
+total_get = 0.0
+long_holding_volume = 0
+short_holding_volume = 0
 for dt,v in engine.trades.items():
     trade:TradeData = v
     trage_tag = "买"
     if(trade.direction == Direction.SHORT):
         trage_tag = "卖"
-    print(f"{trade.datetime}:order_id={trade.vt_orderid},{trage_tag}:{trade.volume},price:{trade.price},time={trade.time}")
+    is_buy = trade.direction == Direction.LONG and trade.offset == Offset.OPEN
+    is_sell = trade.direction == Direction.SHORT and trade.offset == Offset.CLOSE
+    is_short = trade.direction == Direction.SHORT and trade.offset == Offset.OPEN
+    is_cover = trade.direction == Direction.LONG and trade.offset == Offset.CLOSE
+    total_free += compute_commission(trade.price, trade.volume)
+    if is_buy:
+        total_get -= trade.price * trade.volume * 100
+    if is_sell:
+        total_get += trade.price * trade.volume * 100
+    if is_short:
+        total_get += trade.price * trade.volume * 100
+    elif is_cover:
+        total_get -= trade.price * trade.volume * 100
+print(f"total_get:{total_get}, total_free={total_free}, final= {total_get + capital},   pnl= {total_get + capital - total_free}")
 
 assert is_same_day(datetime(year=2019,month=2,day=25),strategy.start_trade_time)
 assert is_same_day(datetime(year=2019,month=4,day=24),strategy.end_trade_time)

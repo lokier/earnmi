@@ -37,7 +37,6 @@ class PortfolioImpl(Portfolio):
         code:str
         lock_price: float = 0.0  # 冻结的资金。
         lock_pos: float = 0.0  # 冻结的筹码。
-        commit:float = 0.0  #交易费用
 
 
     """
@@ -48,6 +47,7 @@ class PortfolioImpl(Portfolio):
     market:Market
 
     valid_captical = 0.0 #可用资金
+    commit_total = 0.0  #交易总费用
 
     commit_rate = 0.0  # 交易费率
     a_hand_size = 0.0  # 每手有多少个
@@ -101,7 +101,7 @@ class PortfolioImpl(Portfolio):
         """
         买入股票
         """
-        need_capital = (1 + self.commit_rate) * price * volume * self.a_hand_size
+        need_capital = self._compute_commission(price, volume) + price * volume * self.a_hand_size
         if (need_capital >= self.valid_captical):
             print(f"     ==> buy {code} fail,可用资金不够：需要：{need_capital},可用{self.valid_captical}")
             return False
@@ -142,7 +142,7 @@ class PortfolioImpl(Portfolio):
         """
           做空股票：开仓
         """
-        need_capital = (1 + self.commit_rate) * price * volume * self.a_hand_size
+        need_capital = self._compute_commission(price, volume) + price * volume * self.a_hand_size
         if (need_capital >= self.valid_captical):
             print(f"     ==> short {code} fail,可用资金不够：需要：{need_capital},可用{self.valid_captical}")
             return False
@@ -179,6 +179,14 @@ class PortfolioImpl(Portfolio):
         self.__locking_data[lockingDagta.order_id] = lockingDagta
 
         return True
+
+    """
+        计算费用
+    """
+    def _compute_commission(self,price:float,volume):
+        slippage = volume * self.a_hand_size * self.slippage
+        commission = volume *  self.a_hand_size * price * self.commit_rate
+        return commission + slippage
 
     def __initTrade(self,code:str, symbol: str):
         self.engine.priceticks[symbol] = self.pricetick
@@ -251,7 +259,85 @@ class PortfolioImpl(Portfolio):
         """
         Callback of new trade data update.
         """
-        pass
+        is_buy = trade.direction == Direction.LONG and trade.offset == Offset.OPEN
+        is_sell = trade.direction == Direction.SHORT and trade.offset == Offset.CLOSE
+        is_short = trade.direction == Direction.SHORT and trade.offset == Offset.OPEN
+        is_cover = trade.direction == Direction.LONG and trade.offset == Offset.CLOSE
+        if (is_buy):
+            ##冻结资金生效
+            locking_data = self.__locking_data.pop(trade.vt_orderid)
+            assert not locking_data is None
+
+            ##增加仓位
+            pos = self.getLongPosition(trade.symbol)
+            new_pos_size = trade.volume * self.a_hand_size
+            pos.pos_total += new_pos_size
+            pos.pos_lock += new_pos_size
+
+            ##实际成交资金,包含手续费+滑点费
+            trade_capital = self._compute_commission(trade.price, trade.volume) + trade.price * trade.volume * self.a_hand_size
+            if trade_capital > locking_data.lock_price:
+                self.valid_captical -= trade_capital - locking_data.lock_price
+            else:
+                assert trade_capital <= locking_data.lock_price + 0.1
+            self.commit_total += (locking_data.lock_price - trade_capital)
+
+        elif (is_sell):
+            ##冻结仓位生效
+            locking_data = self.__locking_data.pop(trade.vt_orderid)
+            assert not locking_data is None
+
+            # 新可用资金
+            commision = self._compute_commission(trade.price,trade.volume)
+            new_valid_caption =  trade.price * trade.volume * self.a_hand_size - commision
+            self.valid_captical = self.valid_captical + new_valid_caption
+            self.commit_total += commision
+
+            ##减少仓位
+            pos = self.getLongPosition(trade.symbol)
+            pos_size = trade.volume * self.a_hand_size
+            pos.pos_total -= pos_size
+            pos.pos_lock -= pos_size
+            assert pos.pos_total >= 0
+            assert pos.pos_total >= pos.pos_lock
+        elif is_short:
+            ##冻结资金生效
+            locking_data = self.__locking_data.pop(trade.vt_orderid)
+            assert not locking_data is None
+
+            ##增加仓位
+            pos = self.getShortPosition(trade.symbol)
+            new_pos_size = trade.volume * self.a_hand_size
+            pos.pos_total += new_pos_size
+            pos.pos_lock += new_pos_size
+
+            trade_capital = self._compute_commission(trade.price, trade.volume) + trade.price * trade.volume * self.a_hand_size
+            if trade_capital > locking_data.lock_price:
+                self.valid_captical -= trade_capital - locking_data.lock_price
+            else:
+                assert trade_capital <= locking_data.lock_price + 0.1
+            self.commit_total += (locking_data.lock_price - trade_capital)
+
+        elif is_cover:
+
+            ##冻结仓位生效
+            locking_data = self.__locking_data.pop(trade.vt_orderid)
+            assert not locking_data is None
+
+            # 新可用资金
+            commision = self._compute_commission(trade.price, trade.volume)
+            new_valid_caption = trade.price * trade.volume * self.a_hand_size - commision
+            self.valid_captical = self.valid_captical + new_valid_caption
+            self.commit_total += commision
+
+            ##减少仓位
+            pos = self.getShortPosition(trade.symbol)
+            pos_size = trade.volume * self.a_hand_size
+            pos.pos_total -= pos_size
+            pos.pos_lock -= pos_size
+            assert pos.pos_total >= 0
+            assert pos.pos_total >= pos.pos_lock
+
 
     def _on_update_order(self, order: OrderData) -> None:
         is_buy = order.direction == Direction.LONG and order.offset == Offset.OPEN
@@ -279,53 +365,7 @@ class PortfolioImpl(Portfolio):
             # 回撤中，没有部分成交的情况
             assert False
         elif order.status == Status.ALLTRADED:
-            if (is_buy):
-                ##冻结资金生效
-                locking_data = self.__locking_data.pop(order.vt_orderid)
-                assert not locking_data is None
-
-                ##增加仓位
-                pos = self.getLongPosition(order.symbol)
-                new_pos_size = order.volume * self.a_hand_size
-                pos.pos_total += new_pos_size
-                pos.pos_lock += new_pos_size
-
-            elif (is_sell):
-                #新可用资金
-                new_valid_caption = (1 - self.commit_rate) * order.price * order.volume * self.a_hand_size
-                self.valid_captical = self.valid_captical + new_valid_caption
-
-                ##减少仓位
-                pos = self.getLongPosition(order.symbol)
-                pos_size = order.volume * self.a_hand_size
-                pos.pos_total -= pos_size
-                pos.pos_lock -= pos_size
-                assert pos.pos_total>= 0
-                assert pos.pos_total>= pos.pos_lock
-            elif is_short:
-                ##冻结资金生效
-                locking_data = self.__locking_data.pop(order.vt_orderid)
-                assert not locking_data is None
-
-                ##增加仓位
-                pos = self.getShortPosition(order.symbol)
-                new_pos_size = order.volume * self.a_hand_size
-                pos.pos_total += new_pos_size
-                pos.pos_lock += new_pos_size
-            elif is_cover:
-                # 新可用资金
-                new_valid_caption = (1 - self.commit_rate) * order.price * order.volume * self.a_hand_size
-                self.valid_captical = self.valid_captical + new_valid_caption
-
-                ##减少仓位
-                pos = self.getShortPosition(order.symbol)
-                pos_size = order.volume * self.a_hand_size
-                pos.pos_total -= pos_size
-                pos.pos_lock -= pos_size
-                assert pos.pos_total >= 0
-                assert pos.pos_total >= pos.pos_lock
-
-
+            pass
         elif order.status == Status.NOTTRADED or order.status == Status.SUBMITTING:
             pass
         else:
@@ -431,6 +471,7 @@ class StockStrategyBridge(StrategyTemplate):
         Callback when strategy is stopped.
         """
         self.isCreated = False
+        self.myStrategy.backtestContext.commission = self.__portfolio.commit_total
         self.myStrategy.on_destroy()
         #self.write_log("策略停止")
 

@@ -91,6 +91,8 @@ class Portfolio:
 class BackTestContext:
     start_date:datetime = None
     end_date:datetime = None
+
+    commission = 0.0 ##总手续费用
     # daily_results:{}
     # size = 100
     # rate = 0.0
