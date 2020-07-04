@@ -14,8 +14,8 @@ import pandas as pd
 import numpy as np
 code = "601318" #在datetime(2019, 2, 27, 9, 48)，到达 high_price=68.57
 
-start_day = datetime(2019, 2, 28,1)
-end_day = datetime(2019, 2, 28,23)
+start_day = datetime(2019, 4, 23,1)
+end_day = datetime(2019, 4, 23,23)
 
 exchange = Exchange.SZSE
 if (code.startswith("6")):
@@ -29,12 +29,16 @@ db_data = database_manager.load_bar_data(code, exchange, Interval.MINUTE, start_
 high_price_bar = db_data[0]
 
 index = 0
+low_index = 0
 for i in range(len(db_data)):
     print(f"{db_data[i].datetime}:open = {db_data[i].open_price},close={db_data[i].close_price}")
     if db_data[index].high_price < db_data[i].high_price:
         index = i
+    if db_data[low_index].low_price > db_data[i].low_price:
+        low_index = i
 
 print(f"high: {db_data[index].datetime}:open = {db_data[index].open_price},close={db_data[index].close_price}")
+print(f"low: {db_data[low_index].datetime}:open = {db_data[low_index].open_price},close={db_data[low_index].close_price}")
 
 chart = Chart()
 chart.setBarData(db_data)

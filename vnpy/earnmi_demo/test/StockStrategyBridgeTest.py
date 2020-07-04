@@ -1,3 +1,4 @@
+import random
 from typing import Sequence
 
 from earnmi.data.MarketImpl import MarketImpl
@@ -130,6 +131,16 @@ class StrategyTest(StockStrategy):
         if (is_same_day(datetime(2019, 2, 28, 10, 48), self.market.getToday())):
             assert protfolio.buy("601318", 67.40, 120) == True
 
+        # 4月23日，清空持仓
+        if (is_same_day(datetime(2019, 4, 23), self.market.getToday())):
+            longPos = protfolio.getLongPosition("601318")
+            shortPos= protfolio.getShortPosition("601318")
+            assert longPos.pos_lock == 0 and shortPos.pos_lock == 0 #这个时间是没有冻结的
+            #high: 2019 - 04 - 23  13: 47:00: open = 83.77, close = 83.88
+            #low: 2019 - 04 - 23  09: 31:00: open = 81.38, close = 81.35
+            protfolio.cover("601318",83.77,shortPos.pos_total/100)
+            protfolio.sell("601318",81.35,longPos.pos_total/100)
+
         pass
 
     def on_market_prepare_close(self,protfolio:Portfolio):
@@ -219,7 +230,35 @@ class StrategyTest(StockStrategy):
         if(utils.is_same_time(datetime(2019, 2, 28, 11, 00),self.market.getToday(),deltaSecond=30)):
            assert protfolio.cover("601318", 67.3, 10) == True ## 11点后开始平仓，以当天第二低价格平仓
 
-        pass
+
+
+        # 4月1日 - 20日随机交易
+        today = self.market.getToday()
+        #today >= datetime(2019,3,2,0) and today <= datetime(2019,3,20,0) or
+        if  today >= datetime(2019,4,1,0) and today <= datetime(2019,4,20,0):
+            happen = random.random()
+            if happen <= 0.1:
+                self.__randomTrade(protfolio)
+
+
+
+
+
+    def __randomTrade(self,protfolio:Portfolio):
+        happen = random.random()
+        code = "601318"
+        price = self.market.getRealTime().getTick(code).close_price
+        trade_price = price * random.uniform(0.94,1.06)
+        volume = random.randint(3,100)
+        if happen <= 0.25:
+            protfolio.buy(code,trade_price,volume)
+        elif happen<=0.5:
+            protfolio.sell(code,trade_price,volume)
+        elif happen<=0.75:
+            protfolio.short(code,trade_price,volume)
+        else:
+            protfolio.cover(code,trade_price,volume)
+
 
     def on_order(self, order: OrderData):
         print(f"{self.market.getToday()}：onOrder: {order}")
@@ -331,11 +370,6 @@ assert  strategy.cover_at_2019_2_28_14_more == True
 assert  strategy.portfolio.getLongPosition("601318").pos_total == 0
 assert  strategy.portfolio.getShortPosition("601318").pos_total == 0
 assert  strategy.portfolio.getHoldCapital() < 0.00001
-
-
-
-assert len(engine.trades) == 10
-
 
 
 engine.show_chart()
