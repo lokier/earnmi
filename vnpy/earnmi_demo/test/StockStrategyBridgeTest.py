@@ -235,10 +235,10 @@ class StrategyTest(StockStrategy):
         # 4月1日 - 20日随机交易
         today = self.market.getToday()
         #today >= datetime(2019,3,2,0) and today <= datetime(2019,3,20,0) or
-        if  today >= datetime(2019,4,1,0) and today <= datetime(2019,4,20,0):
-            happen = random.random()
-            if happen <= 0.1:
-                self.__randomTrade(protfolio)
+        # if  today >= datetime(2019,4,1,0) and today <= datetime(2019,4,20,0):
+        #     happen = random.random()
+        #     if happen <= 0.1:
+        #         self.__randomTrade(protfolio)
 
 
 
@@ -357,6 +357,7 @@ print(f"total_commison:{strategy.backtestContext.commission}")
 
 total_free = 0.0
 total_get = 0.0
+total_trade_money = 0.0
 long_holding_volume = 0
 short_holding_volume = 0
 for dt,v in engine.trades.items():
@@ -369,15 +370,24 @@ for dt,v in engine.trades.items():
     is_short = trade.direction == Direction.SHORT and trade.offset == Offset.OPEN
     is_cover = trade.direction == Direction.LONG and trade.offset == Offset.CLOSE
     total_free += compute_commission(trade.price, trade.volume)
+    total_trade_money+= trade.price * trade.volume * 100
     if is_buy:
         total_get -= trade.price * trade.volume * 100
+        print(f"[{trade.datetime}] buy: price={trade.price}, volume={trade.volume}")
     if is_sell:
         total_get += trade.price * trade.volume * 100
+        print(f"[{trade.datetime}] sell: price={trade.price}, volume={trade.volume}")
+
     if is_short:
         total_get += trade.price * trade.volume * 100
+        print(f"[{trade.datetime}] short: price={trade.price}, volume={trade.volume}")
+
     elif is_cover:
         total_get -= trade.price * trade.volume * 100
-print(f"total_get:{total_get}, total_free={total_free}, final= {total_get + capital},   pnl= {total_get + capital - total_free}")
+        print(f"[{trade.datetime}] cover: price={trade.price}, volume={trade.volume}")
+
+
+print(f"total_get:{total_get}, total_free={total_free}, final= {total_get + capital},   pnl= {total_get + capital - total_free}, total_trade_money={total_trade_money}")
 
 assert is_same_day(datetime(year=2019,month=2,day=25),strategy.start_trade_time)
 assert is_same_day(datetime(year=2019,month=4,day=24),strategy.end_trade_time)

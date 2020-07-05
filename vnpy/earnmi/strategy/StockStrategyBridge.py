@@ -101,6 +101,10 @@ class PortfolioImpl(Portfolio):
         """
         买入股票
         """
+        if volume < 0.1:
+            print(f"     ==> buy {code} fail,volume = 0")
+            return False
+
         need_capital = self._compute_commission(price, volume) + price * volume * self.a_hand_size
         if (need_capital >= self.valid_captical):
             print(f"     ==> buy {code} fail,可用资金不够：需要：{need_capital},可用{self.valid_captical}")
@@ -119,7 +123,9 @@ class PortfolioImpl(Portfolio):
         return True
 
     def sell(self, code: str, price: float, volume: float)->bool:
-
+        if volume < 0.1:
+            print(f"     ==> buy {code} fail,volume = 0")
+            return False
         longPos = self.getLongPosition(code)
         hasVolume = longPos.getPosAvailable() / self.a_hand_size
 
@@ -142,6 +148,10 @@ class PortfolioImpl(Portfolio):
         """
           做空股票：开仓
         """
+        if volume < 0.1:
+            print(f"     ==> short {code} fail,volume = 0")
+            return False
+
         need_capital = self._compute_commission(price, volume) + price * volume * self.a_hand_size
         if (need_capital >= self.valid_captical):
             print(f"     ==> short {code} fail,可用资金不够：需要：{need_capital},可用{self.valid_captical}")
@@ -162,6 +172,10 @@ class PortfolioImpl(Portfolio):
         """
         做空股票：平仓
         """
+        if volume < 0.1:
+            print(f"     ==> cover {code} fail,volume = 0")
+            return False
+
         shortPos = self.getShortPosition(code)
         hasVolume = shortPos.getPosAvailable() / self.a_hand_size
 
