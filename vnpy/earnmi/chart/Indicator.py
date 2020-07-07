@@ -360,6 +360,18 @@ class Indicator(object):
             return result
         return result[-1]
 
+    def kdj(self,fast_period=9,slow_period=3,array: bool = False) -> Union[
+        Tuple[np.ndarray, np.ndarray,np.ndarray],
+        Tuple[float, float,float]
+    ]:
+
+        # matype: 0=SMA, 1=EMA, 2=WMA, 3=DEMA, 4=TEMA, 5=TRIMA, 6=KAMA, 7=MAMA, 8=T3 (Default=SMA)
+        K, D = talib.STOCH(self.high, self.low,self.close, fastk_period=fast_period, slowk_matype=0, slowk_period=slow_period, slowd_period=slow_period)
+        if array:
+            J = 3 * K - 2 * D
+            return K,D,J
+        return K[-1], D[-1], 3 * K[-1] - 2 * D[-1]
+
     def plus_di(self, n: int, array: bool = False) -> Union[float, np.ndarray]:
         """
         PLUS_DI.

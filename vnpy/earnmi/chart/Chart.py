@@ -5,6 +5,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 import jqdatasdk as jq
 import numpy as np
+
+from earnmi.chart.Indicator import Indicator
 from vnpy.trader.constant import Interval, Exchange
 from vnpy.trader.database import database_manager
 from vnpy.trader.object import BarData
@@ -18,6 +20,7 @@ class Chart:
     open_boll = False  ##是否显示布林指标
     open_obv = False  ##是否显示obv指标
     open_rsi = False  ##是否显示rsiv指标
+    open_kdj = False  ##是否显示rsiv指标
 
 
     """
@@ -38,7 +41,7 @@ class Chart:
 
         data = []
         index = []
-        am = ArrayManager(self.window_size * 2)
+        indicator = Indicator(self.window_size * 2)
 
         ### 初始化columns
         columns = ['Open', 'High', 'Low', 'Close', "Volume"]
@@ -50,16 +53,20 @@ class Chart:
             columns.append("obv")
         if (self.open_rsi):
             columns.append("rsi")
+        if (self.open_kdj):
+            columns.append("kdj_k")
+            columns.append("kdj_d")
+            columns.append("kdj_j")
 
         for bar in bars:
             index.append(bar.datetime)
             list = [bar.open_price, bar.high_price, bar.low_price, bar.close_price, bar.volume]
-            am.update_bar(bar)
+            indicator.update_bar(bar)
 
             #添加布林指标数据
             if self.open_boll:
-                if am.count >= self.window_size:
-                    up, down = am.boll(self.window_size, 3.4)
+                if indicator.count >= self.window_size:
+                    up, down = indicator.boll(self.window_size, 3.4)
                     list.append(up)
                     list.append(down)
                 else:
@@ -67,17 +74,28 @@ class Chart:
                     list.append(bar.close_price)
 
             if self.open_obv:
-                if am.count >= self.window_size:
-                    obv = am.obv(self.window_size)
+                if indicator.count >= self.window_size:
+                    obv = indicator.obv(self.window_size)
                     list.append(obv)
                 else:
                     list.append(bar.volume)
 
             if self.open_rsi:
-                if am.count >= self.window_size:
-                    rsi = am.rsi(self.window_size)
+                if indicator.count >= self.window_size:
+                    rsi = indicator.rsi(self.window_size)
                     list.append(rsi)
                 else:
+                    list.append(50)
+
+            if self.open_kdj:
+                if indicator.count >= self.window_size:
+                    k,d,j = indicator.kdj(array=False)
+                    list.append(k)
+                    list.append(d)
+                    list.append(j)
+                else:
+                    list.append(50)
+                    list.append(50)
                     list.append(50)
 
             data.append(list)
@@ -97,6 +115,10 @@ class Chart:
         if self.open_rsi:
             apds.append(mpf.make_addplot(trades['rsi'], panel='lower',color='b',secondary_y=True))
 
+        if self.open_kdj:
+            apds.append(mpf.make_addplot(trades['kdj_k'], panel='lower',color='r',secondary_y=True))
+            apds.append(mpf.make_addplot(trades['kdj_d'], panel='lower',color='g',secondary_y=True))
+            apds.append(mpf.make_addplot(trades['kdj_j'], panel='lower',color='b',secondary_y=True))
 
         mpf.plot(trades, type='candle', volume=True, mav=(5), figscale=1.3, style='yahoo',addplot=apds)
 
