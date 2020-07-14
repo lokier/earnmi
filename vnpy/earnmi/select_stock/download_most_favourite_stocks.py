@@ -24,14 +24,15 @@
 import urllib.request
 import json
 import re as regex
+from datetime import datetime, timedelta
+
 import pandas as pd
 
 def downloadAsDataFrame(season:str)-> pd.DataFrame:
-    str = season  # 季度
     pagees = [1,2] # 页面,从1开始
     dataset = []
     for page in pagees:
-        url = f"http://data.eastmoney.com/zlsj/zlsj_list.aspx?type=ajax&st=2&sr=-1&p={page}&ps=50&jsObj=qKcUkkCd&stat=1&cmd=1&date={str}&rt=53156716"
+        url = f"http://data.eastmoney.com/zlsj/zlsj_list.aspx?type=ajax&st=2&sr=-1&p={page}&ps=50&jsObj=qKcUkkCd&stat=1&cmd=1&date={season}&rt=53156716"
         print(f"request url:{url}")
         res = urllib.request.urlopen(url)
         jsonText = res.read().decode('gbk')
@@ -62,12 +63,53 @@ def downloadAsDataFrame(season:str)-> pd.DataFrame:
     return wxl
 
 
-session_str = "2019-12-31"
+def _getSeasonDatetime(date:datetime,offset:int)->datetime:
+    """
+    返回date 返回对应日期的季度日期。即每年的：12月31日，09月30日,06月30日,03月31日
+    offset 为0时，返回当前的季度日期
+           为<0时，返回上一个季度日期，
+           为>0时，返回下一个季度日期，
+    """
+    if(abs(offset) <= 1):
+        currentSeason = datetime(date.year, date.month, 15)
+        if(offset < 0):
+            currentSeason = currentSeason - timedelta(days=88)
+        elif(offset>0):
+            currentSeason = currentSeason + timedelta(days=88)
+        if(currentSeason.month<=3):
+            currentSeason = datetime(currentSeason.year, 3, 31)
+        elif (currentSeason.month<=6):
+            currentSeason = datetime(currentSeason.year, 6, 30)
+        elif (currentSeason.month<=9):
+            currentSeason = datetime(currentSeason.year, 9, 30)
+        else:
+            currentSeason = datetime(currentSeason.year, 12, 31)
+        return currentSeason
+    elif(offset > 0):
+        date = _getSeasonDatetime(date,1)
+        return _getSeasonDatetime(date,offset -1)
+    else:
+        date = _getSeasonDatetime(date, -1)
+        return _getSeasonDatetime(date,offset + 1)
+
+## 开始时间2014-6-30
 
 sessions = ["2019-12-31","2020-03-31"]
 
-writer=pd.ExcelWriter('4444.xlsx')
-for session_str in sessions:
-    dataFrame = downloadAsDataFrame(session_str)
-    dataFrame.to_excel(writer,sheet_name=session_str)
+
+writer=pd.ExcelWriter('collect3.xlsx')
+
+sessionTime = datetime(year=2014,month=6,day=30)
+offset = 0
+endTime = datetime.now()
+while sessionTime <= endTime:
+    season_str = sessionTime.strftime("%Y-%m-%d")
+    downloadData = downloadAsDataFrame(season_str)
+    print(f"download : {season_str},shape = {downloadData.shape}")
+    print(f"data: {downloadData.head(1)}")
+
+    downloadData.to_excel(writer,sheet_name=season_str)
+    sessionTime = _getSeasonDatetime(sessionTime,1)
+
 writer.save()
+writer.close()
