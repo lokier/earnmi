@@ -109,6 +109,13 @@ for sheet_name in sheet_names:
             del item.account_rates[0]
             account_rate_size = 3
         if account_rate_size == 3:
+
+            onMarketDate = jqSdk.getOnMarketDate(code)  # 获取上市日期
+            dayBela = end_date.date() - onMarketDate
+            if (dayBela.days < 365 * 2):  # 上市不超过两年
+               item.account_rates = []
+               continue
+
             ##获取当前3个月的涨幅
             ranges = _get_bar_range(jq, code, end_date)
             if not ranges is None:
