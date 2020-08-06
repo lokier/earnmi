@@ -7,7 +7,8 @@ from earnmi.data import import_data_from_jqdata
 
 
 code = "600155"
-
+code = '801161'
+#801161.XSHG
 market = MarketImpl()
 market.addNotice(code)
 market.setToday(datetime.now())
