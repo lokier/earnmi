@@ -64,13 +64,16 @@ sheet_names = excel_reader.sheet_names  # 读取文件的所有表单名，得�
 history_item_dict = {}
 jq = jqSdk.get()
 
-#types = [str,  str,  int, float,  float, float,float, float, int]
+# types = [str,  str,  int, float, float, float,float, float, int]
 # types = {'SCode': str, "SName": str, "Count": int, 'CGChange': float, 'RateChange': float, 'ShareHDNum': float,
 #          'ShareHDNumChange': float, 'TabRate': float, 'VPosition': int}
 
 test_count = 1000
 
 _for_count = 0
+
+
+
 for sheet_name in sheet_names:
     _for_count = _for_count + 1
     if _for_count > test_count:

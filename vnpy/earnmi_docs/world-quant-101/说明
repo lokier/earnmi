@@ -1,0 +1,76 @@
+公用函数说明
+abs(x),log(x),sign(x) = standard definitions
+分别为：取绝对值、对数值、正负号（正数返回1，负数返回-1）
+rank(x) = cross-sectional rank
+股票的排名，数值从1-最后，若输入值含nan，则nan不参与排名，输出为股票对应排名的boolean值（排名所占总位数的百分比）
+
+delay(x,d) = value of x d days ago
+x变量d天之前的值
+
+correlation(x,y,d) = time-serial correlation of x and y for the past d days
+x和y两个变量d天以来的值的相关系数
+
+covariance(x,y,d) = time-serial covariance of x and y for the past d days
+x和y两个变量d天以来的值的协方差
+
+scale(x,a) = rescaled x such that sum(abs(x))=a (the default is a=1)
+将x中的值标准化，使x的绝对值的和为a，默认a=1
+
+delta(x,d) = today’s value of x minus the value of x d days ago
+指定enddate的x值减去d天之前的x值
+
+signedpower(x,a) = x^a
+x值的a次方，如果x为一个list或者series，则为x中每一个值的a次方
+
+decay_linear(x,d) = weighted moving average over the past d days with linearly decaying weights d,d-1,…,1 (rescaled up to 1)
+x中时间从最远到最近的值，分别乘权重d，d-1，…，1（权重要进行标准化，使和为1）再求和
+
+ts_min(x,d) = time-series min over the past d days
+x中d天内最小的值
+
+ts_max(x,d) = time-series max over the past d days
+x中d天内最大的值
+
+ts_argmin(x,d) = which day ts_min(x,d) occurred on
+ts_min(x,d)发生在d天中的第几天，最远的天为第一天
+
+ts_argmax(x,d) = which day ts_max(x,d) occurred on
+ts_max(x,d)发生在d天中的第几天，最远的天为第一天
+
+ts_rank(x,d) = time-series rank in the past d days
+x中，最后一天的值，在这d天中，排多少名，最后输出的名次为boolean值（即该名次占总排名数的百分比）
+
+min(x,d) = ts_min(x,d)
+当遇到min函数时，当ts_min函数处理——-注意！！实际上遇到min时，当min中的输入不是（x,d）而是（x,y）时，取x、y两个值中的最小值
+
+max(x,d) = ts_max(x,d)
+当遇到max函数时，当ts_max函数处理——注意！！实际上遇到max时，当max中的输入不是（x,d）而是（x,y）时，取x、y两个值中的最大值
+
+sum(x,d) = time-series sum over the past d days
+d天以来x值的和
+
+product(x,d) = time-series product over the past d days
+d天以来x值的乘积
+
+stddev(x,d) = moving time series standard deviation over the past d days
+d天以来，x值的标准差
+
+
+公用变量说明
+returns = daily close-to-close returns
+收益率，输入n+1行closeprice，输出n行returns，index为closeprice的后面n个index，columns为closeprice中的columns
+
+open,close,high,low,volume = standard definitions for daily price and volume data
+开盘价，收盘价，最高价，最低价，交易数量
+
+vwap = daily volume-weighted average price
+在我们的函数程序里，用均价avg来表示这里的vwap
+
+cap = market cap
+市值，在我们的函数程序里，提取的是聚宽财务报表数据中的market_cap
+
+adv{d} = average daily dollar volume for the past d days
+过去d天内的平均交易金额
+
+
+
