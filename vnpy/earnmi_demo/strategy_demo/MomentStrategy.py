@@ -91,6 +91,10 @@ class MomentStrategy(StockStrategy):
         self.write_log("on_destroy")
         pass
 
+    """
+    当 AroonUp大于AroonDown，并且AroonUp大于50，多头开仓；
+    当 AroonUp小于AroonDown，或者AroonUp小于50，多头平仓；
+    """
     def on_market_prepare_open(self, protfolio: Portfolio, today: datetime):
         """
             市场准备开始（比如：竞价）.
@@ -99,18 +103,20 @@ class MomentStrategy(StockStrategy):
         for code in self.codes:
             bars = self.market.getHistory().getKbars(code, 100);
             indicator.update_bar(bars)
-            dif, dea, macd_bar = indicator
+            aroon_up, aroon_down = indicator.aroon(15)
+            need_hold = aroon_up > 50 and aroon_up > aroon_down
+            position =  protfolio.getLongPosition(code)
 
-            ##金叉出现
-            if (macd_bar[-1] >= 0 and macd_bar[-2] <= 0):
-                tradePrice = bars[-1].close_price * 1.01  # 上一个交易日的收盘价作为买如价
-                protfolio.buy(code, tradePrice, 1)
-                protfolio.cover(code, tradePrice, 1)  ##平仓做空
-                ##死叉出现
-            if (macd_bar[-1] <= 0 and macd_bar[-2] >= 0):
-                targetPrice = bars[-1].close_price * 0.99  # 上一个交易日的收盘价作为买如价
-                protfolio.sell(code, targetPrice, 1)
-                protfolio.short(code, targetPrice, 1)  ##开仓做空
+            if need_hold:
+                if position.pos_total < 1:
+                    tradePrice = bars[-1].close_price * 1.01  # 上一个交易日的收盘价作为买如价
+                    protfolio.buy(code,tradePrice,1)
+            else:
+
+
+                if position.pos_total > 0:
+                    targetPrice = bars[-1].close_price * 0.99  # 上一个交易日的收盘价作为买如价
+                    protfolio.sell(code,targetPrice,position.pos_total/100)
 
         pass
 
