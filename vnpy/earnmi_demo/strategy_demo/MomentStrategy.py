@@ -152,6 +152,7 @@ if __name__ == "__main__":
     from earnmi.data.import_tradeday_from_jqdata import TRAY_DAY_VT_SIMBOL
     from earnmi.strategy.StockStrategyBridge import StockStrategyBridge
     from vnpy.trader.constant import Interval, Direction
+    from earnmi.uitl.RaoUtils import RaoUtils
 
     engine = BacktestingEngine()
 
@@ -177,4 +178,8 @@ if __name__ == "__main__":
     engine.run_backtesting()
     df = engine.calculate_result()
     engine.calculate_statistics()
+    RaoUtils.calculate(engine)
 
+   # RaoUtils.ca(engine)
+
+    engine.show_chart(df)
