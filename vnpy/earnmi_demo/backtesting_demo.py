@@ -50,7 +50,7 @@ for dt,v in engine.trades.items():
         trage_tag = "卖"
     print(f"{trade.datetime}:order_id={trade.vt_orderid},{trage_tag}:{trade.volume},price:{trade.price},time={trade.time}")
 
-print(f"final_total_capital:{strategy.backtestContext.capital}")
+#print(f"final_total_capital:{strategy.backtestContext.capital}")
 
 engine.show_chart()
 

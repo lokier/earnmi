@@ -10,10 +10,15 @@ from vnpy.trader.object import BarData
   保存数据库。
 """
 def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetime, end_date: datetime)->int:
+    jq = jqSdk.get()
+    vn_code = jq.normalize_code(code)
+
+    #沪深300指数
+    if code.startswith("000300"):
+        vn_code = "000300.XSHG"
+
     exechage = Exchange.SZSE
-    vn_code = code+".XSHE"
-    if(code.startswith("6")):
-        vn_code = code+".XSHG"
+    if(vn_code.endswith("XSHG")):
         exechage = Exchange.SSE
 
     print("save_bar_data_from_jqdata:code =%s" % code)
@@ -33,7 +38,6 @@ def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetim
         jq_frequency = '1d'
 
 
-    jq = jqSdk.get()
 
     batch_start = start_date
     saveCount = 0

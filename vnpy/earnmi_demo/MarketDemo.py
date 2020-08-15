@@ -14,7 +14,7 @@ def assertLittle(d1, d2):
     if (not d1.__le__(d2)):
         raise AssertionError(f"asset fail!,d1={d1},d2={d2}")
 
-code = "300004"
+code = "000300"
 startDate = datetime(2019,4,1)
 endDate = datetime(2020,5,1)
 today = datetime(2020,3,24)
