@@ -11,6 +11,7 @@ from werkzeug.routing import Map
 from earnmi.chart.Indicator import Indicator
 import abc
 
+from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 
 @dataclass
@@ -127,6 +128,63 @@ class Chart:
                 apds.append(mpf.make_addplot(trades['signal_sell'], scatter=True,markersize=100,color='g',marker='v'))
 
         mpf.plot(trades, type='candle', volume=True, mav=(5), figscale=1.3,addplot=apds)
+
+    """
+    比较走势
+    code: 指数代码
+    """
+    def showCompare(self,bars:[],code:str):
+        market = MarketImpl()
+        market.addNotice(code)
+        today:datetime = bars[-1].datetime
+        market.setToday(today + timedelta(days=1))
+        start :datetime = bars[0].datetime;
+        baseBars = market.getHistory().getKbarFrom(code,datetime(start.year,start.month,start.day))
+
+        #baseBar = mainBar
+        ### 初始化columns
+        columns = ['Open', 'High', 'Low', 'Close', "Volume","Close2"]
+        data = []
+        index = []
+        bars1 = baseBars;
+        bars2 = bars
+        size1 = len(bars1)
+        size2 = len(bars2)
+        rate =  bars1[0].close_price / bars2[0].close_price
+        bar_pre_2 = bars2[0]
+        i2 = 0
+        for i1 in range(size1):
+           bar1 = bars1[i1]
+           index.append(bar1.datetime)
+           list = [bar1.open_price, bar1.high_price, bar1.low_price, bar1.close_price, bar1.volume]
+
+           if i2 < size2:
+               bar2 = bars2[i2]
+               if utils.is_same_day(bar1.datetime,bar2.datetime):
+                   list.append(bar2.close_price * rate)
+                   bar_pre_2 = bar2
+                   i2 = i2 + 1
+               else:
+                   ##bar2缺少今天数据。
+                   list.append(bar_pre_2.close_price * rate)
+               ##保证i2要大于大
+               while(i2 < size2):
+                   bar2 = bars2[i2]
+                   days = (bar2.datetime - bar1.datetime).days
+                   if days > 0 :
+                       break
+                   i2 =i2+1
+           else:
+               list.append(bar_pre_2.close_price* rate)
+           data.append(list)
+
+        trades = pd.DataFrame(data, index=index, columns=columns)
+        apds = []
+        apds.append(mpf.make_addplot(trades['Close'], color='gray'))
+        apds.append(mpf.make_addplot(trades['Close2'], color='r'))
+        mpf.plot(trades, type='line',  figscale=1.3, addplot=apds)
+        pass
+
 
 """
  KDJ指标
@@ -277,4 +335,5 @@ if __name__ == "__main__":
 
     chart = Chart()
     #chart.open_kdj = True
-    chart.show(bars,KDJItem())
+    #chart.show(bars,KDJItem())
+    chart.showCompare(bars,"000300")

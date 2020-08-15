@@ -20,4 +20,5 @@ print(f"bar.size = {bars.__len__()}")
 
 
 chart = Chart()
-chart.show(bars)
+#chart.show(bars)
+chart.showCompare(bars,"000300")
