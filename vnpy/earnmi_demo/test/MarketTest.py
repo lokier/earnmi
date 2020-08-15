@@ -32,6 +32,8 @@ def basicTest():
     except RuntimeError:
         assert True
 
+
+
 def realTimeTest():
     market2 = MarketImpl()
     code = "300004"
@@ -100,13 +102,25 @@ def realTimeTest():
 
 def historyTest():
     market2 = MarketImpl()
+    market2.setToday(datetime.now())
+
+    #获取沪市数据
+    code = "600000"
+    market2.addNotice(code)
+    bars = market2.getHistory().getKbars(code,20)
+    assert len(bars) == 20
+
+    ##获取指数数据
+    codes = ['000300']
+    for code in codes:
+        market2.addNotice(code)
+        assert len(market2.getHistory().getKbars(code,20)) == 20
 
 
     code = "300004"
 
     market2.addNotice(code)
 
-    market2.setToday(datetime.now())
     todayListBar = market2.getHistory().getKbars(code, 50);
 
     pre_bares = None

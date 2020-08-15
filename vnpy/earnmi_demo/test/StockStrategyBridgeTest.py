@@ -406,5 +406,7 @@ assert  strategy.portfolio.getShortPosition("601318").pos_total == 0
 assert  strategy.portfolio.getHoldCapital() < 0.00001
 
 
-engine.show_chart()
+strategy.backtestContext.showChart()
+
+#engine.show_chart()
 

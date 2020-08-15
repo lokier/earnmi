@@ -174,9 +174,8 @@ class KBarPool:
     def __makePollSize(self,start:datetime,end:datetime) ->Tuple[datetime, datetime, Sequence["BarData"]]:
         print(f"__makePollSize:{start}, {end}")
 
-        exchange = Exchange.SZSE
-        if self.__code.startswith("6"):
-            exchange = Exchange.SSE
+        from earnmi.uitl.utils import utils
+        exchange = utils.getExchange(self.__code)
 
         database_manager.delete_bar_data(self.__code,exchange,Interval.DAILY)
         detal_day = (end-start).days

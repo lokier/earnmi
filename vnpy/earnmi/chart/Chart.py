@@ -49,25 +49,17 @@ class IndicatorItem(metaclass=abc.ABCMeta):
 
 
 class Chart:
-    window_size = 15
     open_obv = False  ##是否显示obv指标
-
-    """
-    设置数据
-    """
-    def setBarData(self,bars:list) :
-       self.barDatas = bars
 
     """
     显示图表
     """
-    def show(self,item:IndicatorItem=None):
-        bars = self.barDatas;
+    def show(self,bars:list,item:IndicatorItem=None):
         if(bars[0].datetime > bars[-1].datetime):
             bars = bars.__reversed__()
         data = []
         index = []
-        indicator = Indicator(self.window_size * 2)
+        indicator = Indicator(50)
         ### 初始化columns
         columns = ['Open', 'High', 'Low', 'Close', "Volume"]
         if(self.open_obv):
@@ -89,8 +81,8 @@ class Chart:
             list = [bar.open_price, bar.high_price, bar.low_price, bar.close_price, bar.volume]
             indicator.update_bar(bar)
             if self.open_obv:
-                if indicator.count >= self.window_size:
-                    obv = indicator.obv(self.window_size)
+                if indicator.count >= 15:
+                    obv = indicator.obv(15)
                     list.append(obv)
                 else:
                     list.append(bar.volume)
@@ -284,6 +276,5 @@ if __name__ == "__main__":
     print(f"bar.size = {bars.__len__()}")
 
     chart = Chart()
-    chart.setBarData(bars)
     #chart.open_kdj = True
-    chart.show(KDJItem())
+    chart.show(bars,KDJItem())

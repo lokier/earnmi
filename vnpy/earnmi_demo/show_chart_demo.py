@@ -20,6 +20,4 @@ print(f"bar.size = {bars.__len__()}")
 
 
 chart = Chart()
-chart.setBarData(bars)
-chart.open_kdj = True
-chart.show()
+chart.show(bars)

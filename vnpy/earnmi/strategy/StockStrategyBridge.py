@@ -401,6 +401,7 @@ class StockStrategyBridge(StrategyTemplate):
     myStrategy:StockStrategy = None
     __privous_on_bar_datime = None
     __portfolio:PortfolioImpl = None
+    backtestContent:BackTestContext = None
 
     def __init__(
             self,
@@ -439,7 +440,7 @@ class StockStrategyBridge(StrategyTemplate):
             context = BackTestContext()
             context.start_date = self.strategy_engine.start
             context.end_date = self.strategy_engine.end
-
+            self.backtestContent = context;
             self.myStrategy.backtestContext = context
             self.__init_tradeDay(context.start_date,context.end_date)
         else:
@@ -501,6 +502,8 @@ class StockStrategyBridge(StrategyTemplate):
 
             self.__portfolio._on_today_start()
 
+            open_capital = self.__portfolio.getTotalCapital();
+
 
             bar = bars[TRAY_DAY_VT_SIMBOL]
 
@@ -555,8 +558,28 @@ class StockStrategyBridge(StrategyTemplate):
             self.__cross_order_by_per_miniute()
 
 
-            ##情况当前订单
+            ##当前订单
             self.__portfolio._on_today_end(bars)
+
+
+            close_capital = self.__portfolio.getTotalCapital();
+            high_capital = max(close_capital,open_capital)
+            low_capital = min(close_capital,open_capital)
+
+            ##汇总今天的市值。
+            capital_bar = BarData(
+                symbol=TRAY_DAY_VT_SIMBOL,
+                exchange=Exchange.SZSE,
+                datetime=self.today,
+                interval=Interval.DAILY,
+                volume=1,
+                open_price=open_capital,
+                high_price=high_capital,
+                low_price=low_capital,
+                close_price=close_capital,
+                gateway_name="none"
+            )
+            self.backtestContent.bars.append(capital_bar)
 
 
             pass

@@ -99,8 +99,13 @@ class BackTestContext:
     # slippage = 0.0
     # inverse = False
     # capital = 0
+    bars = [] ##回溯环境的每盈利情况
 
-
+    def showChart(self):
+        from earnmi.chart.Chart import Chart
+        chart = Chart()
+        # chart.open_kdj = True
+        chart.show(self.bars)
 
 
 """

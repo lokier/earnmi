@@ -53,38 +53,3 @@ class utils:
             return False
         return True
 
-
-    def calculate_result(bactTest:BackTestContext):
-        """"""
-
-        if not bactTest.trades:
-            print("成交记录为空，无法计算")
-            return
-
-        ##计算每天的结果。
-
-        for daily_result in self.daily_results.values():
-            fields = [
-                "date", "trade_count", "turnover",
-                "commission", "slippage", "trading_pnl",
-                "holding_pnl", "total_pnl", "net_pnl"
-            ]
-            for key in fields:
-                value = getattr(daily_result, key)
-                results[key].append(value)
-
-        self.daily_df = DataFrame.from_dict(results).set_index("date")
-
-        self.output("逐日盯市盈亏计算完成")
-        return daily_df
-
-
-    def __update_daily_close(self, price: float):
-        """"""
-        d = self.datetime.date()
-
-        daily_result = self.daily_results.get(d, None)
-        if daily_result:
-            daily_result.close_price = price
-        else:
-            self.daily_results[d] = DailyResult(d, price)

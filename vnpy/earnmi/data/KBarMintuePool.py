@@ -23,9 +23,8 @@ class KBarMintuePool:
 
     def __init__(self, code: str):
         self.code = code
-        self.exchange = Exchange.SZSE
-        if self.code.startswith("6"):
-            self.exchange = Exchange.SSE
+        from earnmi.uitl.utils import utils
+        self.exchange = utils.getExchange(code)
         database_manager.delete_bar_data(self.code,self.exchange,Interval.MINUTE)
 
     """

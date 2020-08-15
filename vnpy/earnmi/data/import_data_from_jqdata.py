@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import numpy as np
 
 from earnmi.uitl.jqSdk import jqSdk
+
 from vnpy.trader.constant import Interval, Exchange
 from vnpy.trader.database import database_manager
 from vnpy.trader.object import BarData
@@ -17,9 +18,9 @@ def save_bar_data_from_jqdata(code: str, interval: Interval, start_date: datetim
     if code.startswith("000300"):
         vn_code = "000300.XSHG"
 
-    exechage = Exchange.SZSE
-    if(vn_code.endswith("XSHG")):
-        exechage = Exchange.SSE
+    from earnmi.uitl.utils import utils
+    exechage = utils.getExchange(code)
+
 
     print("save_bar_data_from_jqdata:code =%s" % code)
     # 1m : 60 * 4 = 240, 240 * 4 = 960 =>4 day
@@ -90,10 +91,9 @@ if __name__ == "__main__":
     database_manager.clean(code)
     count = save_bar_data_from_jqdata(code, Interval.DAILY, start_date=start, end_date=end)
 
-    exchange = Exchange.SZSE
-    if (code.startswith("6")):
-        exchange = Exchange.SSE
+    from earnmi.uitl.utils import utils
 
+    exchange = utils.getExchange(code)
     db_data = database_manager.load_bar_data(code, exchange, Interval.DAILY, start, end)
 
     print(f"db.size={db_data.__len__()},count ={count}")
