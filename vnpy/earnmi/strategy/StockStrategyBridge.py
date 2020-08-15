@@ -198,9 +198,9 @@ class PortfolioImpl(Portfolio):
         计算费用
     """
     def _compute_commission(self,price:float,volume):
-        slippage = volume * self.a_hand_size * self.slippage
+        ##slippage = volume * self.a_hand_size * self.slippage
         commission = volume *  self.a_hand_size * price * self.commit_rate
-        return commission + slippage
+        return commission
 
     def __initTrade(self,code:str, symbol: str):
         self.engine.priceticks[symbol] = self.pricetick
@@ -218,7 +218,14 @@ class PortfolioImpl(Portfolio):
     def getValidCapital(self) -> float:
         return self.valid_captical
 
-    def getHoldCapital(self,refresh:bool = False)->float:
+    def getHoldCapital(self,code:str,refresh:bool = False) -> float:
+        pos = self.getLongPosition(code)
+        if refresh:
+            self._refresh_holde_order_price()
+        return  pos.price * pos.pos_total
+
+
+    def getTotalHoldCapital(self, refresh:bool = False)->float:
 
         if refresh:
             self._refresh_holde_order_price()
@@ -239,7 +246,7 @@ class PortfolioImpl(Portfolio):
         # 做多持仓市值
         # 做空冻结资金 - 做空持仓市值
 
-        return self.getHoldCapital()+ self.getValidCapital()
+        return self.getTotalHoldCapital() + self.getValidCapital()
 
 
     def _on_today_start(self):

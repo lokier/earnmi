@@ -33,8 +33,14 @@ class Portfolio:
       返回持仓市值
     """
     @abstractmethod
-    def getHoldCapital(self,refresh:bool = False)->float:
+    def getTotalHoldCapital(self, refresh:bool = False)->float:
         pass
+
+    @abstractmethod
+    def getHoldCapital(self,code:str,refresh:bool = False) -> float:
+        pass
+
+
     """
     返回资金总市值
     """
@@ -49,12 +55,37 @@ class Portfolio:
         """
         pass
 
+    """
+    买入指定仓位的股票
+    """
+    def buyAtPercentage(self,code:str,pirce:float,percentage:float)->bool:
+        if percentage > 1.0 or percentage < 0.000001:
+            raise RuntimeError("percentage must betwenn 0 ~ 1")
+
+        need_capital = self.getTotalCapital() * percentage - self.getHoldCapital(code);
+        need_capital = need_capital * 1.006
+        valid_capital = self.getValidCapital()
+        if valid_capital < need_capital:
+            need_capital = valid_capital
+        volumn = int(((need_capital / pirce) / 100.0))
+        if volumn > 0:
+            return self.buy(code,pirce,volumn)
+        return False
+
     @abstractmethod
     def sell(self, code: str, price: float, volume: float) ->bool:
         """
           卖出股票
         """
         pass
+
+
+    def sellAll(self, code: str, price: float) -> bool:
+        pos = self.getLongPosition(code);
+        volumn = pos.getPosAvailable() / 100
+        if volumn > 0:
+            return self.sell(code,price,volumn)
+        return False
 
     @abstractmethod
     def short(self, code: str, price: float, volume: float) -> bool:

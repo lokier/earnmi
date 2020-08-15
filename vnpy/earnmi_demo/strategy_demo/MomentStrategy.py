@@ -110,13 +110,13 @@ class MomentStrategy(StockStrategy):
             if need_hold:
                 if position.pos_total < 1:
                     tradePrice = bars[-1].close_price * 1.01  # 上一个交易日的收盘价作为买如价
-                    protfolio.buy(code,tradePrice,1)
+                    protfolio.buyAtPercentage(code,tradePrice,1)
             else:
 
 
                 if position.pos_total > 0:
                     targetPrice = bars[-1].close_price * 0.99  # 上一个交易日的收盘价作为买如价
-                    protfolio.sell(code,targetPrice,position.pos_total/100)
+                    protfolio.sellAll(code,targetPrice)
 
         pass
 
@@ -181,5 +181,9 @@ if __name__ == "__main__":
     RaoUtils.calculate(engine)
 
    # RaoUtils.ca(engine)
+    from earnmi.chart.Chart import Chart
+    chart = Chart()
 
-    engine.show_chart(df)
+    chart.show(strategy.backtestContext.bars)
+
+    #engine.show_chart(df)

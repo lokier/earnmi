@@ -171,7 +171,7 @@ class StrategyTest(StockStrategy):
         # 中国平安601318 在datetime(2019, 2, 26, 10, 28)时刻，最低到达 low_price=67.15
         if utils.is_same_day(datetime(2019, 2, 26),self.market.getToday()):
              #当天已经买入121*100股，持有仓位资金不为0
-             assert  protfolio.getHoldCapital() > 810700
+             assert protfolio.getTotalHoldCapital() > 810700
              position = protfolio.getLongPosition("601318")
              assert  position.is_long == True
              assert  position.pos_total == 121*100
@@ -403,7 +403,7 @@ assert  strategy.cover_at_2019_2_28_14_more == True
 ###账号里面没有任何筹码
 assert  strategy.portfolio.getLongPosition("601318").pos_total == 0
 assert  strategy.portfolio.getShortPosition("601318").pos_total == 0
-assert  strategy.portfolio.getHoldCapital() < 0.00001
+assert strategy.portfolio.getTotalHoldCapital() < 0.00001
 
 
 strategy.backtestContext.showChart()
