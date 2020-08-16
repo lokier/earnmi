@@ -252,7 +252,7 @@ class Indicator(object):
             return result
         return result[-1]
 
-    def obv(self, n: int, array: bool = False) -> Union[float, np.ndarray]:
+    def obv(self, array: bool = False) -> Union[float, np.ndarray]:
         """
         OBV.
         """
@@ -520,20 +520,20 @@ class Indicator(object):
             return result
         return result[-1]
 
-    def ad(self, n: int, array: bool = False) -> Union[float, np.ndarray]:
+    def ad(self, array: bool = False) -> Union[float, np.ndarray]:
         """
         AD.
         """
-        result = talib.AD(self.high, self.low, self.close, self.volume, n)
+        result = talib.AD(self.high, self.low, self.close, self.volume)
         if array:
             return result
         return result[-1]
 
-    def adosc(self, n: int, array: bool = False) -> Union[float, np.ndarray]:
+    def adosc(self, fastperiod=3,slowperiod = 10, array: bool = False) -> Union[float, np.ndarray]:
         """
         ADOSC.
         """
-        result = talib.ADOSC(self.high, self.low, self.close, self.volume, n)
+        result = talib.ADOSC(self.high, self.low, self.close, self.volume, fastperiod,slowperiod)
         if array:
             return result
         return result[-1]
