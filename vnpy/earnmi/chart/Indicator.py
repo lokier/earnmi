@@ -475,11 +475,11 @@ class Indicator(object):
         """
         Aroon indicator.
         """
-        aroon_up, aroon_down = talib.AROON(self.high, self.low, n)
+        aroon_down,aroon_up = talib.AROON(self.high, self.low, n)
 
         if array:
-            return aroon_up, aroon_down
-        return aroon_up[-1], aroon_down[-1]
+            return  aroon_down,aroon_up
+        return  aroon_down[-1],aroon_up[-1]
 
     def aroonosc(self, n: int, array: bool = False) -> Union[float, np.ndarray]:
         """

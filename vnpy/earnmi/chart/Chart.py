@@ -50,7 +50,6 @@ class IndicatorItem(metaclass=abc.ABCMeta):
 
 
 class Chart:
-    open_obv = False  ##是否显示obv指标
 
     """
     显示图表
@@ -63,8 +62,7 @@ class Chart:
         indicator = Indicator(50)
         ### 初始化columns
         columns = ['Open', 'High', 'Low', 'Close', "Volume"]
-        if(self.open_obv):
-            columns.append("obv")
+
         if  not item  is None:
             item_names = item.getNames()
             item_size = len(item_names)
@@ -81,12 +79,7 @@ class Chart:
             index.append(bar.datetime)
             list = [bar.open_price, bar.high_price, bar.low_price, bar.close_price, bar.volume]
             indicator.update_bar(bar)
-            if self.open_obv:
-                if indicator.count >= 15:
-                    obv = indicator.obv(15)
-                    list.append(obv)
-                else:
-                    list.append(bar.volume)
+
 
             if not item is None:
                 item_names = item.getNames()
@@ -109,8 +102,6 @@ class Chart:
 
         trades = pd.DataFrame(data, index=index, columns=columns)
         apds = []
-        if self.open_obv:
-            apds.append(mpf.make_addplot(trades['obv'], panel='lower',color='g',secondary_y=True))
 
         if not item is None:
             item_names = item.getNames()
@@ -290,7 +281,7 @@ class AroonItem(IndicatorItem):
     def getValues(self, indicator: Indicator,bar:BarData,signal:Signal) -> Map:
         values = {}
         if indicator.count >= 25:
-            aroon_up, aroon_down = indicator.aroon(25,True)
+            aroon_down,aroon_up = indicator.aroon(25,True)
             values["arron_up_25"] = aroon_up[-1]
             values["arron_down_25"] = aroon_down[-1]
 

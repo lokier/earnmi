@@ -20,56 +20,28 @@ class MomentStrategy(StockStrategy):
         pass
 
     codes = [
-             '000069',
-             # '000100',
-             # '000157',
-             # '000166',
-             # '000333',
-             # '000338',
-             # '000425',
-             # '000538',
-             # '000568',
-             # '000596',
-             # '000625',
-             # '000627',
-             # '000651',
-             # '000656',
-             # '000661',
-             # '000671',
-             # '000703',
-             # '000708',
-             # '000709',
-             # '000723',
-             # '000725',
-             # '000728',
-             # '000768',
-             # '000776',
-             # '000783',
-             # '000786',
-             # '000858',
-             # '000860',
-             # '000876',
-             # '000895',
-             # '000938',
-             # '000961',
-             # '000963',
-             # '000977',
-             # '001979',
-             # '002001',
-             # '002007',
-             # '002008',
-             # '002024',
-             # '002027',
-             # '002032',
-             # '002044',
-             # '002050',
-             # '002120',
-             # '002129',
-             # '002142',
-             # '002146',
-             # '002153',
-             # '002157',
-             # '002179',
+        '600196',
+        # '600211',
+        # '600316',
+        # '600764',
+        # '600893',
+        # '600988',
+        # '600989',
+        # '601216',
+        # '601633',
+        # '603737',
+        # '600733',
+        # '600738',
+        # '600877',
+        # '602025',
+        # '602081',
+        # '602151',
+        # '602444',
+        # '602506',
+        # '602541',
+        # '602625',
+        # '602985',
+        # '300123'
              ]
 
     def on_create(self):
@@ -103,20 +75,22 @@ class MomentStrategy(StockStrategy):
         for code in self.codes:
             bars = self.market.getHistory().getKbars(code, 100);
             indicator.update_bar(bars)
-            aroon_up, aroon_down = indicator.aroon(15)
+            count = 20
+            aroon_down,aroon_up = indicator.aroon(count)
             need_hold = aroon_up > 50 and aroon_up > aroon_down
             position =  protfolio.getLongPosition(code)
 
             if need_hold:
                 if position.pos_total < 1:
-                    tradePrice = bars[-1].close_price * 1.01  # 上一个交易日的收盘价作为买如价
-                    protfolio.buyAtPercentage(code,tradePrice,1)
+                    targetPrice = bars[-1].close_price * 1.05  # 上一个交易日的收盘价作为买如价
+                    ok = protfolio.buyAtPercentage(code,targetPrice,1)
+                    print(f"buy: price = {targetPrice} , {ok}")
+
             else:
-
-
                 if position.pos_total > 0:
-                    targetPrice = bars[-1].close_price * 0.99  # 上一个交易日的收盘价作为买如价
-                    protfolio.sellAll(code,targetPrice)
+                    targetPrice = bars[-1].close_price * 0.92  # 上一个交易日的收盘价作为买如价
+                    ok = protfolio.sellAll(code,targetPrice)
+                    print(f"sell: price = {targetPrice} , {ok}")
 
         pass
 
@@ -156,8 +130,10 @@ if __name__ == "__main__":
 
     engine = BacktestingEngine()
 
-    start = datetime(2019, 2, 23)
-    end = datetime(2020, 4, 24)
+    ###2020 - 6 - 1  2020 - 8 - 17
+    #start = datetime(2018, 5, 1)
+    start = datetime(2019, 4, 26)
+    end = datetime(2020, 8, 17)
 
     engine.set_parameters(
         vt_symbols=[TRAY_DAY_VT_SIMBOL],
