@@ -39,12 +39,14 @@ class KBarPool:
         in_poll = False
         if (not self.__pool_data is None):
             the_count = 0
-            for data in self.__pool_data:
-                if data.datetime < end and not utils.is_same_day(data.datetime,end):
-                    the_count = the_count + 1
-                    if the_count >= count:
-                        in_poll = True
-                        break
+            last_data = self.__pool_data[-1];
+            if last_data.datetime >= end or utils.is_same_day(last_data.datetime,end):
+                for data in self.__pool_data:
+                    if data.datetime < end and not utils.is_same_day(data.datetime,end):
+                        the_count = the_count + 1
+                        if the_count >= count:
+                            in_poll = True
+                            break
 
 
         if (not in_poll):

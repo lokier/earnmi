@@ -1,7 +1,6 @@
 
 //TODO
-BUG:
-MomentStrategy在 2018, 5, 1  到 2020, 8, 17做回测时，有bug。
+
 
 
 1、开发一个基金喜欢FundsFavouriteStrategy.
