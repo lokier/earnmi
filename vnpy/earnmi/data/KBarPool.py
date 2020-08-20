@@ -2,7 +2,7 @@ import functools
 from datetime import datetime,timedelta
 from typing import Sequence, Any, Tuple
 
-from earnmi.data.DailyBarFetcher import DailyBarFetcher
+from earnmi.data.FetcherDailyBar import FetcherDailyBar
 from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 from vnpy.trader.constant import Exchange, Interval
@@ -25,11 +25,11 @@ class KBarPool:
     __end_time:datetime = None
     __pool_data:Sequence["BarData"] = None
     __BATCH_SIZE = 300
-    __data_fetch:DailyBarFetcher = None
+    __data_fetch:FetcherDailyBar = None
 
     def __init__(self, code: str):
      self.__code = code
-     self.__data_fetch = DailyBarFetcher(code)
+     self.__data_fetch = FetcherDailyBar(code)
 
      """
      不包含end 日期的k线

@@ -24,7 +24,7 @@ from earnmi.uitl.utils import utils
 import numpy as np
 
 
-class DailyBarFetcher:
+class FetcherMintuesBar:
 
     __code :str = None
     __code_jq :str = None
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     start = datetime.now() - timedelta(days=330)
     end = datetime.now()
 
-    fetcher = DailyBarFetcher(code)
+    fetcher = FetcherDailyBar(code)
     #fetcher.clearAll()
     bars = fetcher.fetch(start,end)
     print(f"len:{len(bars)}")
