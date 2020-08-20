@@ -1,11 +1,11 @@
 from typing import Sequence, Tuple
 from datetime import datetime, timedelta
 
+from earnmi.data.FetcherMintuesBar import FetcherMintuesBar
 from vnpy.trader.object import BarData
 
 from vnpy.trader.constant import Exchange, Interval
-from earnmi.data.import_data_from_jqdata import save_bar_data_from_jqdata
-from vnpy.trader.database import database_manager
+
 
 
 
@@ -19,14 +19,14 @@ class KBarMintuePool:
     __pool_day_data:Sequence["BarData"] = None
     __pool_start:datetime = None
     __pool_end:datetime = None
+    __data_fetch:FetcherMintuesBar = None
 
 
     def __init__(self, code: str):
         self.code = code
         from earnmi.uitl.utils import utils
         self.exchange = utils.getExchange(code)
-        database_manager.delete_bar_data(self.code,self.exchange,Interval.MINUTE)
-
+        self.__data_fetch = FetcherMintuesBar(code)
     """
     返回一整天的数据。
     """
@@ -35,37 +35,14 @@ class KBarMintuePool:
         if self.__pool_day:
             if self.__is_same_day(day,self.__pool_day):
                 return self.__pool_day_data
-            ###从数据库里面获取
-            if(self.__pool_start<= day and day <= self.__pool_end):
-                start = self._buidl_start_date(day)
-                end = self._buidl_end_date(day)
 
-                self.__pool_day_data = database_manager.load_bar_data(self.code, self.exchange, Interval.MINUTE, start, end)
-                self.__pool_day = day
-                return self.__pool_day_data
-
-        ###从网络创建缓存
-        self.__pool_start,self.__pool_end = self.__makePollSize(day)
-        if (self.__pool_start <= day and day <= self.__pool_end):
-            start = self._buidl_start_date(day)
-            end = self._buidl_end_date(day)
-
-            self.__pool_day_data = database_manager.load_bar_data(self.code, self.exchange, Interval.MINUTE, start, end)
-            self.__pool_day = day
-            return self.__pool_day_data
-        raise RuntimeError("shuld not run here .(__makePollSize error)")
+        self.__pool_day_data = self.__data_fetch.fetch(day)
+        self.__pool_day = day
+        return self.__pool_day_data
 
 
 
-    def __makePollSize(self,start:datetime) ->Tuple[datetime, datetime]:
-        end = start + timedelta(days=3)
-        print(f"__makePollSize:{start}, {end}")
-        start = self._buidl_start_date(start)
-        end = self._buidl_end_date(end)
 
-        database_manager.delete_bar_data(self.code,self.exchange,Interval.MINUTE)
-        save_bar_data_from_jqdata(self.code, Interval.MINUTE, start_date=start, end_date=end)
-        return start,end
 
     def __is_same_day(self,d1:datetime,d2:datetime)->bool:
         return d1.day == d2.day and d1.month == d2.month and d1.year == d2.year

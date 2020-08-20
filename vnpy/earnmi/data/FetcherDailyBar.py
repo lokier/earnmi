@@ -105,7 +105,7 @@ class FetcherDailyBar:
         start_date = utils.to_start_date(start_date)
         end_date = utils.to_end_date(end_date)
 
-        print("########### update_bar_data_from_jqdata:code =%s" % self.__code)
+        print("###########[Daily] update_bar_data_from_jqdata:code =%s" % self.__code)
         # 1m : 60 * 4 = 240, 240 * 4 = 960 =>4 day
         # 1h : 1* 4 = 4, 200 * 4 = 800, => 200day
         # 1d : 900day
