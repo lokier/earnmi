@@ -66,6 +66,8 @@ class DailyBarFetcher:
             data_start = utils.to_start_date(self.__oldest_bar_data.datetime)
             data_end = utils.to_end_date(self.__newest_bar_data.datetime)
             now = utils.to_end_date(datetime.now())
+            if end > now:
+                end = now
             if start < data_start:
                 update_end = data_start - timedelta(days=1)
                 deltaDay = (update_end - start).days
@@ -103,7 +105,7 @@ class DailyBarFetcher:
         start_date = utils.to_start_date(start_date)
         end_date = utils.to_end_date(end_date)
 
-        print("update_bar_data_from_jqdata:code =%s" % self.__code)
+        print("########### update_bar_data_from_jqdata:code =%s" % self.__code)
         # 1m : 60 * 4 = 240, 240 * 4 = 960 =>4 day
         # 1h : 1* 4 = 4, 200 * 4 = 800, => 200day
         # 1d : 900day
@@ -119,7 +121,6 @@ class DailyBarFetcher:
             batch_end = utils.to_end_date(batch_end)
             if (batch_end.__gt__(end_date)):
                 batch_end = end_date
-            print(" start:%s , end :%s" % (batch_start.__str__(), batch_end.__str__()))
 
             prices = jq.get_price(self.__code_jq, start_date=batch_start, end_date=batch_end,
                                   fields=['open', 'close', 'high', 'low', 'volume'], frequency='1d')

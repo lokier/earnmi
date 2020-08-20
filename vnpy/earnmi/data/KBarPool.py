@@ -2,11 +2,11 @@ import functools
 from datetime import datetime,timedelta
 from typing import Sequence, Any, Tuple
 
+from earnmi.data.DailyBarFetcher import DailyBarFetcher
 from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 from vnpy.trader.constant import Exchange, Interval
 from earnmi.data.import_data_from_jqdata import save_bar_data_from_jqdata
-from vnpy.trader.database import database_manager
 
 
 # def barcmp(bar1,bar2):
@@ -25,10 +25,11 @@ class KBarPool:
     __end_time:datetime = None
     __pool_data:Sequence["BarData"] = None
     __BATCH_SIZE = 300
-
+    __data_fetch:DailyBarFetcher = None
 
     def __init__(self, code: str):
      self.__code = code
+     self.__data_fetch = DailyBarFetcher(code)
 
      """
      不包含end 日期的k线
@@ -174,20 +175,16 @@ class KBarPool:
         return datetime(year=d.year, month=d.month, day=d.day, hour=23, minute=59, second=59)
 
     def __makePollSize(self,start:datetime,end:datetime) ->Tuple[datetime, datetime, Sequence["BarData"]]:
-        print(f"__makePollSize:{start}, {end}")
+        #print(f"__makePollSize:{start}, {end}")
 
         from earnmi.uitl.utils import utils
-        exchange = utils.getExchange(self.__code)
 
-        database_manager.delete_bar_data(self.__code,exchange,Interval.DAILY)
         detal_day = (end-start).days
         extraDay = 365 - detal_day
         if(extraDay > 0):
             end = end + timedelta(days=extraDay)
-        save_bar_data_from_jqdata(self.__code, Interval.DAILY, start_date=start, end_date=end)
 
-
-        pool_data = database_manager.load_bar_data(self.__code, exchange, Interval.DAILY, start, end)
+        pool_data = self.__data_fetch.fetch(start,end)
         #list.sort(pool_data,)
         return start,end,pool_data
 
