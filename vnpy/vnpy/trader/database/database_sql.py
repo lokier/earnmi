@@ -21,6 +21,10 @@ from vnpy.trader.object import BarData, TickData
 from vnpy.trader.utility import get_file_path
 from .database import BaseDatabaseManager, Driver
 
+def init_by_sql_databease(db):
+    bar, tick = init_models(db, Driver.SQLITE)
+    return SqlManager(bar, tick)
+    return
 
 def init(driver: Driver, settings: dict):
     init_funcs = {

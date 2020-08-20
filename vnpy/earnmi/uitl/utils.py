@@ -5,6 +5,7 @@ from pandas import DataFrame
 
 from earnmi.strategy.StockStrategy import BackTestContext
 from vnpy.trader.constant import Interval, Exchange, Status, Direction
+import jqdatasdk as jq
 
 class utils:
     def to_vt_symbol(code: str) -> str:
@@ -14,6 +15,19 @@ class utils:
                 symbol = f"{code}.{Exchange.SSE.value}"
             return symbol
         return code
+
+    def to_jq_symbol(code: str) -> str:
+        # 沪深300指数
+        if code.startswith("000300"):
+            return "000300.XSHG"
+        jq_code = jq.normalize_code(code)
+
+        if jq_code is None:
+            if code.startswith("6"):
+                return f"{code}.XSHG"
+            else:
+                return f"{code}.XSHE"
+        return jq_code
 
     def getExchange(code: str) -> Exchange:
         if code.startswith("6"):
@@ -52,5 +66,11 @@ class utils:
         if (v2 > v1 + delta):
             return False
         return True
+
+    def to_start_date(d: datetime) -> datetime:
+        return datetime(year=d.year, month=d.month, day=d.day, hour=00, minute=00, second=1)
+
+    def to_end_date(d: datetime) -> datetime:
+        return datetime(year=d.year, month=d.month, day=d.day, hour=23, minute=59, second=59)
 
 
