@@ -1,5 +1,5 @@
 from builtins import list
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Sequence
 from vnpy.trader.constant import Exchange, Interval
 
@@ -170,18 +170,6 @@ if __name__ == "__main__":
 
     def fetchDataForm(code:str,start:datetime,count:int)-> Sequence["BarData"]:
         import requests
-        url = "http://106.15.58.126/sw_k.action"
-        start = utils.to_start_date(start)
-        data = {
-            'username': 'raodongming',
-            'password': '58edde63081e2ce001cf5800f68df36f',
-            'id': code,
-            'num':count,
-            'datetime':'20200509',
-
-            #'datetime':start.strftime('%Y%m%d'),
-            "period":'d',
-        }
         # 字符串格式
         dt = start.strftime('%Y%m%d')
         url = f"http://106.15.58.126/sw_k.action?username=raodongming&password=58edde63081e2ce001cf5800f68df36f&id={code}&num={count}&datetime={dt}&period=d"
@@ -226,16 +214,25 @@ if __name__ == "__main__":
             bars.append(bar)
         return bars
 
-    def updateDataFrom2014():
-        sw = SWImpl()
-        db = sw.getSqlManager();
-        list = sw.getSW2List();
-
+    def updateDataFrom2014(db:SqlManager,code:str,start:datetime):
         #清空数据
-        for code in list:
-            db.clean(code)
+        db.clean(code)
 
-        print(f"len:{len(list)}")
+        now = datetime.now()
+        print(f"start updateDataFrom2014: code = {code}, form = {start}")
+        count = 0
+        while True:
+            bars = fetchDataForm(code,start,1800);
+            if len(bars) == 0:
+                break;
+            print(f"  fetchDataForm: {start},count = {len(bars)},end = {end}")
+            end =  bars[-1].datetime;
+            db.save_bar_data(bars)
+            start = end + timedelta(days=1)
+            count += len(bars)
+            if start > now:
+                break;
+        print(f"finished updateDataFrom2014: code = {code}, form = {start},count ={count}")
 
 
     sw = SWImpl()
