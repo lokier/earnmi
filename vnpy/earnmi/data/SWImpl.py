@@ -190,8 +190,8 @@ if __name__ == "__main__":
             tokens = lines[i].split(",")
             if (tokens is None or len(tokens) < 3):
                 continue
-            print(f"{tokens}")
             dt = datetime.strptime(tokens[0], "%Y%m%d"),
+            dt = dt[0]
             volume = float(tokens[5])
             open_price = float(tokens[1])
             high_price = float(tokens[2])
@@ -208,13 +208,13 @@ if __name__ == "__main__":
                 high_price=high_price,
                 low_price=low_price,
                 close_price=close_price,
-                # open_interest=1f,
+                open_interest=1.0,
                 gateway_name="DB"
             )
             bars.append(bar)
         return bars
 
-    def updateDataFrom2014(db:SqlManager,code:str,start:datetime):
+    def updateDataFrom(db:SqlManager,code:str,start:datetime):
         #清空数据
         db.clean(code)
 
@@ -225,8 +225,8 @@ if __name__ == "__main__":
             bars = fetchDataForm(code,start,1800);
             if len(bars) == 0:
                 break;
+            end =  bars[-1].datetime
             print(f"  fetchDataForm: {start},count = {len(bars)},end = {end}")
-            end =  bars[-1].datetime;
             db.save_bar_data(bars)
             start = end + timedelta(days=1)
             count += len(bars)
@@ -236,14 +236,10 @@ if __name__ == "__main__":
 
 
     sw = SWImpl()
-    db = sw.getSqlManager();
-    list = sw.getSW2List();
-    start_day = datetime.strptime("2016-5-09", "%Y-%m-%d")
-    code = list[0]
-    ##yyyyMMdd
-    print(f"code:{code},{start_day.strftime('%Y%m%d%H%m')}")
+    db = sw.getSqlManager()
+    list = sw.getSW2List()
+    start_day = datetime.strptime("2014-1-1", "%Y-%m-%d")
+    for code in list:
+        updateDataFrom(db,code,start_day)
 
-    bars = fetchDataForm(list[0],start_day,5)
-    print(f"bars.size={len(bars)}")
-    print(f"{bars}")
     #def update(db:SqlManager,);

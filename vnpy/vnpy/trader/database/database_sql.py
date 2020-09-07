@@ -24,7 +24,7 @@ from .database import BaseDatabaseManager, Driver
 def init_by_sql_databease(db):
     bar, tick = init_models(db, Driver.MONGODB)
     return SqlManager(bar, tick)
-    return
+
 
 def init(driver: Driver, settings: dict):
     init_funcs = {
