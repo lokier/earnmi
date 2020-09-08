@@ -1,3 +1,4 @@
+import time
 from builtins import list
 from datetime import datetime, timedelta
 from typing import Sequence
@@ -36,7 +37,7 @@ class SWImpl(SW):
         """
 
     def getSW2Daily(self, code: str, start: datetime, end: datetime) -> Sequence["BarData"]:
-        pass
+        return self.__database_manager.load_bar_data(code, Exchange.SZSE, Interval.DAILY, start, end)
 
     """
           返回某个行业数据的分时图
@@ -57,7 +58,6 @@ class SWImpl(SW):
                       "801022",
                       "801023",
                       "801024",
-                      "801031",
                       "801032",
                       "801033",
                       "801034",
@@ -65,15 +65,10 @@ class SWImpl(SW):
                       "801036",
                       "801037",
                       "801041",
-                      "801042",
                       "801051",
-                      "801052",
                       "801053",
                       "801054",
                       "801055",
-                      "801061",
-                      "801062",
-                      "801071",
                       "801072",
                       "801073",
                       "801074",
@@ -84,7 +79,6 @@ class SWImpl(SW):
                       "801083",
                       "801084",
                       "801085",
-                      "801091",
                       "801092",
                       "801093",
                       "801094",
@@ -92,8 +86,6 @@ class SWImpl(SW):
                       "801102",
                       "801111",
                       "801112",
-                      "801121",
-                      "801122",
                       "801123",
                       "801124",
                       "801131",
@@ -101,7 +93,6 @@ class SWImpl(SW):
                       "801141",
                       "801142",
                       "801143",
-                      "801144",
                       "801151",
                       "801152",
                       "801153",
@@ -109,7 +100,6 @@ class SWImpl(SW):
                       "801155",
                       "801156",
                       "801161",
-                      "801162",
                       "801163",
                       "801164",
                       "801171",
@@ -126,7 +116,6 @@ class SWImpl(SW):
                       "801192",
                       "801193",
                       "801194",
-                      "801201",
                       "801202",
                       "801203",
                       "801204",
@@ -135,11 +124,8 @@ class SWImpl(SW):
                       "801212",
                       "801213",
                       "801214",
-                      "801215",
-                      "801221",
                       "801222",
                       "801223",
-                      "801224",
                       "801231",
                       "801711",
                       "801712",
@@ -172,7 +158,7 @@ if __name__ == "__main__":
         import requests
         # 字符串格式
         dt = start.strftime('%Y%m%d')
-        url = f"http://106.15.58.126/sw_k.action?username=raodongming&password=58edde63081e2ce001cf5800f68df36f&id={code}&num={count}&datetime={dt}&period=d"
+        url = f"http://106.15.58.126/sw_k.action?username=raodongming&password=58edde63081e2ce001cf5800f68df36f&id={code}&num={count}&datetime={dt}&period=d&srcIndex=1"
         res = requests.get(url=url)
         text = res.text
         print(url)
@@ -214,12 +200,12 @@ if __name__ == "__main__":
             bars.append(bar)
         return bars
 
-    def updateDataFrom(db:SqlManager,code:str,start:datetime):
+    def updateDataFrom(db:SqlManager,code:str,start:datetime)->int:
         #清空数据
         db.clean(code)
 
         now = datetime.now()
-        print(f"start updateDataFrom2014: code = {code}, form = {start}")
+        print(f"start updateDataFrom: code = {code}, form = {start}")
         count = 0
         while True:
             bars = fetchDataForm(code,start,1800);
@@ -232,14 +218,20 @@ if __name__ == "__main__":
             count += len(bars)
             if start > now:
                 break;
-        print(f"finished updateDataFrom2014: code = {code}, form = {start},count ={count}")
-
+        print(f"finished updateDataFrom: code = {code}, form = {start},count ={count}")
+        return count
 
     sw = SWImpl()
     db = sw.getSqlManager()
     list = sw.getSW2List()
     start_day = datetime.strptime("2014-1-1", "%Y-%m-%d")
+    ##updateDataFrom(db,list[0],start_day)
     for code in list:
-        updateDataFrom(db,code,start_day)
+        ##请求间隔不能小于5秒
+        count = updateDataFrom(db, code, start_day)
+        assert count >= 1600
+            #print(f"================= error code: {code}")
+
+        time.sleep(5)
 
     #def update(db:SqlManager,);
