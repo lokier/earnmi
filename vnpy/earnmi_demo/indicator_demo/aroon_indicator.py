@@ -3,15 +3,16 @@ from typing import List
 
 from werkzeug.routing import Map
 
-from earnmi.chart.Chart import Chart, BollItem, IndicatorItem, Signal
+from earnmi.chart.Chart import Chart, Signal
 from earnmi.chart.Indicator import Indicator
-from earnmi.data.MarketImpl import MarketImpl
+from earnmi.data.SWImpl import SWImpl
+from earnmi_demo.indicator_demo.IndicatorItemHelper import IndicatorItemHelper
 from vnpy.trader.object import BarData
 
 
-class AroonItem(IndicatorItem):
+class AroonItem(IndicatorItemHelper):
 
-    has_bug = False
+    deal_list = []
 
     def getNames(self) -> List:
         return ["arron_up_25","arron_down_25"]
@@ -26,15 +27,20 @@ class AroonItem(IndicatorItem):
 
             need_hold = aroon_up[-1] > 50  and  aroon_up[-1] > aroon_down[-1]
             if need_hold:
-                if self.has_bug == False:
-                    signal.buy = True
-                    self.has_bug = True
-                    print(f"{bar.datetime}： 买: price:{bar.close_price * 1.01}")
+                if  not self.hasBuy():
+                    buy_tag = False
+                    costs = self.getCostList()
+                    if len(costs) >= 2:
+                        if costs[-1] > 0.00 and costs[-2] > 0.00:
+                            buy_tag = True
+                    signal.buy = buy_tag
+                    self.buy(bar.close_price)
+                    # print(f"{bar.datetime}： 买: price:{bar.close_price * 1.01}")
             else:
-                if( self.has_bug == True):
+                if( self.hasBuy()):
                     signal.sell = True
-                    self.has_bug = False
-                    print(f"{bar.datetime}： 卖: price:{bar.close_price * 0.99}")
+                    self.sell(bar.close_price)
+                    #print(f"{bar.datetime}： 卖: price:{bar.close_price * 0.99}")
 
         else:
             values["arron_up_25"] = 50
@@ -50,20 +56,36 @@ class AroonItem(IndicatorItem):
 
     def isLowerPanel(self):
         return True
-
-code = "600196"
-start = datetime(2018, 5, 1)
+start = datetime(2014, 5, 1)
 end = datetime(2020, 8, 17)
+# code = "600196"
+#
+#
+# market = MarketImpl()
+# market.addNotice(code)
+# market.setToday(end)
+#
+#
+# bars = market.getHistory().getKbarFrom(code,start)
 
-market = MarketImpl()
-market.addNotice(code)
-market.setToday(end)
-
-
-bars = market.getHistory().getKbarFrom(code,start)
-
+sw = SWImpl()
+lists = sw.getSW2List()
+bars = sw.getSW2Daily(lists[3],start,end)
 print(f"bar.size = {bars.__len__()}")
 
 
 chart = Chart()
-chart.show(bars, AroonItem())
+item = AroonItem();
+chart.show(bars, item)
+
+##cost = 0
+costList = item.getCostList()
+ok = 0
+size = len(costList)
+for c in item.getCostList():
+    if c > 0.0:
+        ok = ok + 1
+
+print(f"size ={size},ok = {ok}")
+
+
