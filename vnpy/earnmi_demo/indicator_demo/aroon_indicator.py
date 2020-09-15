@@ -61,21 +61,21 @@ end = datetime(2020, 8, 17)
 
 sw = SWImpl()
 lists = sw.getSW2List()
-
-code = lists[12]
-bars = sw.getSW2Daily(code, start, end)
-print(f"bar.size = {bars.__len__()}")
 chart = Chart()
-item = AroonItem();
-chart.run(bars, item)
 
-print(f"holdbars = {len(item.getHoldBars())}")
+for code in lists:
+    bars = sw.getSW2Daily(code, start, end)
+    print(f"bar.size = {bars.__len__()}")
+    item = AroonItem();
+    chart.run(bars, item)
 
-barList = []
-for holdBar in item.getHoldBars():
-    barList.append(holdBar.toBarData())
+    print(f"holdbars = {len(item.getHoldBars())}")
 
-chart.show(barList)
+    barList = []
+    for holdBar in item.getHoldBars():
+        barList.append(holdBar.toBarData())
+
+    chart.show(barList, savefig=f'imgs\\{code}.png')
 
 
 #trades = pd.DataFrame(data, index=index, columns=columns)

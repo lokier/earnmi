@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 from typing import List
 
 import mplfinance as mpf
+import matplotlib.pyplot as plt
+
 import pandas as pd
 import numpy as np
 from vnpy.trader.constant import Exchange, Interval
@@ -162,7 +164,7 @@ class Chart:
     """
     显示图表
     """
-    def show(self,bars:list,item:IndicatorItem=None):
+    def show(self,bars:list,item:IndicatorItem=None,savefig:str=None):
 
         trades,item_signal_buy_open,item_signal_sell_open = self.run(bars,item);
         apds = []
@@ -181,8 +183,11 @@ class Chart:
                 apds.append(mpf.make_addplot(trades['signal_buy'], scatter=True,markersize=100,color='r',marker='^'))
             if  item_signal_sell_open:
                 apds.append(mpf.make_addplot(trades['signal_sell'], scatter=True,markersize=100,color='g',marker='v'))
-
-        mpf.plot(trades, type='candle', volume=True, mav=(5), figscale=1.3,addplot=apds)
+        if savefig is None:
+            mpf.plot(trades, type='candle', volume=True, mav=(5), figscale=1.3,addplot=apds)
+        else:
+            mpf.plot(trades, type='candle', mav=(5), figscale=1.3,addplot=apds,savefig =savefig)
+            plt.close()
 
     def __updateHoldBar(self,holdBar:HoldBar,bar:BarData,item:IndicatorItem):
         if holdBar is None or item is None:
