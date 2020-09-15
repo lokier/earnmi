@@ -72,10 +72,19 @@ for code in lists:
     print(f"holdbars = {len(item.getHoldBars())}")
 
     barList = []
+    close_price = None
     for holdBar in item.getHoldBars():
-        barList.append(holdBar.toBarData())
+        if close_price is None:
+            barList.append(holdBar.toBarData())
+            close_price = holdBar.close_price
+        else:
+            #barList.append(holdBar.toBarData())
+            bar = holdBar.toBarData(new_open_price=close_price);
+            barList.append(bar)
+            close_price = bar.close_price
 
     chart.show(barList, savefig=f'imgs\\{code}.png')
+
 
 
 #trades = pd.DataFrame(data, index=index, columns=columns)

@@ -44,17 +44,29 @@ class HoldBar():
     def getDays(self):
         return (self.end_time - self.start_time).days
 
-    def toBarData(self,)->BarData:
+    def toBarData(self,new_open_price:float = None)->BarData:
+
+        open_price = self.open_price
+        close_price = self.close_price
+        high_price = self.high_price
+        low_price = self.low_price
+
+        if not new_open_price is None:
+            close_price = close_price * new_open_price / open_price
+            high_price = high_price * new_open_price / open_price
+            low_price = low_price * new_open_price / open_price
+            open_price = new_open_price
+
         bar = BarData(
             symbol=self.code,
             exchange=Exchange.SSE,
             datetime=self.start_time,
             interval=Interval.WEEKLY,
             volume = self.getDays(),
-            open_price=self.open_price,
-            high_price = self.high_price,
-            low_price= self.low_price,
-            close_price=self.close_price,
+            open_price= open_price,
+            high_price = high_price,
+            low_price= low_price,
+            close_price= close_price,
             gateway_name='holdData'
         )
         return bar
