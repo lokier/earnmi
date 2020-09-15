@@ -3,16 +3,15 @@ from typing import List
 
 from werkzeug.routing import Map
 
-from earnmi.chart.Chart import Chart, Signal
+from earnmi.chart.Chart import Chart, Signal, IndicatorItem
 from earnmi.chart.Indicator import Indicator
 from earnmi.data.SWImpl import SWImpl
-from earnmi_demo.indicator_demo.IndicatorItemHelper import IndicatorItemHelper
+from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 
 
-class AroonItem(IndicatorItemHelper):
+class AroonItem(IndicatorItem):
 
-    deal_list = []
 
     def getNames(self) -> List:
         return ["arron_up_25","arron_down_25"]
@@ -24,22 +23,14 @@ class AroonItem(IndicatorItemHelper):
             aroon_down,aroon_up = indicator.aroon(count,True)
             values["arron_up_25"] = aroon_up[-1]
             values["arron_down_25"] = aroon_down[-1]
-
             need_hold = aroon_up[-1] > 50  and  aroon_up[-1] > aroon_down[-1]
             if need_hold:
-                if  not self.hasBuy():
-                    buy_tag = False
-                    costs = self.getCostList()
-                    if len(costs) >= 2:
-                        if costs[-1] > 0.00 and costs[-2] > 0.00:
-                            buy_tag = True
-                    signal.buy = buy_tag
-                    self.buy(bar.close_price)
+                if  not signal.hasBuy:
+                    signal.buy = True
                     # print(f"{bar.datetime}： 买: price:{bar.close_price * 1.01}")
             else:
-                if( self.hasBuy()):
+                if( signal.hasBuy):
                     signal.sell = True
-                    self.sell(bar.close_price)
                     #print(f"{bar.datetime}： 卖: price:{bar.close_price * 0.99}")
 
         else:
@@ -70,22 +61,24 @@ end = datetime(2020, 8, 17)
 
 sw = SWImpl()
 lists = sw.getSW2List()
-bars = sw.getSW2Daily(lists[3],start,end)
+
+code = lists[12]
+bars = sw.getSW2Daily(code, start, end)
 print(f"bar.size = {bars.__len__()}")
-
-
 chart = Chart()
 item = AroonItem();
-chart.show(bars, item)
+chart.run(bars, item)
 
-##cost = 0
-costList = item.getCostList()
-ok = 0
-size = len(costList)
-for c in item.getCostList():
-    if c > 0.0:
-        ok = ok + 1
+print(f"holdbars = {len(item.getHoldBars())}")
 
-print(f"size ={size},ok = {ok}")
+barList = []
+for holdBar in item.getHoldBars():
+    barList.append(holdBar.toBarData())
+
+chart.show(barList)
+
+
+#trades = pd.DataFrame(data, index=index, columns=columns)
+
 
 

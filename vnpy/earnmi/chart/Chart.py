@@ -6,6 +6,7 @@ from typing import List
 import mplfinance as mpf
 import pandas as pd
 import numpy as np
+from vnpy.trader.constant import Exchange, Interval
 from werkzeug.routing import Map
 
 from earnmi.chart.Indicator import Indicator
@@ -19,11 +20,50 @@ class Signal:
     buy = False  # 买入信号
     sell = False  #卖出信号
 
+    hasBuy = False #是否已经买入
+
     def reset(self):
         self.buy = False
         self.sell = False
 
+@dataclass
+class HoldBar():
+    code:str
+    start_time:datetime
+    end_time:datetime
+    open_price: float = 0.0
+    close_price: float = 0.0
+    high_price:float = 0.0
+    low_price:float = 0.0
+
+    def getCostPct(self):
+        return (self.close_price- self.open_price ) / self.open_price
+
+    def getDays(self):
+        return (self.end_time - self.start_time).days
+
+    def toBarData(self,)->BarData:
+        bar = BarData(
+            symbol=self.code,
+            exchange=Exchange.SSE,
+            datetime=self.start_time,
+            interval=Interval.WEEKLY,
+            volume = self.getDays(),
+            open_price=self.open_price,
+            high_price = self.high_price,
+            low_price= self.low_price,
+            close_price=self.close_price,
+            gateway_name='holdData'
+        )
+        return bar
+
+
 class IndicatorItem(metaclass=abc.ABCMeta):
+
+    _hold_bars:['HoldBar'] =[]
+
+    def getHoldBars(self)->['HoldBar']:
+        return self._hold_bars
 
     """
     返回指标名称.
@@ -51,11 +91,11 @@ class IndicatorItem(metaclass=abc.ABCMeta):
 
 class Chart:
 
-    """
-    显示图表
-    """
-    def show(self,bars:list,item:IndicatorItem=None):
-        if(bars[0].datetime > bars[-1].datetime):
+    def __init__(self):
+        self.holdBar:HoldBar = None
+
+    def run(self,bars:list,item:IndicatorItem=None):
+        if (bars[0].datetime > bars[-1].datetime):
             bars = bars.__reversed__()
         data = []
         index = []
@@ -63,7 +103,8 @@ class Chart:
         ### 初始化columns
         columns = ['Open', 'High', 'Low', 'Close', "Volume"]
 
-        if  not item  is None:
+        if not item is None:
+            item.getHoldBars().clear()
             item_names = item.getNames()
             item_size = len(item_names)
             for i in range(item_size):
@@ -74,33 +115,56 @@ class Chart:
         item_signal_buy_open = False
         item_signal_sell_open = False
         item_signal = Signal()
-
+        current_hold_bar: HoldBar = None
+        has_buy = False;
         for bar in bars:
             index.append(bar.datetime)
             list = [bar.open_price, bar.high_price, bar.low_price, bar.close_price, bar.volume]
             indicator.update_bar(bar)
 
-
             if not item is None:
                 item_names = item.getNames()
                 item_size = len(item_names)
                 item_signal.reset()
-                item_value = item.getValues(indicator,bar,item_signal);
+                item_signal.hasBuy = has_buy
+                item_value = item.getValues(indicator, bar, item_signal);
                 for i in range(item_size):
                     list.append(item_value[item_names[i]])
-                if  item_signal.buy:
+                if item_signal.buy:
                     list.append(bar.low_price * 0.99)
                     item_signal_buy_open = True
+                    has_buy = True
+                    ##生成一个新的holdbar。
+                    holdBar = self.__newHoldBar(bar, item)
+                    self.__updateHoldBar(holdBar, bar, item)
+                    if not holdBar is None:
+                        item.getHoldBars().append(holdBar)
+                        current_hold_bar = holdBar
                 else:
+                    ##更新holdBar
+                    self.__updateHoldBar(current_hold_bar, bar, item)
                     list.append(np.nan)
+
                 if item_signal.sell:
                     list.append(bar.high_price * 1.01)
                     item_signal_sell_open = True
+                    has_buy = False
+                    ##结束目前的HoldBar
+                    current_hold_bar = None
                 else:
                     list.append(np.nan)
             data.append(list)
 
         trades = pd.DataFrame(data, index=index, columns=columns)
+        return trades,item_signal_buy_open,item_signal_sell_open
+
+
+    """
+    显示图表
+    """
+    def show(self,bars:list,item:IndicatorItem=None):
+
+        trades,item_signal_buy_open,item_signal_sell_open = self.run(bars,item);
         apds = []
 
         if not item is None:
@@ -119,6 +183,24 @@ class Chart:
                 apds.append(mpf.make_addplot(trades['signal_sell'], scatter=True,markersize=100,color='g',marker='v'))
 
         mpf.plot(trades, type='candle', volume=True, mav=(5), figscale=1.3,addplot=apds)
+
+    def __updateHoldBar(self,holdBar:HoldBar,bar:BarData,item:IndicatorItem):
+        if holdBar is None or item is None:
+            return
+        holdBar.high_price = max(holdBar.high_price,bar.high_price)
+        holdBar.low_price = min(holdBar.low_price,bar.low_price)
+        holdBar.close_price = bar.close_price
+
+    def __newHoldBar(self,bar:BarData,item:IndicatorItem)->HoldBar:
+        if item is None:
+            return None
+        holdBar = HoldBar(code =bar.symbol,start_time =bar.datetime,end_time=bar.datetime)
+        holdBar.open_price = bar.open_price;
+        holdBar.high_price = bar.high_price;
+        holdBar.close_price = bar.close_price;
+        holdBar.low_price = bar.low_price
+        return holdBar;
+
 
     """
     比较走势

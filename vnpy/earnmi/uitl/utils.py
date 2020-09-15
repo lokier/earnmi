@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Tuple
 
 from pandas import DataFrame
 
@@ -8,6 +9,26 @@ from vnpy.trader.constant import Interval, Exchange, Status, Direction
 import jqdatasdk as jq
 
 class utils:
+
+    """
+    计算收益率
+    返回: 最终收益率，最大收益率，最小收益率，波动
+    """
+    def compute_earn_rates(percent_list:[])->Tuple[float, float,float]:
+        BASE_VALUE  = 10000.0
+        value = BASE_VALUE
+        min_value = value
+        max_value = value
+        for pct in percent_list:
+            value = value + pct * value
+            if min_value > value:
+                min_value = value
+            if max_value < value:
+                max_value = value
+
+        return [value / BASE_VALUE - 1, max_value / BASE_VALUE - 1,min_value / BASE_VALUE - 1]
+
+
     def to_vt_symbol(code: str) -> str:
         if (not code.__contains__(".")):
             symbol = f"{code}.{Exchange.SZSE.value}"
