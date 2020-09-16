@@ -207,6 +207,7 @@ class Chart:
         holdBar.high_price = max(holdBar.high_price,bar.high_price)
         holdBar.low_price = min(holdBar.low_price,bar.low_price)
         holdBar.close_price = bar.close_price
+        holdBar.end_time = bar.datetime
 
     def __newHoldBar(self,bar:BarData,item:IndicatorItem)->HoldBar:
         if item is None:
