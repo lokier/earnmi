@@ -84,6 +84,9 @@ import numpy as np
 class HoldBarIndictor:
     total_cost_pct:float = 0.0 ##总共收益
     total_cost_pct_std:float = 0.0 ##标准差
+    total_max_cost_pct:float = 0.0
+    total_min_cost_pct:float = 0.0
+
     total_day:int = 0 ##总天数
     total_holdbar:int = 0;
     total_holdbar_earn:int = 0
@@ -97,6 +100,7 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarIndictor:
     lists = sw.getSW2List()
     chart = Chart()
     total_cost_pcts = []#收益
+
     total_days = []
     total_holdbars = []
     total_holdbars_earn = []
@@ -153,6 +157,8 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarIndictor:
     total_holdbars = np.array(total_holdbars)
     total_holdbars_earn = np.array(total_holdbars_earn)
 
+    ret.total_min_cost_pct = total_cost_pcts.min()
+    ret.total_max_cost_pct = total_cost_pcts.max()
     ret.total_cost_pct = total_cost_pcts.mean()
     ret.total_cost_pct_std = np.std(total_cost_pcts)
     ret.total_day = total_days.mean()
@@ -166,14 +172,15 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarIndictor:
 
 
 if __name__ == "__main__":
-    item = arron()
+    item = macd()
     data =  computeHoldBarIndictor(item)
-    print("total_pct=%.2f%%,"
+    print("total_pct=%.2f%%(max=%.2f%%,min=%.2f%%),"
            "std=%.2f,"
           "holdbars=%.2f(%.2f)"
           "max_pct=%.2f%%,"
           "min_pct=%.2f%%,"
           "day=%.2f"
           %
-          (data.total_cost_pct * 100,data.total_cost_pct_std,data.total_holdbar,data.total_holdbar_earn,data.max_cost_pct*100,data.min_cost_pct*100 ,data.total_day)
+          (data.total_cost_pct * 100,data.total_max_cost_pct*100,data.total_min_cost_pct*100,
+           data.total_cost_pct_std,data.total_holdbar,data.total_holdbar_earn,data.max_cost_pct*100,data.min_cost_pct*100 ,data.total_day)
           )
