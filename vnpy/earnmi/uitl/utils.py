@@ -28,6 +28,19 @@ class utils:
 
         return [value / BASE_VALUE - 1, max_value / BASE_VALUE - 1,min_value / BASE_VALUE - 1]
 
+    def to_bars(holdBarList:[]):
+        barList = []
+        close_price = None
+        for holdBar in holdBarList:
+            if close_price is None:
+                barList.append(holdBar.toBarData())
+                close_price = holdBar.close_price
+            else:
+                # barList.append(holdBar.toBarData())
+                bar = holdBar.toBarData(new_open_price=close_price);
+                barList.append(bar)
+                close_price = bar.close_price
+        return barList
 
     def to_vt_symbol(code: str) -> str:
         if (not code.__contains__(".")):

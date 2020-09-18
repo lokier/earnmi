@@ -4,9 +4,10 @@ from typing import List
 
 from werkzeug.routing import Map
 
-from earnmi.chart.Chart import Chart, Signal, IndicatorItem
+from earnmi.chart.Chart import Chart, Signal, IndicatorItem, HoldBar
 from earnmi.chart.Indicator import Indicator
 from earnmi.data.SWImpl import SWImpl
+from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 
 class arron(IndicatorItem):
@@ -134,26 +135,22 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarIndictor:
         total_day = 0
         total_holdbar = len(holdbarList)
         total_holdbar_earn = 0
-        for holdBar in holdbarList:
-            bar:BarData = None
-            if close_price is None:
-                bar = holdBar.toBarData()
-            else:
-                bar = holdBar.toBarData(new_open_price=close_price)
-            barList.append(bar)
-            close_price = bar.close_price
+
+        barList = utils.to_bars(holdbarList)
+
+        for i in range(0,total_holdbar):
+            bar:BarData = barList[i]
+            holdBar:HoldBar = holdbarList[i]
             total_day = total_day + holdBar.getDays()
             pct = holdBar.getCostPct()
-
             if pct > 0.00001:
                 total_holdbar_earn = total_holdbar_earn +1
-
             if pct > max_cost_pct:
                 max_cost_pct = pct
             if pct < min_cost_pct:
                 min_cost_pct = pct
 
-        total_cost_pct = (holdbarList[-1].close_price - holdbarList[0].open_price) / holdbarList[0].open_price
+        total_cost_pct = (barList[-1].close_price - barList[0].open_price) / barList[0].open_price
         total_cost_pcts.append(total_cost_pct)
         max_cost_pcts.append(max_cost_pct)
         min_cost_pcts.append(min_cost_pct)
@@ -186,7 +183,7 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarIndictor:
 
 
 if __name__ == "__main__":
-    item = kdj()
+    item = arron()
     data =  computeHoldBarIndictor(item)
     print("total_pct=%.2f%%(max=%.2f%%,min=%.2f%%),"
            "std=%.2f,"

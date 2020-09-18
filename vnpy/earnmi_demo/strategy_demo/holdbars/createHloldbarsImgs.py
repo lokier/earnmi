@@ -1,11 +1,15 @@
 from datetime import datetime
 
+from binstar_client.inspect_package import uitls
+from earnmi import uitl
 from ibapi.common import BarData
 from werkzeug.routing import Map
 
 from earnmi.chart.Chart import IndicatorItem, Signal, Chart
 from earnmi.chart.Indicator import Indicator
 from earnmi.data.SWImpl import SWImpl
+from earnmi.uitl.utils import utils
+
 
 class kdj(IndicatorItem):
     def getValues(self, indicator: Indicator,bar:BarData,signal:Signal) -> Map:
@@ -40,16 +44,8 @@ if __name__ == "__main__":
         chart.run(bars, indictor)
 
         holdBarList = indictor.getHoldBars();
-        barList = []
-        close_price = None
-        for holdBar in holdBarList:
-            if close_price is None:
-                barList.append(holdBar.toBarData())
-                close_price = holdBar.close_price
-            else:
-                # barList.append(holdBar.toBarData())
-                bar = holdBar.toBarData(new_open_price=close_price);
-                barList.append(bar)
-                close_price = bar.close_price
-
+        barList = utils.to_bars(holdBarList)
         chart.show(barList, savefig=f'imgs\\{code}.png')
+
+        total_cost_pct = (barList[-1].close_price - barList[0].open_price) / barList[0].open_price
+        print(f"code:{code},cost_pct = %.2f%%" % (total_cost_pct*100))
