@@ -74,15 +74,18 @@ class HoldBar():
 class HoldBarMaker:
 
     _hold_bars:['HoldBar'] =[]
-    current_hold_bar: HoldBar = None
+    __current_hold_bar: HoldBar = None
 
     def reset(self):
-        self.current_hold_bar = None
+        self.__current_hold_bar = None
         self._hold_bars.clear()
+
+    def isHoldStarting(self) ->bool:
+        return not self.__current_hold_bar is None
 
     def onHoldStart(self,bar:BarData):
 
-        if( not self.current_hold_bar is None):
+        if( self.isHoldStarting()):
             raise RuntimeError("you must call onHoldEnd first()")
 
         holdBar = HoldBar(code=bar.symbol, start_time=bar.datetime, end_time=bar.datetime)
@@ -90,17 +93,17 @@ class HoldBarMaker:
         holdBar.high_price = bar.high_price;
         holdBar.close_price = bar.close_price;
         holdBar.low_price = bar.low_price
-        self.current_hold_bar = holdBar
+        self.__current_hold_bar = holdBar
         self.onHoldUpdate(bar)
         self._hold_bars.append(holdBar)
 
     def onHoldEnd(self,bar:BarData):
-        if (self.current_hold_bar is None):
+        if (self.__current_hold_bar is None):
             raise RuntimeError("you must call onHoldStart first()")
-        self.current_hold_bar  = None
+        self.__current_hold_bar  = None
 
     def onHoldUpdate(self,bar:BarData):
-        holdBar = self.current_hold_bar
+        holdBar = self.__current_hold_bar
         if holdBar is None:
             return
         holdBar.high_price = max(holdBar.high_price, bar.high_price)

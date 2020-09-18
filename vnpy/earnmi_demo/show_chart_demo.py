@@ -4,7 +4,7 @@ from typing import List
 from ibapi.common import BarData
 from werkzeug.routing import Map
 
-from earnmi.chart.Chart import Chart, BollItem, IndicatorItem, Signal
+from earnmi.chart.Chart import Chart, BollItem, IndicatorItem, Signal, HoldBarMaker
 from earnmi.chart.Indicator import Indicator
 from earnmi.data.MarketImpl import MarketImpl
 from earnmi.data.SWImpl import SWImpl
@@ -17,6 +17,8 @@ from earnmi.data import import_data_from_jqdata
  RSI指标
 """
 class IndicatorLine(IndicatorItem):
+
+    maker:HoldBarMaker = HoldBarMaker()
 
     def getNames(self) -> List:
         return ["k","d"]
