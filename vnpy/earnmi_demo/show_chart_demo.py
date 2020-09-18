@@ -66,7 +66,7 @@ end = datetime.now();
 sw = SWImpl()
 codeList = sw.getSW2List()
 code = codeList[1]
-start = datetime(2014, 5, 1)
+start = datetime(2020, 5, 1)
 bars = sw.getSW2Daily(code,start,end)
 
 

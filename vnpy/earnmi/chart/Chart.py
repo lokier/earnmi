@@ -71,13 +71,51 @@ class HoldBar():
         )
         return bar
 
+class HoldBarMaker:
+
+    _hold_bars:['HoldBar'] =[]
+    current_hold_bar: HoldBar = None
+
+    def reset(self):
+        self.current_hold_bar = None
+        self._hold_bars.clear()
+
+    def onHoldStart(self,bar:BarData):
+
+        if( not self.current_hold_bar is None):
+            raise RuntimeError("you must call onHoldEnd first()")
+
+        holdBar = HoldBar(code=bar.symbol, start_time=bar.datetime, end_time=bar.datetime)
+        holdBar.open_price = bar.open_price;
+        holdBar.high_price = bar.high_price;
+        holdBar.close_price = bar.close_price;
+        holdBar.low_price = bar.low_price
+        self.current_hold_bar = holdBar
+        self.onHoldUpdate(bar)
+        self._hold_bars.append(holdBar)
+
+    def onHoldEnd(self,bar:BarData):
+        if (self.current_hold_bar is None):
+            raise RuntimeError("you must call onHoldStart first()")
+        self.current_hold_bar  = None
+
+    def onHoldUpdate(self,bar:BarData):
+        holdBar = self.current_hold_bar
+        if holdBar is None:
+            return
+        holdBar.high_price = max(holdBar.high_price, bar.high_price)
+        holdBar.low_price = min(holdBar.low_price, bar.low_price)
+        holdBar.close_price = bar.close_price
+        holdBar.end_time = bar.datetime
+        pass
+
 
 class IndicatorItem(metaclass=abc.ABCMeta):
 
-    _hold_bars:['HoldBar'] =[]
+    _holdbarMaker:HoldBarMaker = HoldBarMaker()
 
     def getHoldBars(self)->['HoldBar']:
-        return self._hold_bars
+        return self._holdbarMaker._hold_bars
 
     def getNames(self)->List:
         return []
@@ -102,7 +140,8 @@ class IndicatorItem(metaclass=abc.ABCMeta):
 class Chart:
 
     def __init__(self):
-        self.holdBar:HoldBar = None
+        pass
+        #self.holdBar:HoldBar = None
 
     def run(self,bars:list,item:IndicatorItem=None):
         if (bars[0].datetime > bars[-1].datetime):
@@ -114,7 +153,7 @@ class Chart:
         columns = ['Open', 'High', 'Low', 'Close', "Volume"]
 
         if not item is None:
-            item.getHoldBars().clear()
+            item._holdbarMaker.reset()
             item_names = item.getNames()
             item_size = len(item_names)
             for i in range(item_size):
@@ -125,7 +164,7 @@ class Chart:
         item_signal_buy_open = False
         item_signal_sell_open = False
         item_signal = Signal()
-        current_hold_bar: HoldBar = None
+        ##current_hold_bar: HoldBar = None
         has_buy = False;
         for bar in bars:
             index.append(bar.datetime)
@@ -145,14 +184,11 @@ class Chart:
                     item_signal_buy_open = True
                     has_buy = True
                     ##生成一个新的holdbar。
-                    holdBar = self.__newHoldBar(bar, item)
-                    self.__updateHoldBar(holdBar, bar, item)
-                    if not holdBar is None:
-                        item.getHoldBars().append(holdBar)
-                        current_hold_bar = holdBar
+                    item._holdbarMaker.onHoldStart(bar)
+
                 else:
                     ##更新holdBar
-                    self.__updateHoldBar(current_hold_bar, bar, item)
+                    item._holdbarMaker.onHoldUpdate(bar)
                     list.append(np.nan)
 
                 if item_signal.sell:
@@ -160,7 +196,7 @@ class Chart:
                     item_signal_sell_open = True
                     has_buy = False
                     ##结束目前的HoldBar
-                    current_hold_bar = None
+                    item._holdbarMaker.onHoldEnd(bar)
                 else:
                     list.append(np.nan)
             data.append(list)
