@@ -1,11 +1,54 @@
 from datetime import datetime, timedelta
-from earnmi.chart.Chart import Chart, BollItem
+from typing import List
+
+from ibapi.common import BarData
+from werkzeug.routing import Map
+
+from earnmi.chart.Chart import Chart, BollItem, IndicatorItem, Signal
+from earnmi.chart.Indicator import Indicator
 from earnmi.data.MarketImpl import MarketImpl
 from earnmi.data.SWImpl import SWImpl
 from vnpy.trader.constant import Interval, Exchange
 from vnpy.trader.database import database_manager
 from earnmi.data import import_data_from_jqdata
 
+
+"""
+ RSI指标
+"""
+class IndicatorLine(IndicatorItem):
+
+    def getNames(self) -> List:
+        return ["k","d"]
+
+
+    def getValues(self, indicator: Indicator,bar:BarData,signal:Signal) -> Map:
+        values = {}
+        if indicator.count >= 15:
+            k, d,j = indicator.kdj(fast_period=9,slow_period=3,array=True)
+            values["k"] = k[-1]
+            values["d"] = d[-1]
+            ##金叉出现
+            if (k[-1] >= d[-1] and k[-2] <= d[-2]):
+                if not signal.hasBuy:
+                    signal.buy = True
+            ##死叉出现
+            if (k[-1] <= d[-1] and k[-2] >= d[-2]):
+                if signal.hasBuy:
+                    signal.sell = True
+
+        else:
+            values["k"] = 50
+            values["d"] = 50
+        return values
+
+    def getColor(self, name: str):
+        if name == "k":
+            return 'r'
+        return 'y'
+
+    def isLowerPanel(self) ->bool:
+        return True
 
 code = "600196"
 
@@ -32,5 +75,6 @@ print(f"bar.size = {bars.__len__()}")
 
 
 chart = Chart()
-chart.show(bars,BollItem())
+
+chart.show(bars,IndicatorLine())
 #chart.showCompare(bars,"000300")

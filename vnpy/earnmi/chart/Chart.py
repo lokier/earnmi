@@ -79,12 +79,8 @@ class IndicatorItem(metaclass=abc.ABCMeta):
     def getHoldBars(self)->['HoldBar']:
         return self._hold_bars
 
-    """
-    返回指标名称.
-    """
-    @abc.abstractmethod
     def getNames(self)->List:
-        pass
+        return []
 
     """
     返回指标名称的在某个点的值。

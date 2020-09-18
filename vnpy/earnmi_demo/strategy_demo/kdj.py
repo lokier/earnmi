@@ -62,7 +62,7 @@ class macd(StockStrategy):
         for code in self.codes:
             bars = self.market.getHistory().getKbars(code, 100);
             indicator.update_bar(bars)
-            dif, dea, macd_bar = indicator
+            dif, dea, macd_bar = indicator.kdj()
 
                 ##金叉出现
             if (macd_bar[-1] >= 0 and macd_bar[-2] <= 0):

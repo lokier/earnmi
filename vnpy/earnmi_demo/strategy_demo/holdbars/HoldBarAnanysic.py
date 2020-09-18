@@ -43,9 +43,6 @@ class arron(IndicatorItem):
 
 
 class macd(IndicatorItem):
-    def getNames(self) -> List:
-        return []
-
     def getValues(self, indicator: Indicator,bar:BarData,signal:Signal) -> Map:
         values = {}
         count = 30
@@ -58,6 +55,23 @@ class macd(IndicatorItem):
 
                 ##死叉出现
             if (macd_bar[-1] <= 0 and macd_bar[-2] >= 0):
+                if signal.hasBuy:
+                    signal.sell = True
+        return values
+
+class kdj(IndicatorItem):
+
+    def getValues(self, indicator: Indicator,bar:BarData,signal:Signal) -> Map:
+        values = {}
+        count = 30
+        if indicator.count >= count:
+            k, d, j = indicator.kdj(fast_period=9, slow_period=3, array=True)
+            ##金叉出现
+            if (k[-1] >= d[-1] and k[-2] <= d[-2]):
+                if not signal.hasBuy:
+                    signal.buy = True
+            ##死叉出现
+            if (k[-1] <= d[-1] and k[-2] >= d[-2]):
                 if signal.hasBuy:
                     signal.sell = True
 
@@ -172,7 +186,7 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarIndictor:
 
 
 if __name__ == "__main__":
-    item = macd()
+    item = kdj()
     data =  computeHoldBarIndictor(item)
     print("total_pct=%.2f%%(max=%.2f%%,min=%.2f%%),"
            "std=%.2f,"
