@@ -101,8 +101,12 @@ class HoldBarIndictor:
     total_cost_pct_std:float = 0.0 ##标准差
     total_max_cost_pct:float = 0.0
     total_min_cost_pct:float = 0.0
+    avg_eran_cost_pct:float = 0.0  ##每个盈利holdbard的平均盈利
+
 
     total_day:int = 0 ##总天数
+    total_eran_day:int = 0 ##盈利总天数
+
     total_holdbar:int = 0;
     total_holdbar_earn:int = 0
 
@@ -115,8 +119,10 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarIndictor:
     lists = sw.getSW2List()
     chart = Chart()
     total_cost_pcts = []#收益
+    avg_eran_cost_pcts = []#每个盈利holdbard的平均盈利
 
     total_days = []
+    total_eran_days = []
     total_holdbars = []
     total_holdbars_earn = []
     max_cost_pcts =[]   #最大收益
@@ -133,8 +139,10 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarIndictor:
         max_cost_pct = 0.0
         min_cost_pct = 0.0
         total_day = 0
+        total_eran_cost_pct = 0.0
         total_holdbar = len(holdbarList)
         total_holdbar_earn = 0
+        total_earn_day = 0
 
         barList = utils.to_bars(holdbarList)
 
@@ -145,6 +153,8 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarIndictor:
             pct = holdBar.getCostPct()
             if pct > 0.00001:
                 total_holdbar_earn = total_holdbar_earn +1
+                total_eran_cost_pct = total_eran_cost_pct + pct
+                total_earn_day = total_earn_day + holdBar.getDays()
             if pct > max_cost_pct:
                 max_cost_pct = pct
             if pct < min_cost_pct:
@@ -157,6 +167,11 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarIndictor:
         total_days.append(total_day)
         total_holdbars.append(total_holdbar)
         total_holdbars_earn.append(total_holdbar_earn)
+        if( total_holdbar_earn < 1):
+            avg_eran_cost_pcts.append(0)
+        else:
+            avg_eran_cost_pcts.append(total_eran_cost_pct/total_holdbar_earn)
+        total_eran_days.append(total_earn_day)
 
 
     ret = HoldBarIndictor()
@@ -167,6 +182,10 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarIndictor:
     min_cost_pcts = np.array(min_cost_pcts)
     total_holdbars = np.array(total_holdbars)
     total_holdbars_earn = np.array(total_holdbars_earn)
+    avg_eran_cost_pcts = np.array(avg_eran_cost_pcts)
+    total_eran_days = np.array(total_eran_days)
+
+
 
     ret.total_min_cost_pct = total_cost_pcts.min()
     ret.total_max_cost_pct = total_cost_pcts.max()
@@ -177,6 +196,8 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarIndictor:
     ret.min_cost_pct = min_cost_pcts.mean()
     ret.total_holdbar = total_holdbars.mean()
     ret.total_holdbar_earn = total_holdbars_earn.mean()
+    ret.avg_eran_cost_pct = avg_eran_cost_pcts.mean()
+    ret.total_eran_day = total_eran_days.mean()
 
     return ret
 
@@ -187,11 +208,16 @@ if __name__ == "__main__":
     data =  computeHoldBarIndictor(item)
     print("total_pct=%.2f%%(max=%.2f%%,min=%.2f%%),"
            "std=%.2f,"
-          "holdbars=%.2f(%.2f)"
+          "holdbars=%.2f,"
+          "holdbars_earn=%.2f,"
+          "avg_eran_pct=%.2f%%,"
+          'total_earn_day=%.2f,'
           "max_pct=%.2f%%,"
           "min_pct=%.2f%%,"
           "day=%.2f"
           %
           (data.total_cost_pct * 100,data.total_max_cost_pct*100,data.total_min_cost_pct*100,
-           data.total_cost_pct_std,data.total_holdbar,data.total_holdbar_earn,data.max_cost_pct*100,data.min_cost_pct*100 ,data.total_day)
+           data.total_cost_pct_std,data.total_holdbar,data.total_holdbar_earn,
+           data.avg_eran_cost_pct*100,data.total_eran_day,
+           data.max_cost_pct*100,data.min_cost_pct*100 ,data.total_day)
           )

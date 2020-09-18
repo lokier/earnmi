@@ -32,7 +32,7 @@ class kdj(IndicatorItem):
 if __name__ == "__main__":
     sw = SWImpl()
     lists = sw.getSW2List()
-    start = datetime(2014, 5, 1)
+    start = datetime(2019, 5, 1)
     end = datetime(2020, 8, 17)
     chart = Chart()
 

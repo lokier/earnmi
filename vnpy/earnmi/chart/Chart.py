@@ -38,11 +38,13 @@ class HoldBar():
     high_price:float = 0.0
     low_price:float = 0.0
 
+    _days:int = 0
+
     def getCostPct(self):
         return (self.close_price- self.open_price ) / self.open_price
 
     def getDays(self):
-        return (self.end_time - self.start_time).days
+        return (self._days)
 
     def toBarData(self,new_open_price:float = None)->BarData:
 
@@ -110,6 +112,7 @@ class HoldBarMaker:
         holdBar.low_price = min(holdBar.low_price, bar.low_price)
         holdBar.close_price = bar.close_price
         holdBar.end_time = bar.datetime
+        holdBar._days = holdBar._days + 1
         pass
 
 
