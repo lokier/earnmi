@@ -91,7 +91,7 @@ class HoldBarMaker:
             raise RuntimeError("you must call onHoldEnd first()")
 
         holdBar = HoldBar(code=bar.symbol, start_time=bar.datetime, end_time=bar.datetime)
-        holdBar.open_price = bar.open_price;
+        holdBar.open_price = bar.close_price;
         holdBar.high_price = bar.high_price;
         holdBar.close_price = bar.close_price;
         holdBar.low_price = bar.low_price

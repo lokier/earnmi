@@ -16,6 +16,11 @@ class SW:
     def getSW2List(self)-> Sequence["str"]:
         pass
 
+    """
+    返回申万二级成分股
+    """
+    def getSW2Stocks(self,sw2_code:str) -> Sequence["str"]:
+        pass
 
     """
     返回某个行业数据的日k线图
@@ -24,6 +29,9 @@ class SW:
     def getSW2Daily(self, code:str, start:datetime, end:datetime) -> Sequence["BarData"]:
         pass
 
+    @abstractmethod
+    def getSw2Name(self,code:str)->str:
+        pass
     """
        返回某个行业数据的分时图
     """

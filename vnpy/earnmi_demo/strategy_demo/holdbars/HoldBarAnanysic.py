@@ -80,6 +80,7 @@ class kdj(IndicatorItem):
 
 
 
+
 start = datetime(2014, 5, 1)
 end = datetime(2020, 8, 17)
 # code = "600196"
@@ -203,8 +204,24 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarIndictor:
 
 
 
+class Custom(IndicatorItem):
+    def getValues(self, indicator: Indicator,bar:BarData,signal:Signal) -> Map:
+        values = {}
+        count = 30
+        fast_rsi = indicator.rsi(n=3, array=True)
+        slow_rsi = indicator.rsi(n=9, array=True)
+        ##金叉出现
+        if (fast_rsi[-1] >= slow_rsi[-1] and fast_rsi[-2] <= slow_rsi[-2]):
+            if not signal.hasBuy:
+                signal.buy = True
+        ##死叉出现
+        if (fast_rsi[-1] <= slow_rsi[-1] and fast_rsi[-2] >= slow_rsi[-2]):
+            if signal.hasBuy:
+                signal.sell = True
+        return values
+
 if __name__ == "__main__":
-    item = arron()
+    item = kdj()
     data =  computeHoldBarIndictor(item)
     print("total_pct=%.2f%%(max=%.2f%%,min=%.2f%%),"
            "std=%.2f,"
