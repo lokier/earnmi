@@ -89,6 +89,9 @@ class HoldBarMaker:
     def __init__(self):
         self._hold_bars = []
 
+    def getHoldBars(self) ->['HoldBar']:
+        return self._hold_bars
+
     def reset(self):
         self.__current_hold_bar = None
         self._hold_bars.clear()
@@ -111,7 +114,7 @@ class HoldBarMaker:
         self.onHoldUpdate(bar)
         self._hold_bars.append(holdBar)
 
-    def onHoldEnd(self,bar:BarData):
+    def onHoldEnd(self):
         if (self.__current_hold_bar is None):
             raise RuntimeError("you must call onHoldStart first()")
         self.__current_hold_bar  = None
@@ -219,7 +222,7 @@ class Chart:
                     item_signal_sell_open = True
                     has_buy = False
                     ##结束目前的HoldBar
-                    item._holdbarMaker.onHoldEnd(bar)
+                    item._holdbarMaker.onHoldEnd()
                 else:
                     list.append(np.nan)
 

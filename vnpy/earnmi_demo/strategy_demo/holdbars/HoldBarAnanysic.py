@@ -123,7 +123,13 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarData:
         #print(f"bar.size = {bars.__len__()}")
         chart.run(bars, indictor)
         holdbarList = indictor.getHoldBars()
+
+        holdbarList = HoldBarUtils.filterHoldBar(holdbarList)
+
         data = HoldBarUtils.computeHoldBarIndictor(holdbarList);
+
+        if data is None:
+            continue
 
         total_cost_pcts.append(data.total_cost_pct)
         max_cost_pcts.append(data.max_cost_pct)

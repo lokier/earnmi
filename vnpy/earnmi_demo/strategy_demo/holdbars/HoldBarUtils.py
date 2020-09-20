@@ -1,9 +1,12 @@
 from dataclasses import dataclass
 from datetime import datetime
 
+from werkzeug.routing import Map
+
+from earnmi.chart.Indicator import Indicator
 from earnmi.uitl.utils import utils
-from earnmi_demo.strategy_demo.holdbars.HoldBarAnanysic import *
 from vnpy.trader.object import BarData
+from earnmi.chart.Chart import HoldBar, Chart, HoldBarMaker, IndicatorItem, Signal
 
 
 @dataclass
@@ -36,6 +39,10 @@ class HoldBarUtils:
         total_day = 0
         total_eran_cost_pct = 0.0
         total_holdbar = len(holdbarList)
+
+        if total_holdbar < 1:
+            return None
+
         total_holdbar_earn = 0
         total_earn_day = 0
         barList = utils.to_bars(holdbarList)
@@ -70,6 +77,60 @@ class HoldBarUtils:
         return ret
 
 
+    def filterHoldBar(holdbarList: []) ->[]:
+        """
+        过滤holdbar:
+        规则：
+        首次涨幅超过2%，且第二天不低于第一天的开盘价格。
+
+        """
+        total_holdbar = len(holdbarList)
+        hodbarNewList = []
+
+        day_len = []
+        to_high_day = []  ##到底最高点的天数
+        to_low_day = []  ##到底最高点的天数
+
+        maker = HoldBarMaker()
+
+        for i in range(0, total_holdbar):
+            holdBar: HoldBar = holdbarList[i]
+            barLen = len(holdBar.bars)
+            day_len.append(barLen)
+            high_day = -1
+            low_day = -1
+
+            add = False
+            if barLen >= 5:
+                first_pct = None
+                for j in range(0, barLen):
+                    bar: BarData = holdBar.bars[j]
+                    pct = (bar.close_price - bar.open_price) / bar.open_price
+
+                    if high_day == -1 and abs(bar.high_price - holdBar.high_price) < 0.02:
+                        high_day = j
+
+                    if low_day == -1 and j > 0 and abs(bar.low_price - holdBar.low_price) < 0.02:
+                        low_day = j
+
+                    if j == 0:
+                        first_pct = pct
+                    to_high_day.append(high_day)
+                    to_low_day.append(low_day)
+
+                if first_pct > 0.019999:
+                    add = True
+
+            if add:
+                maker.onHoldStart(holdBar.bars[0])
+                maker.onHoldUpdate(holdBar.bars[1])
+                maker.onHoldUpdate(holdBar.bars[2])
+                maker.onHoldUpdate(holdBar.bars[3])
+                maker.onHoldUpdate(holdBar.bars[4])
+                maker.onHoldEnd()
+
+        return maker.getHoldBars()
+
     """
       打印前5个涨幅分布情况
     """
@@ -82,34 +143,78 @@ class HoldBarUtils:
         dict[2] = []
         dict[3] = []
         dict[4] = []
-        preHobar = None
+        day_len = []
+        to_high_day = [] ##到底最高点的天数
+        to_low_day = [] ##到底最高点的天数
+
         for i in range(0, total_holdbar):
             holdBar: HoldBar = holdbarList[i]
-            assert  holdBar!= preHobar
             barLen = len(holdBar.bars)
-            for j in range(0,5):
-                if j >= barLen:
-                    break
-                bar:BarData = holdBar.bars[j]
+            day_len.append(barLen)
+            high_day = -1
+            low_day = -1
+            for j in range(0,barLen):
+                bar: BarData = holdBar.bars[j]
                 pct = (bar.close_price - bar.open_price) / bar.open_price
-                dict[j].append(pct)
+                if j <5:
+                    dict[j].append(pct)
 
-            preHobar = holdBar
+                if high_day ==-1 and abs(bar.high_price - holdBar.high_price) < 0.02:
+                    high_day = j
+
+                if low_day ==-1 and j > 0 and abs(bar.low_price - holdBar.low_price) < 0.02:
+                    low_day = j
+                    
+
+            assert high_day >= 0
+            
+            
+            to_high_day.append(high_day)
+
+            if low_day >=0:
+                to_low_day.append(low_day)
+
 
         for i in range(0, 5):
             lists = np.array(dict[i])
+            day_len = np.array(day_len)
+            to_high_day = np.array(to_high_day)
+            to_low_day = np.array(to_low_day)
+
             lists = lists * 100
             size = len(lists)
             #print(f'{lists}')
-            print(f"[{i}]: size = {size},avg = %.2f%%, max = %.2f%%,min = %.2f%%,std =%.2f" % (lists.mean() ,lists.max(),lists.min(), np.std(lists)))
+            print(f"[{i}]: size = {size}\ncost:avg = %.2f%%, max = %.2f%%,min = %.2f%%,"f"std =%.2f" % (
+                     lists.mean() ,lists.max(),lists.min(), np.std(lists),
+                    )
+                  )
+        print( f"\n\tday:total avg = %.2f, high avg=%.2f, low avg=%.2f" % ( day_len.mean(),to_high_day.mean(),to_low_day.mean()))
 
         return dict
 
 
 if __name__ == "__main__":
-    from earnmi.chart.Chart import HoldBar, Chart
+    from earnmi.chart.Chart import HoldBar, Chart, IndicatorItem, Signal
     from earnmi.data.SWImpl import SWImpl
     import numpy as np
+
+
+    class macd(IndicatorItem):
+        def getValues(self, indicator: Indicator, bar: BarData, signal: Signal) -> Map:
+            values = {}
+            count = 30
+            if indicator.count >= count:
+                dif, dea, macd_bar = indicator.macd(fast_period=12, slow_period=26, signal_period=9, array=True);
+                ##金叉出现
+                if (macd_bar[-1] >= 0 and macd_bar[-2] <= 0):
+                    if not signal.hasBuy:
+                        signal.buy = True
+
+                    ##死叉出现
+                if (macd_bar[-1] <= 0 and macd_bar[-2] >= 0):
+                    if signal.hasBuy:
+                        signal.sell = True
+            return values
 
     sw = SWImpl()
     lists = sw.getSW2List()
