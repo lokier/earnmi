@@ -38,8 +38,12 @@ class HoldBar():
     close_price: float = 0.0
     high_price:float = 0.0
     low_price:float = 0.0
-    bars = []
+    bars:[] = None
     _days:int = 0
+
+    def __post_init__(self):
+        """"""
+        self.bars = []
 
     def getCostPct(self):
         """
@@ -80,8 +84,10 @@ class HoldBar():
 
 class HoldBarMaker:
 
-    _hold_bars:['HoldBar'] =[]
+    _hold_bars:['HoldBar'] = None
     __current_hold_bar: HoldBar = None
+    def __init__(self):
+        self._hold_bars = []
 
     def reset(self):
         self.__current_hold_bar = None

@@ -1,7 +1,8 @@
 from dataclasses import dataclass
+from datetime import datetime
 
-from earnmi.chart.Chart import HoldBar
 from earnmi.uitl.utils import utils
+from earnmi_demo.strategy_demo.holdbars.HoldBarAnanysic import *
 from vnpy.trader.object import BarData
 
 
@@ -67,3 +68,75 @@ class HoldBarUtils:
             ret.avg_eran_cost_pct = total_eran_cost_pct / total_holdbar_earn
         ret.total_earn_day = total_earn_day
         return ret
+
+
+    """
+      打印前5个涨幅分布情况
+    """
+    def printfPctdispute(holdbarList: []) -> {}:
+
+        total_holdbar = len(holdbarList)
+        dict = {}
+        dict[0] = []
+        dict[1] = []
+        dict[2] = []
+        dict[3] = []
+        dict[4] = []
+        preHobar = None
+        for i in range(0, total_holdbar):
+            holdBar: HoldBar = holdbarList[i]
+            assert  holdBar!= preHobar
+            barLen = len(holdBar.bars)
+            for j in range(0,5):
+                if j >= barLen:
+                    break
+                bar:BarData = holdBar.bars[j]
+                pct = (bar.close_price - bar.open_price) / bar.open_price
+                dict[j].append(pct)
+
+            preHobar = holdBar
+
+        for i in range(0, 5):
+            lists = np.array(dict[i])
+            lists = lists * 100
+            size = len(lists)
+            #print(f'{lists}')
+            print(f"[{i}]: size = {size},avg = %.2f%%, max = %.2f%%,min = %.2f%%,std =%.2f" % (lists.mean() ,lists.max(),lists.min(), np.std(lists)))
+
+        return dict
+
+
+if __name__ == "__main__":
+    from earnmi.chart.Chart import HoldBar, Chart
+    from earnmi.data.SWImpl import SWImpl
+    import numpy as np
+
+    sw = SWImpl()
+    lists = sw.getSW2List()
+    chart = Chart()
+    start = datetime(2014, 5, 1)
+    end = datetime(2020, 8, 17)
+    dict = {}
+    dict[0] = []
+    dict[1] = []
+    dict[2] = []
+    dict[3] = []
+    dict[4] = []
+    for code in lists:
+
+        if len(sw.getSW2Stocks(code)) < 10:
+            continue
+
+        bars = sw.getSW2Daily(code, start, end)
+        # print(f"bar.size = {bars.__len__()}")
+        indictor = macd()
+        chart.run(bars, indictor)
+
+        data = HoldBarUtils.printfPctdispute(indictor.getHoldBars())
+        for i in range(0,5):
+            lists = np.array(data[i])
+            dict[i].append(lists.mean())
+
+    for i in range(0, 5):
+        lists = np.array(data[i])
+        print(f"[{i}]: avg = %.2f%%" % (lists.mean()*100))
