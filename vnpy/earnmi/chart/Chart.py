@@ -21,6 +21,7 @@ from vnpy.trader.object import BarData
 class Signal:
     buy = False  # 买入信号
     sell = False  #卖出信号
+    redTag = False  #红色标记
 
     hasBuy = False #是否已经买入
 
@@ -37,11 +38,15 @@ class HoldBar():
     close_price: float = 0.0
     high_price:float = 0.0
     low_price:float = 0.0
-
+    bars = []
     _days:int = 0
 
     def getCostPct(self):
-        return (self.close_price- self.open_price ) / self.open_price
+        """
+        真正的盈利开始算是从第一天收盘价作为买入点。
+        """
+        start_price = self.open_price
+        return (self.close_price- start_price) / start_price
 
     def getDays(self):
         return (self._days)
@@ -94,7 +99,8 @@ class HoldBarMaker:
         holdBar.open_price = bar.close_price;
         holdBar.high_price = bar.high_price;
         holdBar.close_price = bar.close_price;
-        holdBar.low_price = bar.low_price
+        holdBar.low_price = min(bar.low_price,bar.open_price)
+
         self.__current_hold_bar = holdBar
         self.onHoldUpdate(bar)
         self._hold_bars.append(holdBar)
@@ -113,6 +119,7 @@ class HoldBarMaker:
         holdBar.close_price = bar.close_price
         holdBar.end_time = bar.datetime
         holdBar._days = holdBar._days + 1
+        holdBar.bars.append(bar)
         pass
 
 
@@ -122,6 +129,7 @@ class IndicatorItem(metaclass=abc.ABCMeta):
 
     def getHoldBars(self)->['HoldBar']:
         return self._holdbarMaker._hold_bars
+
 
     def getNames(self)->List:
         return []
@@ -166,9 +174,12 @@ class Chart:
                 columns.append(item_names[i])
             columns.append("signal_buy")
             columns.append("signal_sell")
+            columns.append("signal_redTag")
 
         item_signal_buy_open = False
         item_signal_sell_open = False
+        item_signal_redTag_open = False
+
         item_signal = Signal()
         ##current_hold_bar: HoldBar = None
         has_buy = False;
@@ -205,10 +216,17 @@ class Chart:
                     item._holdbarMaker.onHoldEnd(bar)
                 else:
                     list.append(np.nan)
+
+                if item_signal.redTag:
+                    item_signal_redTag_open = True
+                    list.append(bar.low_price * 0.99)
+                else:
+                    list.append(np.nan)
+
             data.append(list)
 
         trades = pd.DataFrame(data, index=index, columns=columns)
-        return trades,item_signal_buy_open,item_signal_sell_open
+        return trades,item_signal_buy_open,item_signal_sell_open,item_signal_redTag_open
 
 
     """
@@ -216,7 +234,7 @@ class Chart:
     """
     def show(self,bars:list,item:IndicatorItem=None,savefig:str=None):
 
-        trades,item_signal_buy_open,item_signal_sell_open = self.run(bars,item);
+        trades,item_signal_buy_open,item_signal_sell_open,item_signal_redTag_open = self.run(bars,item);
         apds = []
 
         if not item is None:
@@ -230,32 +248,19 @@ class Chart:
                     apds.append(mpf.make_addplot(trades[name],  color=item.getColor(name), secondary_y=True))
 
             if  item_signal_buy_open:
-                apds.append(mpf.make_addplot(trades['signal_buy'], scatter=True,markersize=100,color='r',marker='^'))
+                apds.append(mpf.make_addplot(trades['signal_buy'], scatter=True,markersize=100,color='b',marker='^'))
             if  item_signal_sell_open:
                 apds.append(mpf.make_addplot(trades['signal_sell'], scatter=True,markersize=100,color='g',marker='v'))
+            if item_signal_redTag_open:
+                apds.append(mpf.make_addplot(trades['signal_redTag'], scatter=True,markersize=100,color='r',marker='-'))
+
+
         if savefig is None:
             mpf.plot(trades, type='candle', volume=True, mav=(5), figscale=1.3,addplot=apds)
         else:
             mpf.plot(trades, type='candle', mav=(5), figscale=1.3,addplot=apds,savefig =savefig)
             plt.close()
 
-    def __updateHoldBar(self,holdBar:HoldBar,bar:BarData,item:IndicatorItem):
-        if holdBar is None or item is None:
-            return
-        holdBar.high_price = max(holdBar.high_price,bar.high_price)
-        holdBar.low_price = min(holdBar.low_price,bar.low_price)
-        holdBar.close_price = bar.close_price
-        holdBar.end_time = bar.datetime
-
-    def __newHoldBar(self,bar:BarData,item:IndicatorItem)->HoldBar:
-        if item is None:
-            return None
-        holdBar = HoldBar(code =bar.symbol,start_time =bar.datetime,end_time=bar.datetime)
-        holdBar.open_price = bar.open_price;
-        holdBar.high_price = bar.high_price;
-        holdBar.close_price = bar.close_price;
-        holdBar.low_price = bar.low_price
-        return holdBar;
 
 
     """
