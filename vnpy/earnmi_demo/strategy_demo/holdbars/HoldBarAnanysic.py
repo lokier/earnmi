@@ -124,7 +124,7 @@ def computeHoldBarIndictor(indictor:IndicatorItem)->HoldBarData:
         chart.run(bars, indictor)
         holdbarList = indictor.getHoldBars()
 
-        holdbarList = HoldBarUtils.filterHoldBar(holdbarList)
+        #holdbarList = HoldBarUtils.filterHoldBar(holdbarList)
 
         data = HoldBarUtils.computeHoldBarIndictor(holdbarList);
 

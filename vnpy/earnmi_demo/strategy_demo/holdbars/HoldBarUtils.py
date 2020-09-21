@@ -28,7 +28,23 @@ class HoldBarData:
     min_cost_pct:float =0.0 ##当中最小收益
 
 
+
+
 class HoldBarUtils:
+
+    def isEarnBarList(bars: []) -> bool:
+        size = len(bars)
+        if size >= 7:
+            startPrice = bars[0].close_price
+            maxPrice = startPrice
+            for i in range(1, 7):
+                maxPrice = max(bars[i].high_price, maxPrice)
+
+            pct = (maxPrice - startPrice) / startPrice
+            if pct > 0.0799999:
+                return True
+
+        return False
 
     """
     计算holdbar的指标数据。
@@ -227,6 +243,8 @@ if __name__ == "__main__":
     dict[2] = []
     dict[3] = []
     dict[4] = []
+
+    indictor = macd()
     for code in lists:
 
         if len(sw.getSW2Stocks(code)) < 10:
@@ -234,14 +252,27 @@ if __name__ == "__main__":
 
         bars = sw.getSW2Daily(code, start, end)
         # print(f"bar.size = {bars.__len__()}")
-        indictor = macd()
         chart.run(bars, indictor)
 
-        data = HoldBarUtils.printfPctdispute(indictor.getHoldBars())
+        holdbars = indictor.getHoldBars()
+        # maker = HoldBarMaker()
+        # for holdbar in holdbars:
+        #     if(HoldBarUtils.isEarnBarList(holdbar.bars)):
+        #         barList = holdbar.bars
+        #         maker.onHoldStart(barList[0])
+        #         for i in range(1,len(barList)):
+        #             maker.onHoldUpdate(barList[i])
+        #         maker.onHoldEnd()
+        # holdbars = maker.getHoldBars()
+
+        data = HoldBarUtils.printfPctdispute(holdbars)
         for i in range(0,5):
             lists = np.array(data[i])
             dict[i].append(lists.mean())
 
     for i in range(0, 5):
-        lists = np.array(data[i])
-        print(f"[{i}]: avg = %.2f%%" % (lists.mean()*100))
+        lists = np.array(dict[i])
+        lists = lists * 100
+        print(f"[{i}]: avg = %.2f%%,std=%.2f" % (lists.mean(),lists.std()))
+
+    print(f"{dict[0]}")

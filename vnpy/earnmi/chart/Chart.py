@@ -87,19 +87,19 @@ class HoldBarMaker:
     _hold_bars:['HoldBar'] = None
     __current_hold_bar: HoldBar = None
     def __init__(self):
-        self._hold_bars = []
+        self.reset()
 
     def getHoldBars(self) ->['HoldBar']:
         return self._hold_bars
 
     def reset(self):
         self.__current_hold_bar = None
-        self._hold_bars.clear()
+        self._hold_bars = []
 
     def isHoldStarting(self) ->bool:
         return not self.__current_hold_bar is None
 
-    def onHoldStart(self,bar:BarData):
+    def onHoldStart(self,bar:BarData) ->HoldBar:
 
         if( self.isHoldStarting()):
             raise RuntimeError("you must call onHoldEnd first()")
@@ -113,6 +113,7 @@ class HoldBarMaker:
         self.__current_hold_bar = holdBar
         self.onHoldUpdate(bar)
         self._hold_bars.append(holdBar)
+        return holdBar
 
     def onHoldEnd(self):
         if (self.__current_hold_bar is None):

@@ -1,6 +1,8 @@
 from datetime import datetime
 
 from binstar_client.inspect_package import uitls
+
+from earnmi_demo.strategy_demo.holdbars.HoldBarUtils import HoldBarUtils
 from vnpy.trader.object import BarData
 
 from earnmi import uitl
@@ -43,11 +45,44 @@ def crateHoldbarsImg():
         indictor = kdj()
         chart.run(bars, indictor)
 
-        chart.show(bars, item = indictor ,savefig=f'imgs\\{code}.png')
+        holdBarList = indictor.getHoldBars();
+        barList = utils.to_bars(holdBarList)
+
+        chart.show(barList, item = indictor ,savefig=f'imgs\\{code}.png')
 
         #print(f"code:{code},cost_pct = %.2f%%" % (total_cost_pct*100))
         break
 
+def createEarnHoldBarsImg():
+    from earnmi_demo.strategy_demo.holdbars.HoldBarAnanysic import macd,kdj
+    sw = SWImpl()
+    lists = sw.getSW2List()
+    start = datetime(2014, 5, 1)
+    end = datetime(2020, 8, 17)
+    chart = Chart()
+    indictor = macd()
+    computeCount = 0
+    for code in lists:
+        bars = sw.getSW2Daily(code, start, end)
+        # print(f"bar.size = {bars.__len__()}")
+        chart.run(bars, indictor)
+
+        holdBarList = indictor.getHoldBars();
+
+        for holdBar in holdBarList:
+            barList = holdBar.bars
+            if(HoldBarUtils.isEarnBarList(barList)):
+                tiemStr = holdBar.start_time.strftime( '%Y%m%d' )
+                chart.show(barList, savefig=f'imgs\\earn-{code}-{tiemStr}.png')
+
+        # print(f"code:{code},cost_pct = %.2f%%" % (total_cost_pct*100))
+        computeCount = computeCount + 1
+        if computeCount > 10:
+            break
+
+
+
 
 if __name__ == "__main__":
-    crateHoldbarsImg()
+    #crateHoldbarsImg()
+    createEarnHoldBarsImg()
