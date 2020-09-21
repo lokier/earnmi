@@ -134,10 +134,15 @@ class HoldBarMaker:
 
 
 class IndicatorItem(metaclass=abc.ABCMeta):
+    _holdbarMaker:HoldBarMaker = None
 
-    _holdbarMaker:HoldBarMaker = HoldBarMaker()
+    def __init__(self,generateHoldbars:bool = True):
+        if generateHoldbars:
+            self._holdbarMaker = HoldBarMaker()
 
     def getHoldBars(self)->['HoldBar']:
+        if(self._holdbarMaker is None):
+            return []
         return self._holdbarMaker._hold_bars
 
 
@@ -176,8 +181,11 @@ class Chart:
         ### 初始化columns
         columns = ['Open', 'High', 'Low', 'Close', "Volume"]
 
+        holdbarMaker:HoldBarMaker = None
         if not item is None:
-            item._holdbarMaker.reset()
+            holdbarMaker = item._holdbarMaker
+            if not holdbarMaker is None:
+                holdbarMaker.reset()
             item_names = item.getNames()
             item_size = len(item_names)
             for i in range(item_size):
@@ -211,11 +219,14 @@ class Chart:
                     item_signal_buy_open = True
                     has_buy = True
                     ##生成一个新的holdbar。
-                    item._holdbarMaker.onHoldStart(bar)
+                    if not holdbarMaker is None:
+                        holdbarMaker.onHoldStart(bar)
 
                 else:
                     ##更新holdBar
-                    item._holdbarMaker.onHoldUpdate(bar)
+                    if not holdbarMaker is None:
+                        holdbarMaker.onHoldUpdate(bar)
+
                     list.append(np.nan)
 
                 if item_signal.sell:
@@ -223,7 +234,8 @@ class Chart:
                     item_signal_sell_open = True
                     has_buy = False
                     ##结束目前的HoldBar
-                    item._holdbarMaker.onHoldEnd()
+                    if not holdbarMaker is None:
+                        holdbarMaker.onHoldEnd()
                 else:
                     list.append(np.nan)
 
