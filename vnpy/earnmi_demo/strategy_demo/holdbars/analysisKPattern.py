@@ -4,6 +4,7 @@
 """
 统计所有的行业情况所有的形态识别情况
 """
+import math
 from datetime import datetime
 import numpy as np
 from earnmi.chart.Indicator import Indicator
@@ -67,21 +68,44 @@ def compute_SW_KPattern_data():
         long_values = []
         short_value =[]
         long_pcts = []
+        long_ok_cnt = 0
         short_pcts = []
+        short_ok_cnt = 0
         for i in range(0,count):
             v = values[i]
             if v > 0:
                 long_values.append(v)
                 long_pcts.append(pcts[i])
+                if pcts[i] >=0.000001:
+                    long_ok_cnt = long_ok_cnt+1
             else:
                 short_value.append(v)
                 short_pcts.append(pcts[i])
+                if pcts[i] <= -10.000001:
+                    short_ok_cnt = short_ok_cnt+1
         long_values = np.array(long_values)
         short_value = np.array(short_value)
         long_pcts = np.array(long_pcts)
         short_pcts = np.array(short_pcts)
 
-        print(f"{key}： count={count},long(values:{long_values.mean()},pcts:%.2f%%,std=%.2f),short(values:{short_value.mean()},pcts:%.2f%%,std=%.2f)" % (long_pcts.mean(),long_pcts.std(),short_pcts.mean(),short_pcts.std()))
+        long_pct = 0
+        long_std = math.nan
+        long_success = math.nan
+
+        short_pct = 0
+        short_std = math.nan
+        short_success = math.nan
+        if len(long_values) > 0:
+            long_pct = long_pcts.mean()
+            long_std = long_pcts.std()
+            long_success = long_ok_cnt / len(long_values)
+
+        if len(short_value) > 0:
+            short_pct = short_pcts.mean()
+            short_std = short_pcts.std()
+            short_success = short_ok_cnt / len(short_value)
+
+        print(f"{key}： count={count},long(size:{len(long_values)},suc=%.2f%%,pcts:%.2f%%,std=%.2f),short(size:{len(short_value)},suc=%.2f%%,pcts:%.2f%%,std=%.2f)" % (long_success*100,long_pct,long_std,short_success*100,short_pct,short_std))
 
     print("-----------具体情况-----------")
     outputKeys = ["CDLABANDONEDBABY","CDLHIKKAKE"]
