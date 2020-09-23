@@ -8,7 +8,7 @@ import math
 from datetime import datetime
 import numpy as np
 from earnmi.chart.Indicator import Indicator
-from earnmi.chart.PatternMatch import PatternMatch
+from earnmi.chart.KPattern import KPattern
 
 """
 统计申万行业的k线形态识别
@@ -33,7 +33,7 @@ def compute_SW_KPattern_data():
         indicator = Indicator()
         for bar in barList:
             ##先识别形态
-            rets = PatternMatch.matchIndicator(indicator)
+            rets = KPattern.matchIndicator(indicator)
             size = len(rets)
             if size > 0:
                 """有形态识别出来
