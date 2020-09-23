@@ -6,6 +6,7 @@ import talib
 from werkzeug.routing import Map
 
 from earnmi.chart.Indicator import Indicator
+from earnmi.chart.KEncode import KEncode
 from vnpy.trader.object import BarData
 
 
@@ -20,6 +21,29 @@ class PattrnResult():
 各种K线指标库
 """
 class KPattern():
+
+    """
+    算法编码3个工作日的k线图。
+    """
+    def encode3KAgo1(indictor:Indicator)->int:
+
+        if(indictor.count>10):
+            k, d, j = indictor.kdj(fast_period=9, slow_period=3, array=False)
+            #dif, dea, macd_bar = indictor.macd(fast_period=12, slow_period=26, signal_period=9, array=False)
+            kdj_code = 0
+            if k < d:
+                kdj_code = 1
+            macd_code = 0
+            # if dif < dea:
+            #     macd_code = 1
+
+            k_code = KEncode.encodeAlgro1(indictor.close[-2],indictor.open[-1],indictor.high[-1],indictor.low[-1],indictor.close[-1])
+            #return kdj_code * 2 * 81 + macd_code * 81 + k_code
+            return kdj_code * 81  + k_code
+
+
+
+        return None
 
     def matchIndicator(indictor:Indicator)->['PattrnResult']:
         if indictor.count < 20:

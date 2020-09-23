@@ -9,7 +9,7 @@ class KEncode():
     值范围为：0-80（小于81）
     （坏处：没有把开盘价考虑进去）
     """
-    def encodeAlgro1(pre_close:float,open:float,high:float,low:float,close:float):
+    def encodeAlgro1(pre_close:float,open:float,high:float,low:float,close:float) ->int:
         pct = 100*(close - pre_close) / pre_close #涨幅
         #open_pct = 100* open / pre_close #开盘涨幅价
         #high_extra_pct = 100 * (high - max(open, close)) / pre_close

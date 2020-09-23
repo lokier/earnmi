@@ -10,6 +10,14 @@ import numpy as np
 from earnmi.chart.Indicator import Indicator
 from earnmi.chart.KPattern import KPattern
 
+
+class CountItem(object):
+    name = None
+    count_total:int = 0
+    count_earn:int = 0;
+    pct_total:float  = 0.0
+    pct_earn:float  = 0.0
+
 """
 统计申万行业的k线形态识别
 """
@@ -19,48 +27,61 @@ def compute_SW_KPattern_data():
     sw = SWImpl()
     lists = sw.getSW2List()
 
-    start = datetime(2018, 5, 1)
+    start = datetime(2014, 5, 1)
     end = datetime(2020, 8, 17)
 
     dataSet = {}
 
-    class DataItem(object):
-        pass
 
+    total_count  = 0
     for code in lists:
         #for code in lists:
         barList = sw.getSW2Daily(code, start, end)
         indicator = Indicator()
+        preBar = None
         for bar in barList:
             ##先识别形态
             rets = KPattern.matchIndicator(indicator)
             size = len(rets)
-            if size > 0:
+            if size > 0 and not preBar is None:
                 """有形态识别出来
                 """
                 for item in rets:
                     name = item.name
                     value = item.value
-
+                    total_count+=1
                     dataItem = None
                     if dataSet.__contains__(name):
                         dataItem = dataSet[name]
                     else:
-                        dataItem = DataItem()
+                        dataItem = CountItem()
                         dataItem.values = [] ##形态被识别的值。
                         dataItem.pcts = []   ##识别之后第二天的盈利情况
                         dataSet[name] = dataItem
                     ##第二天的收益
-                    pct = (bar.close_price - bar.open_price) / bar.open_price
+                    pct = (bar.close_price - preBar.close_price) / preBar.close_price
+
                     ##收录当前形态
+                    dataItem.count_total += 1
+                    dataItem.pct_total += pct
+                    if pct > 0.000001:
+                        dataItem.count_earn += 1
+                        dataItem.pct_earn += pct
                     dataItem.values.append(value)
                     dataItem.pcts.append(pct)
+
                 pass
             indicator.update_bar(bar)
+            preBar = bar
 
     ##打印当前形态
-    print(f"总共识别出{len(dataSet)}个形态")
+    print(f"总共分析{total_count}个形态，识别出{len(dataSet)}个形态，有意义的形态有：")
     for key,dataItem in dataSet.items():
+        if dataItem.count_total < 1000:
+            continue
+        success_rate = 100 * dataItem.count_earn / dataItem.count_total
+        if abs(int(success_rate - 50)) < 5:
+            continue
         values = np.array(dataItem.values)
         pcts = np.array(dataItem.pcts) * 100
 
@@ -105,10 +126,10 @@ def compute_SW_KPattern_data():
             short_std = short_pcts.std()
             short_success = short_ok_cnt / len(short_value)
 
-        print(f"{key}： count={count},long(size:{len(long_values)},suc=%.2f%%,pcts:%.2f%%,std=%.2f),short(size:{len(short_value)},suc=%.2f%%,pcts:%.2f%%,std=%.2f)" % (long_success*100,long_pct,long_std,short_success*100,short_pct,short_std))
+        print(f"{key}： count={count},suc_reate=%.2f%%,long(size:{len(long_values)},suc=%.2f%%,pcts:%.2f%%,std=%.2f),short(size:{len(short_value)},suc=%.2f%%,pcts:%.2f%%,std=%.2f)" % (success_rate,long_success*100,long_pct,long_std,short_success*100,short_pct,short_std))
 
     print("-----------具体情况-----------")
-    outputKeys = ["CDLABANDONEDBABY","CDLHIKKAKE"]
+    outputKeys = ["CDLADVANCEBLOCK"]
     for key in outputKeys:
         dataItem = dataSet[key]
         values = np.array(dataItem.values)
@@ -129,5 +150,61 @@ def compute_SW_KPattern_data():
             print(lineStr)
 
 
+"""
+统计申万行业的k线编码识别。
+"""
+def compute_SW_KEncode_data():
+    from earnmi.data.SWImpl import SWImpl
+    sw = SWImpl()
+    lists = sw.getSW2List()
+    start = datetime(2014, 5, 1)
+    end = datetime(2020, 8, 17)
+    dataSet = {}
+    total_count = 0
+    for code in lists:
+        #for code in lists:
+        barList = sw.getSW2Daily(code, start, end)
+        indicator = Indicator(40)
+        preBar = None
+        for bar in barList:
+            ##先识别形态
+            kEncodeValue  = KPattern.encode3KAgo1(indicator)
+            if kEncodeValue is None:
+                indicator.update_bar(bar)
+                preBar = bar
+                continue
+            total_count += 1
+            dataItem:CountItem = None
+            if dataSet.__contains__(kEncodeValue):
+                dataItem = dataSet[kEncodeValue]
+            else:
+                dataItem = CountItem()
+                dataSet[kEncodeValue] = dataItem
+            ##第二天的收益
+            pct = (bar.close_price - preBar.close_price) / preBar.close_price
+            ##收录当前形态
+            #dataItem.values.append(value)
+            dataItem.count_total +=1
+            dataItem.pct_total +=pct
+            if pct>0.000001:
+                dataItem.count_earn+=1
+                dataItem.pct_earn+=pct
+            indicator.update_bar(bar)
+            preBar = bar
+
+        ##打印当前形态
+    print(f"总共分析{total_count}个形态，识别出{len(dataSet)}个形态，有意义的形态有：")
+    for key, dataItem in dataSet.items():
+       if dataItem.count_total < 500:
+           continue
+       success_rate = 100 * dataItem.count_earn / dataItem.count_total
+       if abs(int(success_rate-50)) <5:
+            continue
+
+       earn_rate = 100 * dataItem.pct_earn / dataItem.count_earn
+       print(f"{key}： total={dataItem.count_total},suc=%.2f%%,earn={dataItem.count_earn},pcts:%.2f%%,)" % (success_rate,earn_rate))
+
+
 if __name__ == "__main__":
-    compute_SW_KPattern_data()
+    #compute_SW_KPattern_data()
+    compute_SW_KEncode_data()
