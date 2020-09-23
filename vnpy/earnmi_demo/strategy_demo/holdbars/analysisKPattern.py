@@ -196,8 +196,8 @@ def compute_SW_KEncode_data():
     print(f"总共分析{total_count}个形态，识别出{len(dataSet)}个形态，有意义的形态有：")
     for key, dataItem in dataSet.items():
        success_rate = 100 * dataItem.count_earn / dataItem.count_total
-       # if dataItem.count_total < 500:
-       #      continue
+       if dataItem.count_total < 500:
+             continue
        if abs(int(success_rate-50)) <5:
             continue
 
@@ -209,6 +209,13 @@ def compute_SW_KEncode_data():
        occur_rate = 100*dataItem.count_total / total_count
        print(f"{key}： total={dataItem.count_total},suc=%.2f%%,occur_rate=%.2f%%,earn_pct:%.2f%%,avg_pct:%.2f%%)" % (success_rate,occur_rate,earn_pct,avg_pct))
 
+
+"""
+统计申万行业的k线编码识别。
+"""
+def compute_SW_KEncode_data():
+
+    pass
 
 if __name__ == "__main__":
     #compute_SW_KPattern_data()
