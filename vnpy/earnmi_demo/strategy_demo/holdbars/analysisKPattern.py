@@ -195,14 +195,19 @@ def compute_SW_KEncode_data():
         ##打印当前形态
     print(f"总共分析{total_count}个形态，识别出{len(dataSet)}个形态，有意义的形态有：")
     for key, dataItem in dataSet.items():
-       if dataItem.count_total < 500:
-           continue
        success_rate = 100 * dataItem.count_earn / dataItem.count_total
+       # if dataItem.count_total < 500:
+       #      continue
        if abs(int(success_rate-50)) <5:
             continue
 
-       earn_rate = 100 * dataItem.pct_earn / dataItem.count_earn
-       print(f"{key}： total={dataItem.count_total},suc=%.2f%%,earn={dataItem.count_earn},pcts:%.2f%%,)" % (success_rate,earn_rate))
+       earn_pct = 100 * dataItem.pct_earn / dataItem.count_earn
+       if success_rate < 50:
+           earn_pct = 100 * (dataItem.pct_total - dataItem.pct_earn) / (dataItem.count_total - dataItem.count_earn)
+       avg_pct = 100 * dataItem.pct_total / dataItem.count_total
+
+       occur_rate = 100*dataItem.count_total / total_count
+       print(f"{key}： total={dataItem.count_total},suc=%.2f%%,occur_rate=%.2f%%,earn_pct:%.2f%%,avg_pct:%.2f%%)" % (success_rate,occur_rate,earn_pct,avg_pct))
 
 
 if __name__ == "__main__":

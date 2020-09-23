@@ -19,18 +19,18 @@ class KEncode():
         if pct > 0.5:
             if pct < 2.0:
                 pct_code = 1
-            if pct < 4.1:
+            elif pct < 4.1:
                 pct_code = 2
-            if pct < 6.7:
+            elif pct < 6.7:
                 pct_code = 3
             else:
                 pct_code = 4
         elif pct < -0.5:
-            if pct < -2.0:
+            if pct > -2.0:
                 pct_code = 5
-            if pct < -4.1:
+            elif pct > -4.1:
                 pct_code = 6
-            if pct < -6.7:
+            elif pct > -6.7:
                 pct_code = 7
             else:
                 pct_code = 8
@@ -52,3 +52,5 @@ class KEncode():
             else:
                 low_extra_pct_code = 2
         return low_extra_pct_code * 3* 9 + high_extra_pct_code * 9 + pct_code
+
+

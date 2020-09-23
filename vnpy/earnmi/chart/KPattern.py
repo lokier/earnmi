@@ -38,8 +38,14 @@ class KPattern():
             #     macd_code = 1
 
             k_code = KEncode.encodeAlgro1(indictor.close[-2],indictor.open[-1],indictor.high[-1],indictor.low[-1],indictor.close[-1])
+            k_code2 = KEncode.encodeAlgro1(indictor.close[-3],indictor.open[-2],indictor.high[-2],indictor.low[-2],indictor.close[-2])
+            k_code3 = KEncode.encodeAlgro1(indictor.close[-4],indictor.open[-3],indictor.high[-3],indictor.low[-3],indictor.close[-3])
+
+            # k_code = KEncode.encodeAlgro1(indictor.close[-2],indictor.open[-1],indictor.high[-1],indictor.low[-1],indictor.close[-1])
+            # k_code = KEncode.encodeAlgro1(indictor.close[-2],indictor.open[-1],indictor.high[-1],indictor.low[-1],indictor.close[-1])
+
             #return kdj_code * 2 * 81 + macd_code * 81 + k_code
-            return kdj_code * 81  + k_code
+            return k_code3 * 81 * 81 + k_code2 * 81 + k_code
 
 
 
