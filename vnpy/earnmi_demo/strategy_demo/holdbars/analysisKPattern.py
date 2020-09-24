@@ -2,7 +2,7 @@
 
 
 """
-统计所有的行业情况所有的形态识别情况
+统计所有的行业情况所有的形态识别情况。 识别某种k线形态并判断是否可以分类
 """
 import math
 from datetime import datetime
