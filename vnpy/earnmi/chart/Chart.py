@@ -177,7 +177,7 @@ class Chart:
             bars = bars.__reversed__()
         data = []
         index = []
-        indicator = Indicator(50)
+        indicator = Indicator()
         ### 初始化columns
         columns = ['Open', 'High', 'Low', 'Close', "Volume"]
 

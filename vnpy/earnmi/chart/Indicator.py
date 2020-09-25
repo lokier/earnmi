@@ -13,7 +13,7 @@ class Indicator(object):
     2. calculating technical indicator value
     """
 
-    def __init__(self, size: int = 34):
+    def __init__(self, size: int = 36):
         """Constructor"""
         self.count: int = 0
         self.size: int = size
