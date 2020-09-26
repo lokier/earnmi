@@ -306,9 +306,9 @@ class Indicator(object):
     """
     def macd(
         self,
-        fast_period: int,
-        slow_period: int,
-        signal_period: int,
+        fast_period: int = 12,
+        slow_period: int = 26,
+        signal_period: int = 9,
         array: bool = False
     ) -> Union[
         Tuple[np.ndarray, np.ndarray, np.ndarray],

@@ -201,13 +201,14 @@ def compute_SW_KEncode_data():
     print(f"总共分析{total_count}个形态，识别出{len(dataSet)}个形态，有意义的形态有：")
     max_succ_rate = 0
     min_succ_rate = 100
+    ret_list = []
     for key, dataItem in dataSet.items():
        success_rate = 100 * dataItem.count_earn / dataItem.count_total
        if dataItem.count_total < 500:
              continue
        if abs(int(success_rate-50)) <10:
             continue
-
+       ret_list.append(key)
        earn_pct = 100 * dataItem.pct_earn / dataItem.count_earn
        if success_rate < 50:
            earn_pct = 100 * (dataItem.pct_total - dataItem.pct_earn) / (dataItem.count_total - dataItem.count_earn)
@@ -220,6 +221,8 @@ def compute_SW_KEncode_data():
 
     total_occur_rate = 100 * occur_count / total_count
     print(f"总共：occur_rate=%.2f%%, min_succ_rate=%.2f%%, max_succ_rate=%.2f%%" % (total_occur_rate,min_succ_rate,max_succ_rate))
+    print(f"{ret_list}")
+
 
 """
 计算KEncode_parseAlgro1的分割在sw的动态分布情况
