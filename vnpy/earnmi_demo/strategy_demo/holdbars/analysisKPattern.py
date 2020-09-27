@@ -165,11 +165,14 @@ def compute_SW_KEncode_data():
     end = datetime(2020, 8, 17)
     dataSet = {}
     total_count = 0
+    occurKPattenDayMap = {}
+    kBarListTotalDay = 0;
     for code in lists:
         #for code in lists:
         barList = sw.getSW2Daily(code, start, end)
         indicator = Indicator(40)
         preBar = None
+        kBarListTotalDay = len(barList)
         for bar in barList:
             ##先识别形态
             kEncodeValue  = KPattern.encode3KAgo1(indicator)
@@ -196,6 +199,10 @@ def compute_SW_KEncode_data():
             indicator.update_bar(bar)
             preBar = bar
 
+            occurDayKey = preBar.datetime.year * 13 * 35 + preBar.datetime.month * 35 + preBar.datetime.day
+            occurKPattenDayMap[occurDayKey] = True
+
+
         ##打印当前形态
     occur_count = 0
     print(f"总共分析{total_count}个形态，识别出{len(dataSet)}个形态，有意义的形态有：")
@@ -220,7 +227,9 @@ def compute_SW_KEncode_data():
        print(f"{key}： total={dataItem.count_total},suc=%.2f%%,occur_rate=%.2f%%,earn_pct:%.2f%%,avg_pct:%.2f%%)" % (success_rate,occur_rate,earn_pct,avg_pct))
 
     total_occur_rate = 100 * occur_count / total_count
-    print(f"总共：occur_rate=%.2f%%, min_succ_rate=%.2f%%, max_succ_rate=%.2f%%" % (total_occur_rate,min_succ_rate,max_succ_rate))
+    total_occur_in_day_rate = 100 * len(occurKPattenDayMap) / kBarListTotalDay  ##在所有交易日中，k线形态日出占比：
+    print(f"总共：occur_rate=%.2f%%, min_succ_rate=%.2f%%, max_succ_rate=%.2f%%"
+          f"\n所有交易日中，k线形态日出占比：%.2f%%" % (total_occur_rate,min_succ_rate,max_succ_rate,total_occur_in_day_rate))
     print(f"{ret_list}")
 
 
@@ -241,6 +250,8 @@ def compute_SW_KEncode_parseAlgro1_split(
     pct_code_count = np.zeros(9)
     high_extra_pct_code_count = np.zeros(3)
     low_extra_pct_code_count = np.zeros(3)
+
+
 
     for code in lists:
         #for code in lists:
