@@ -37,17 +37,49 @@ class KPattern():
             # if dif < dea:
             #     macd_code = 1
 
-            k_code = KEncode.encodeAlgro1(indictor.close[-2],indictor.open[-1],indictor.high[-1],indictor.low[-1],indictor.close[-1])
-            k_code2 = KEncode.encodeAlgro1(indictor.close[-3],indictor.open[-2],indictor.high[-2],indictor.low[-2],indictor.close[-2])
-            k_code3 = KEncode.encodeAlgro1(indictor.close[-4],indictor.open[-3],indictor.high[-3],indictor.low[-3],indictor.close[-3])
+            pct_split = [-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7]
+            extra_split = [1, 2, 3]
+
+
+            k_code = KEncode.encodeAlgro1(indictor.close[-2],indictor.open[-1],indictor.high[-1],indictor.low[-1],indictor.close[-1],pct_split,extra_split)
+            k_code2 = KEncode.encodeAlgro1(indictor.close[-3],indictor.open[-2],indictor.high[-2],indictor.low[-2],indictor.close[-2],pct_split,extra_split)
+            k_code3 = KEncode.encodeAlgro1(indictor.close[-4],indictor.open[-3],indictor.high[-3],indictor.low[-3],indictor.close[-3],pct_split,extra_split)
+
+            MASK = (len(pct_split) + 1) * (len(extra_split)+1) * (len(extra_split)+1)
+            return k_code3 * MASK * MASK + k_code2 * MASK + k_code
+
+
+
+        return None
+
+    def encode5KAgo1(indictor: Indicator) -> int:
+
+        if (indictor.count > 10):
+            k, d, j = indictor.kdj(fast_period=9, slow_period=3, array=False)
+            # dif, dea, macd_bar = indictor.macd(fast_period=12, slow_period=26, signal_period=9, array=False)
+            kdj_code = 0
+            if k < d:
+                kdj_code = 1
+            macd_code = 0
+            # if dif < dea:
+            #     macd_code = 1
+
+            k_code = KEncode.encodeAlgro1(indictor.close[-2], indictor.open[-1], indictor.high[-1], indictor.low[-1],
+                                          indictor.close[-1])
+            k_code2 = KEncode.encodeAlgro1(indictor.close[-3], indictor.open[-2], indictor.high[-2], indictor.low[-2],
+                                           indictor.close[-2])
+            k_code3 = KEncode.encodeAlgro1(indictor.close[-4], indictor.open[-3], indictor.high[-3], indictor.low[-3],
+                                           indictor.close[-3])
+            k_code3 = KEncode.encodeAlgro1(indictor.close[-4], indictor.open[-3], indictor.high[-3], indictor.low[-3],
+                                           indictor.close[-3])
+            k_code3 = KEncode.encodeAlgro1(indictor.close[-4], indictor.open[-3], indictor.high[-3], indictor.low[-3],
+                                           indictor.close[-3])
 
             # k_code = KEncode.encodeAlgro1(indictor.close[-2],indictor.open[-1],indictor.high[-1],indictor.low[-1],indictor.close[-1])
             # k_code = KEncode.encodeAlgro1(indictor.close[-2],indictor.open[-1],indictor.high[-1],indictor.low[-1],indictor.close[-1])
 
-            #return kdj_code * 2 * 81 + macd_code * 81 + k_code
+            # return kdj_code * 2 * 81 + macd_code * 81 + k_code
             return k_code3 * 81 * 81 + k_code2 * 81 + k_code
-
-
 
         return None
 

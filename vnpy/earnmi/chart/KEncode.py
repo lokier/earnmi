@@ -7,8 +7,8 @@ class KEncode():
 
 
     def encodeAlgro1(pre_close:float,open:float,high:float,low:float,close:float
-                     ,pct_split = [-7,-5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7]
-                     ,extra_split = [1, 2, 3]
+                     ,pct_split :[]
+                     ,extra_split:[]
                      ) ->int:
         ret, pct_code, high_extra_pct_code, low_extra_pct_code = KEncode.parseAlgro1(pre_close,open,high,low,close,pct_split,extra_split);
         return ret
