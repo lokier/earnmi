@@ -1,5 +1,9 @@
+from datetime import datetime
+
 import numpy as np
 import talib
+
+from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
 from typing import Tuple, Union
 
@@ -25,6 +29,26 @@ class Indicator(object):
         self.close_array: np.ndarray = np.zeros(size)
         self.volume_array: np.ndarray = np.zeros(size)
         self.open_interest_array: np.ndarray = np.zeros(size)
+
+    def makeBars(self)->["BarData"]:
+        size = len(self.open_array)
+        bars = []
+        dt = datetime.now()
+        for i in range(0,size):
+            bars.append(BarData(
+                symbol="indicator",
+                exchange=Exchange.SSE,
+                datetime=dt,
+                interval=Interval.WEEKLY,
+                volume=self.volume_array[i],
+                open_price=self.open_array[i],
+                high_price=self.high_array[i],
+                low_price=self.low_array[i],
+                close_price=self.close_array[i],
+                gateway_name='arrangePrice'
+            ))
+
+        return bars
 
     def update_bar(self, bars) -> None:
         """

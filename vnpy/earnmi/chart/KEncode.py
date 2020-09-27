@@ -3,6 +3,9 @@
 """
 日K线图编码
 """
+from earnmi.chart.FloatEncoder import FloatEncoder
+
+
 class KEncode():
 
 
@@ -45,9 +48,11 @@ class KEncode():
                 low_extra_pct_code = i
                 break
 
+
         PCT_MASK = pct_size + 1
         EXTRA_PCT_MASK = extra_size + 1
         ret = low_extra_pct_code * EXTRA_PCT_MASK* PCT_MASK + high_extra_pct_code * PCT_MASK + pct_code
+
         return ret,pct_code,high_extra_pct_code,low_extra_pct_code
 
 

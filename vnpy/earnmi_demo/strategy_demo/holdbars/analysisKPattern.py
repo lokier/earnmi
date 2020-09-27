@@ -7,9 +7,14 @@
 import math
 from datetime import datetime
 import numpy as np
+
+from earnmi.chart.Chart import Chart
+from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.chart.Indicator import Indicator
 from earnmi.chart.KEncode import KEncode
 from earnmi.chart.KPattern import KPattern
+from earnmi.uitl.BarUtils import BarUtils
+from vnpy.trader.object import BarData
 
 
 class CountItem(object):
@@ -175,7 +180,7 @@ def compute_SW_KEncode_data():
         kBarListTotalDay = len(barList)
         for bar in barList:
             ##先识别形态
-            kEncodeValue  = KPattern.encode3KAgo1(indicator)
+            kEncodeValue  = KPattern.encode1KAgo1(indicator)
             if kEncodeValue is None:
                 indicator.update_bar(bar)
                 preBar = bar
@@ -232,6 +237,154 @@ def compute_SW_KEncode_data():
           f"\n所有交易日中，k线形态日出占比：%.2f%%" % (total_occur_rate,min_succ_rate,max_succ_rate,total_occur_in_day_rate))
     print(f"{ret_list}")
 
+"""
+  打印指定有意义的k线形态更多的信息
+"""
+def printKPatterMoreDetail(
+        kPatters = [6, 3, 17, 81, 7, 5, 4, 82, 159, 16, 28, 83, 15, 84, 18, 27, 93, 104, 158, 92, 160, 236, 157, 94, 85, 80, 14, 8, 161, 9, 29, 170, 26, 19, 38, 2, 79]
+):
+    from earnmi.data.SWImpl import SWImpl
+    from vnpy.trader.constant import Exchange
+    from vnpy.trader.constant import Interval
+    sw = SWImpl()
+    lists = sw.getSW2List()
+    start = datetime(2014, 5, 1)
+    end = datetime(2020, 8, 17)
+
+    pct_split = [-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7]
+    pct_split = [-7, -5, -3, -1.0, 0, 1, 3, 5, 7]
+    pct_split = [-0.5,0.5]
+
+    pctEncoder = FloatEncoder(pct_split);
+
+    kPattersMap = {}
+    for value in kPatters:
+        kPattersMap[value] = True
+
+    class InnerData(object):
+        kValue:int ##
+        sell_disbute = np.zeros(pctEncoder.mask())  ##卖方力量分布情况
+        buy_disbute = np.zeros(pctEncoder.mask())  #买方力量分布情况
+        pass
+
+    dataSet = {}
+    occurDayMap = {}
+    allTrayDay = 1
+    for code in lists:
+        # for code in lists:
+        barList = sw.getSW2Daily(code, start, end)
+        indicator = Indicator(40)
+        preBar = None
+
+        previousIsMatch = False
+        previousPatternVaule = None
+        allTrayDay = max(allTrayDay,len(barList))
+        for i in range(0, len(barList)):
+            bar = barList[i]
+            indicator.update_bar(bar)
+            patternValue = KPattern.encode1KAgo1(indicator)
+            todayIsMatch = False
+            if not patternValue is None:
+                todayIsMatch = kPattersMap.__contains__(patternValue)
+
+            if todayIsMatch:
+                dayKey = bar.datetime.year * 13 * 35 + bar.datetime.month * 13 + bar.datetime.day
+                occurDayMap[dayKey] = True
+                pass
+
+            if previousIsMatch:
+                innerData:InnerData = dataSet.get(previousIsMatch)
+                if innerData is None:
+                    innerData = InnerData()
+                    innerData.kValue = previousIsMatch
+                    dataSet[previousPatternVaule] = innerData
+
+                sell_pct = 100 *((bar.high_price + bar.close_price) / 2 - preBar.close_price) / preBar.close_price
+                buy_pct =  100 *((bar.low_price + bar.close_price) / 2 - preBar.close_price) / preBar.close_price
+                innerData.buy_disbute[pctEncoder.encode(buy_pct)] += 1
+                innerData.sell_disbute[pctEncoder.encode(sell_pct)] += 1
+
+                pass
+            preBar = bar
+            previousIsMatch = todayIsMatch
+            previousPatternVaule = patternValue
+
+    print(f"所有交易日中，有意义的k线形态出现占比：%.2f%%" % (100 * len(occurDayMap) / allTrayDay))
+
+    for kValue, dataItem in dataSet.items():
+        total_count1 = 0
+        total_count2 = 0
+        for cnt in dataItem.sell_disbute:
+            total_count1 += cnt
+        for cnt in dataItem.buy_disbute:
+            total_count2 += cnt
+        assert  total_count1 == total_count2
+        assert total_count1 > 0
+
+        print(f"\n\nk:%6d, " % (kValue))
+
+        print(f"   卖方价格分布：")
+        for encode in range(0,len(dataItem.sell_disbute)):
+            occurtRate = 100 * dataItem.sell_disbute[encode] / total_count1
+            print(f"   {pctEncoder.descriptEncdoe(encode)}：%.2f%%" % (occurtRate))
+
+        print(f"   买方价格分布：")
+        for encode in range(0, len(dataItem.buy_disbute)):
+            occurtRate = 100 * dataItem.buy_disbute[encode] / total_count1
+            print(f"   {pctEncoder.descriptEncdoe(encode)}：%.2f%%" % (occurtRate))
+
+    pass
+
+""""
+  收集某个识别形态后的第二天涨幅情况
+"""
+def collectKPattherAndShowChart():
+    from earnmi.data.SWImpl import SWImpl
+    from vnpy.trader.constant import Exchange
+    from vnpy.trader.constant import Interval
+    sw = SWImpl()
+    lists = sw.getSW2List()
+    start = datetime(2014, 5, 1)
+    end = datetime(2020, 8, 17)
+
+    bars = []
+    limitSize = 0
+    chart = Chart()
+
+    for code in lists:
+        # for code in lists:
+        barList = sw.getSW2Daily(code, start, end)
+        indicator = Indicator(40)
+        preBar = None
+
+        yestodayIsMatch = False;
+
+        for i in range(0, len(barList)):
+            bar = barList[i]
+            indicator.update_bar(bar)
+            patternValue = KPattern.encode1KAgo1(indicator)
+            todayIsMatch = 9 == patternValue
+
+            if todayIsMatch:
+                if indicator.count > 20:
+                    chart.show(indicator.makeBars(), savefig=f"imgs/collectKPattherAndShowChart_{limitSize}")
+                    limitSize += 1
+                    if (limitSize > 50):
+                        break;
+                pass
+
+            if yestodayIsMatch:
+
+                pass
+            preBar = bar
+            yestodayIsMatch = todayIsMatch
+
+
+        if (limitSize > 50):
+            break;
+
+
+    pass
 
 """
 计算KEncode_parseAlgro1的分割在sw的动态分布情况
@@ -246,10 +399,13 @@ def compute_SW_KEncode_parseAlgro1_split(
     end = datetime(2020, 8, 17)
     dataSet = {}
 
+    pct_split = [-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7]
+    extra_split = [0.5, 1.0, 1.5, 2.0, 2.5, 2.0]
+
     total_count = 0
-    pct_code_count = np.zeros(9)
-    high_extra_pct_code_count = np.zeros(3)
-    low_extra_pct_code_count = np.zeros(3)
+    pct_code_count = np.zeros(len(pct_split)+1)
+    high_extra_pct_code_count = np.zeros(len(extra_split)+1)
+    low_extra_pct_code_count = np.zeros(len(extra_split)+1)
 
 
 
@@ -300,5 +456,8 @@ def compute_SW_KEncode_parseAlgro1_split(
 
 if __name__ == "__main__":
     #compute_SW_KPattern_data()
-    compute_SW_KEncode_data()
+    #compute_SW_KEncode_data()
     #compute_SW_KEncode_parseAlgro1_split();
+    #collectKPattherAndShowChart()
+
+    printKPatterMoreDetail()
