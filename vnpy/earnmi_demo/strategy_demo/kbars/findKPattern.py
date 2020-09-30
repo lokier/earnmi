@@ -70,7 +70,7 @@ class TraceIn3DayItem(object):
         return self.wanted
 
     def isSuccess(self) ->bool:
-        return self.current_sell_pct > self.targ_pct
+        return self.current_sell_pct >= self.targ_pct
 
 
 def findKPatternThatIn3Day(first_day_pct:float = 3,targe_pct = 3):
@@ -284,7 +284,7 @@ def printKPatterMoreDetail(
 
     pct_split = [-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7]
     #pct_split = [-7, -5, -3, -1.0, 0, 1, 3, 5, 7]
-    #pct_split = [-0.5,0.5]
+    pct_split = [2]
 
     pctEncoder = FloatEncoder(pct_split);
 
@@ -337,7 +337,7 @@ def printKPatterMoreDetail(
 
             indicator.update_bar(bar)
             kEncodeValue = KPattern.encode2KAgo1(indicator)
-            if kEncodeValue is None:
+            if kEncodeValue is None or kPattersMap.get(kEncodeValue) is None:
                 continue
             traceItem = TraceIn3DayItem(kEncodeValue,bar)
             traceItems.append(traceItem)
@@ -369,6 +369,6 @@ def printKPatterMoreDetail(
 
 if __name__ == "__main__":
     #findKPatternThatIn3Day()
-    #printKPatterMoreDetail()
-    ganerateKPatternTrainData()
+    printKPatterMoreDetail(kPatters=[712])
+    #ganerateKPatternTrainData()
     pass
