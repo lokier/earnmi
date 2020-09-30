@@ -8,6 +8,7 @@ from earnmi.chart.Indicator import Indicator
 from earnmi.chart.KPattern import KPattern
 from vnpy.trader.object import BarData
 import numpy as np
+from earnmi.data.SWImpl import SWImpl
 
 
 class CountItem(object):
@@ -22,8 +23,8 @@ class CountItem(object):
 寻找一个k线形态，这个形态产生之后，第一天卖方力量不超过2%，2,3天后卖方力量突破3%的概率值。
 """
 class TraceIn3DayItem(object):
-    first_high_pct = 100  ##不管第一天的涨幅
-    targ_pct = 1
+    first_limit_close_pct = 1  ##不管第一天的涨幅
+    targ_pct = 2
 
     def __init__(self,kPattern:int,bar:BarData):
         self.kPattern = kPattern
@@ -33,25 +34,31 @@ class TraceIn3DayItem(object):
         self.current_sell_pct = -100
         self.current_buy_pct = 100
 
+
     """
     下一天的bar值。
     """
     def onTraceBar(self,bar:BarData):
-        size = len(self.postBars)
         startBar = self.firstBar
         sell_pct = 100 * ((bar.high_price + bar.close_price) / 2 - startBar.close_price) / startBar.close_price
         buy_pct = 100 * ((bar.low_price + bar.close_price) / 2 - startBar.close_price) / startBar.close_price
-        if size == 0:
+
+        self.postBars.append(bar)
+        size = len(self.postBars)
+        if size <= 1:
             #第一天
-            if sell_pct > self.first_high_pct:
+            first_close_pct = (bar.close_price - startBar.close_price) / startBar.close_price
+            self.fisrt_sell_pct = sell_pct
+            self.first_buy_pct = buy_pct
+            #if first_close_price > self.first_limit_close_price:
+            if first_close_pct > self.first_limit_close_pct:
                 self.wanted = False
                 return
 
         self.current_sell_pct = max(self.current_sell_pct,sell_pct)
         self.current_buy_pct = min(self.current_buy_pct,buy_pct)
 
-        self.postBars.append(bar)
-        if size >= 2:
+        if size >= 3:
             self.wanted = True
             return
 
@@ -67,7 +74,6 @@ class TraceIn3DayItem(object):
 
 
 def findKPatternThatIn3Day(first_day_pct:float = 3,targe_pct = 3):
-    from earnmi.data.SWImpl import SWImpl
     sw = SWImpl()
     lists = sw.getSW2List()
     start = datetime(2014, 5, 1)
@@ -120,7 +126,7 @@ def findKPatternThatIn3Day(first_day_pct:float = 3,targe_pct = 3):
         success_rate = 100 * dataItem.count_earn / dataItem.count_total
         if dataItem.count_total < 300:
             continue
-        if success_rate < 60:
+        if success_rate < 40:
             continue
         ret_list.append(key)
         if dataItem.count_earn > 0:
@@ -142,12 +148,133 @@ def findKPatternThatIn3Day(first_day_pct:float = 3,targe_pct = 3):
 
 
 """
+K线形态图收集器
+"""
+class KPatternCollector:
+
+    def onCreate(self):
+        pass
+
+    """
+    开始新的股票遍历,如果不需要最终，返回false。
+    """
+    def onStart(self,code:str) ->bool:
+        return True
+
+    """
+    检查是否追踪某个k线形态，是的话，创建一个最终值对象。
+    """
+    def checkIfTrace(self,newBar:BarData)->TraceIn3DayItem:
+        pass
+
+    def onTraceFinish(self,traceItem:TraceIn3DayItem):
+        pass
+
+    def onEnd(self,code:str):
+        pass
+
+    def onDestroy(self):
+        pass
+
+
+
+
+"""
+生成训练数据。
+"""
+def ganerateKPatternTrainData( ):
+
+    class MyPattherCollector(KPatternCollector):
+        # 收集指定的k线
+        collectKPatternOnly = True
+        KPattern: [] = [712]
+        pct_split = [-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7]
+        # pct_split = [-7, -5, -3, -1.0, 0, 1, 3, 5, 7]
+        # pct_split = [-0.5,0.5]
+        pctEncoder = FloatEncoder(pct_split);
+
+        def __init__(self):
+            self.kPattersMap = {}
+            self.sw = SWImpl()
+            self.dataSet = []
+            for value in self.KPattern:
+                self.kPattersMap[value] = True
+
+        def onStart(self, code: str) ->bool:
+            self.indicator = Indicator(40)
+            self.traceCode = code
+            self.traceName = self.sw.getSw2Name(code)
+            return True
+        """
+        检查是否追踪某个k线形态，是的话，创建一个最终值对象。
+        """
+        def checkIfTrace(self, newBar: BarData) -> TraceIn3DayItem:
+            self.indicator.update_bar(newBar)
+            kEncodeValue = KPattern.encode2KAgo1(self.indicator)
+            if kEncodeValue is None:
+                return None
+            if self.collectKPatternOnly and self.kPattersMap.get(kEncodeValue) is None:
+                return None
+            return TraceIn3DayItem(kEncodeValue, newBar)
+
+        def onTraceFinish(self, traceItem: TraceIn3DayItem):
+            if traceItem.isWanted():
+                ##收集数据。
+                data = []
+                data.append(self.traceCode)
+                data.append(self.traceName)
+                data.append(traceItem.kPattern)
+                data.append(traceItem.first_buy_pct)
+                data.append(traceItem.fisrt_sell_pct)
+                data.append(traceItem.current_sell_pct)
+                data.append(traceItem.current_buy_pct)
+                self.dataSet.append(data)
+
+        def onDestroy(self):
+            import pandas as pd
+            cloumns = ["code", "name", "kPattern", "buy_price", "sell_price", "label_sell_price", "label_buy_price"]
+            wxl = pd.DataFrame(self.dataSet, columns=cloumns)
+            writer = pd.ExcelWriter('files/sw_train_data_sample.xlsx')
+            wxl.to_excel(writer, sheet_name="sample", index=False)
+            writer.save()
+            writer.close()
+            print(f"dataSize = {len(self.dataSet)}")
+
+
+
+    collector: KPatternCollector = MyPattherCollector()
+    sw = SWImpl()
+    lists = sw.getSW2List()
+    start = datetime(2014, 5, 1)
+    end = datetime(2020, 8, 17)
+    collector.onCreate()
+    for code in lists:
+        collector.onStart(code)
+        barList = sw.getSW2Daily(code, start, end)
+        traceItems= []
+        for bar in barList:
+            toDeleteList = []
+            for traceItem in traceItems:
+                traceItem.onTraceBar(bar)
+                if traceItem.isFinished():
+                    toDeleteList.append(traceItem)
+                    collector.onTraceFinish(traceItem)
+            for traceItem in toDeleteList:
+                traceItems.remove(traceItem)
+            traceItem = collector.checkIfTrace(bar)
+            if traceItem is None:
+                continue
+            traceItems.append(traceItem)
+        collector.onEnd(code)
+    collector.onDestroy()
+
+
+"""
   打印指定有意义的k线形态更多的信息
 """
 def printKPatterMoreDetail(
         kPatters = [535, 359, 1239, 1415, 1072, 712, 1412, 1240, 1413, 888, 2823, 706, 1414, 1064]
 ):
-    from earnmi.data.SWImpl import SWImpl
     from vnpy.trader.constant import Exchange
     from vnpy.trader.constant import Interval
     sw = SWImpl()
@@ -242,5 +369,6 @@ def printKPatterMoreDetail(
 
 if __name__ == "__main__":
     #findKPatternThatIn3Day()
-    printKPatterMoreDetail()
+    #printKPatterMoreDetail()
+    ganerateKPatternTrainData()
     pass
