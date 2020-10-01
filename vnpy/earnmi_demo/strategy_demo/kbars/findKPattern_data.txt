@@ -1,16 +1,15 @@
-总共分析134728个形态，识别出5687个形态，有意义的形态有：
-535： total=895,suc=43.91%,occur_rate=0.66%,earn_pct:4.18%,avg_pct:2.11%)
-359： total=319,suc=48.90%,occur_rate=0.24%,earn_pct:4.29%,avg_pct:2.19%)
-1239： total=1316,suc=43.39%,occur_rate=0.98%,earn_pct:4.20%,avg_pct:2.11%)
-1415： total=480,suc=53.75%,occur_rate=0.36%,earn_pct:4.13%,avg_pct:2.52%)
-1072： total=407,suc=46.68%,occur_rate=0.30%,earn_pct:3.62%,avg_pct:1.88%)
-531： total=651,suc=40.71%,occur_rate=0.48%,earn_pct:3.92%,avg_pct:1.75%)
-712： total=353,suc=55.52%,occur_rate=0.26%,earn_pct:4.70%,avg_pct:2.87%)
-1240： total=463,suc=51.84%,occur_rate=0.34%,earn_pct:4.60%,avg_pct:2.61%)
-888： total=508,suc=49.80%,occur_rate=0.38%,earn_pct:4.29%,avg_pct:2.43%)
-2823： total=381,suc=42.52%,occur_rate=0.28%,earn_pct:4.31%,avg_pct:1.97%)
-706： total=332,suc=42.47%,occur_rate=0.25%,earn_pct:4.06%,avg_pct:2.19%)
-1414： total=470,suc=54.68%,occur_rate=0.35%,earn_pct:3.67%,avg_pct:2.29%)
-1064： total=478,suc=46.65%,occur_rate=0.35%,earn_pct:4.33%,avg_pct:2.29%)
-总共：occur_rate=5.23%, min_succ_rate=40.71%, max_succ_rate=55.52%
-[535, 359, 1239, 1415, 1072, 531, 712, 1240, 888, 2823, 706, 1414, 1064]
+总共收集134992个形态，共134728个满足条件，识别出5687类形态，有意义的形态有：
+535： total=895,suc=41.79%,occur_rate=0.66%,earn_pct:4.18%,avg_pct:1.76%)
+359： total=319,suc=47.34%,occur_rate=0.24%,earn_pct:4.22%,avg_pct:1.79%)
+1239： total=1316,suc=40.65%,occur_rate=0.97%,earn_pct:4.29%,avg_pct:1.77%)
+1415： total=480,suc=53.12%,occur_rate=0.36%,earn_pct:4.14%,avg_pct:2.29%)
+1072： total=407,suc=45.70%,occur_rate=0.30%,earn_pct:3.60%,avg_pct:1.54%)
+712： total=353,suc=52.69%,occur_rate=0.26%,earn_pct:4.80%,avg_pct:2.68%)
+1240： total=463,suc=48.60%,occur_rate=0.34%,earn_pct:4.66%,avg_pct:2.17%)
+888： total=508,suc=48.23%,occur_rate=0.38%,earn_pct:4.33%,avg_pct:2.22%)
+2823： total=381,suc=40.42%,occur_rate=0.28%,earn_pct:4.39%,avg_pct:1.55%)
+706： total=332,suc=40.36%,occur_rate=0.25%,earn_pct:4.14%,avg_pct:1.89%)
+1414： total=470,suc=50.21%,occur_rate=0.35%,earn_pct:3.76%,avg_pct:2.01%)
+1064： total=478,suc=43.51%,occur_rate=0.35%,earn_pct:4.44%,avg_pct:2.00%)
+总共：occur_rate=4.74%, min_succ_rate=40.36%, max_succ_rate=53.12%
+[535, 359, 1239, 1415, 1072, 712, 1240, 888, 2823, 706, 1414, 1064]

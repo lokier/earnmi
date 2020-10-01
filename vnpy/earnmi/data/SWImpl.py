@@ -2,6 +2,8 @@ import time
 from builtins import list
 from datetime import datetime, timedelta
 from typing import Sequence
+
+from earnmi.data.KBarCollector import KBarCollector
 from vnpy.trader.constant import Exchange, Interval
 
 from peewee import SqliteDatabase
@@ -657,6 +659,30 @@ class SWImpl(SW):
 
     def getSw2Name(self, code: str) -> str:
         return self.__nameMap[code]
+
+
+    def collect(self, start:datetime,end:datetime,collector: KBarCollector):
+        lists = self.getSW2List()
+        collector.onCreate()
+        for code in lists:
+            collector.onStart(code)
+            barList = self.getSW2Daily(code, start, end)
+            traceItems = []
+            for bar in barList:
+                toDeleteList = []
+                for traceObject in traceItems:
+                    collector.onTrace(traceObject,bar)
+                    if traceObject.finished:
+                        toDeleteList.append(traceObject)
+                        collector.onTraceFinish(traceObject)
+                for traceItem in toDeleteList:
+                    traceItems.remove(traceItem)
+                traceObject = collector.collect(bar)
+                if traceObject is None:
+                    continue
+                traceItems.append(traceObject)
+            collector.onEnd(code)
+        collector.onDestroy()
 
     def getSW2Mintuely(self, code: str, date: datetime) -> Sequence["BarData"]:
         pass

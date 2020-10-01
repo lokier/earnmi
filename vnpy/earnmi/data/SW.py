@@ -5,6 +5,7 @@ from abc import abstractmethod
 from datetime import datetime
 from typing import List, Sequence
 
+from earnmi.data.KBarCollector import KBarCollector
 from vnpy.trader.object import BarData
 
 
@@ -37,4 +38,8 @@ class SW:
     """
     @abstractmethod
     def getSW2Mintuely(self, code: str,date:datetime) -> Sequence["BarData"]:
+        pass
+
+    @abstractmethod
+    def collect(self, start:datetime,end:datetime,collector: KBarCollector):
         pass
