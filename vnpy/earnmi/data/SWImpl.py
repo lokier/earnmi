@@ -741,17 +741,26 @@ if __name__ == "__main__":
             bars.append(bar)
         return bars
 
-    def updateDataFrom(db:SqlManager,code:str,start:datetime)->int:
-        #清空数据
-        db.clean(code)
+    def updateDataFrom(db:SqlManager,code:str,start:datetime, isClean = False)->int:
+        if not isClean:
+            ##增量更新
+            bar = db.get_newest_bar_data(code,Exchange.SZSE,Interval.DAILY)
+            if not bar is None:
+                start = bar.datetime + timedelta(days = 1)
+                start = datetime(year=start.year,month=start.month,day=start.day,hour=8)
+        else:
+            db.clean(code)
 
         now = datetime.now()
-        print(f"start updateDataFrom: code = {code}, form = {start}")
+        now = datetime(year=now.year,month=now.month,day=now.day,hour=19)
+
         count = 0
+        latest_bar = None
         while True:
             bars = fetchDataForm(code,start,1800);
             if len(bars) == 0:
                 break;
+            latest_bar = bars[-1]
             end =  bars[-1].datetime
             print(f"  fetchDataForm: {start},count = {len(bars)},end = {end}")
             db.save_bar_data(bars)
@@ -759,7 +768,7 @@ if __name__ == "__main__":
             count += len(bars)
             if start > now:
                 break;
-        print(f"finished updateDataFrom: code = {code}, form = {start},count ={count}")
+        print(f"finished updateDataFrom: code = {code}, form = {start},count ={count},latest_bar={latest_bar}")
         return count
 
 
@@ -767,10 +776,13 @@ if __name__ == "__main__":
     db = sw.getSqlManager()
     list = sw.getSW2List()
     start_day = datetime.strptime("2014-1-1", "%Y-%m-%d")
+
+    isCleanBeforeUpdate = False ##更新之前是否清理旧数据。
     for code in list:
         ##请求间隔不能小于5秒
-        count = updateDataFrom(db, code, start_day)
-        assert count >= 1600
+        count = updateDataFrom(db, code, start_day,isClean = isCleanBeforeUpdate)
+        if isCleanBeforeUpdate:
+            assert count >= 1600
             #print(f"================= error code: {code}")
         time.sleep(5)
 

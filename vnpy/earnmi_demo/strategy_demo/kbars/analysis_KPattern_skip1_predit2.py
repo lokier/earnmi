@@ -38,6 +38,8 @@ class Skip1_Predict2_TraceData(TraceData):
 
 class Find_KPattern_skip1_predit2(KBarCollector):
 
+    print_on_destroy = False
+
     def __init__(self,limit_close_pct = 1):
         self.limit_close_pct = limit_close_pct
         self.success_sell_pct = 2
@@ -117,6 +119,8 @@ class Find_KPattern_skip1_predit2(KBarCollector):
         pass
 
     def onDestroy(self):
+        if not self.print_on_destroy:
+            return
         dataSet = self.dataSet
         print(f"总共收集{self.collect_k_count}个形态，共{self.k_count}个满足条件，识别出{len(dataSet)}类形态，有意义的形态有：")
         max_succ_rate = 0
@@ -204,6 +208,8 @@ class More_detail_KPattern_skip1_predit2(Find_KPattern_skip1_predit2):
 
     def onDestroy(self):
         Find_KPattern_skip1_predit2.onDestroy(self)
+        if not self.print_on_destroy:
+            return
         print(f"所有交易日中，有意义的k线形态出现占比：%.2f%%，allTradeDay = { self.allTradeDay}" % (100 * len(self.occurDayMap) / self.allTradeDay))
         for kValue, dataItem in self.dataSet.items():
             total_count1 = 0
@@ -230,7 +236,7 @@ class More_detail_KPattern_skip1_predit2(Find_KPattern_skip1_predit2):
                 info += f"{self.pctEncoder.descriptEncdoe(encode)}：%.2f%%," % (occurtRate)
             print(f"     {info}")
 
-class Generate_TrainData_KPattern_skip1_predit2(More_detail_KPattern_skip1_predit2):
+class Generate_Feature_KPattern_skip1_predit2(More_detail_KPattern_skip1_predit2):
 
     def __init__(self, limit_close_pct=1, kPatters: [] = None):
         super().__init__(limit_close_pct,kPatters)
@@ -258,15 +264,26 @@ class Generate_TrainData_KPattern_skip1_predit2(More_detail_KPattern_skip1_predi
         self.trainDataSet.append(data)
         pass
 
-    def onDestroy(self):
-        super().onDestroy()
+    def getPandasData(self) -> pd.DataFrame:
         cloumns = ["code", "name", "kPattern", "buy_price", "sell_price", "label_sell_price", "label_buy_price"]
-        wxl = pd.DataFrame(self.trainDataSet, columns=cloumns)
+        return pd.DataFrame(self.trainDataSet, columns=cloumns)
+
+    def writeToXml(self) ->bool:
+        size = len(self.trainDataSet)
+        if size < 1:
+            print("no need to write")
+            return False
+        wxl = self.getPandasData()
         writer = pd.ExcelWriter('files/sw_train_data_sample.xlsx')
         wxl.to_excel(writer, sheet_name="sample", index=False)
         writer.save()
         writer.close()
-        print(f"dataSize = {len(self.trainDataSet)}")
+        print(f"write dataSize = {size}")
+        return True
+
+    def onDestroy(self):
+        super().onDestroy()
+
 
 if __name__ == "__main__":
     sw = SWImpl()
@@ -275,13 +292,18 @@ if __name__ == "__main__":
 
     ##查找有意义的k线形态
     findKPatternCollector = Find_KPattern_skip1_predit2()
+    findKPatternCollector.print_on_destroy = True
+    sw.collect(start, end,findKPatternCollector)
 
     ##打印更详细的信息
-    printMoreDetail = More_detail_KPattern_skip1_predit2(kPatters=[712])
+    #printMoreDetail = More_detail_KPattern_skip1_predit2(kPatters=[712])
+    #printMoreDetail.print_on_destroy = True
+    #sw.collect(start, end,printMoreDetail)
 
     ##生成训练数据。
-    generateTrainData = Generate_TrainData_KPattern_skip1_predit2(kPatters=[712])
-
-    sw.collect(start, end,generateTrainData)
+    # generateTrainData = Generate_TrainData_KPattern_skip1_predit2(kPatters=[712])
+    # sw.collect(start, end,generateTrainData)
+    # trainData = generateTrainData.getPandasData()
+    ##generateTrainData.writeToXml()
 
     pass
