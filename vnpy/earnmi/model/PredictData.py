@@ -5,7 +5,7 @@ from dataclasses import dataclass
 """
 @dataclass
 class PredictData(object):
-    percent_sell:float  #涨幅
+    percent:float  #涨幅
     probability:float #概率
 
     precent_real:float = None ##实际值，如果有的话
