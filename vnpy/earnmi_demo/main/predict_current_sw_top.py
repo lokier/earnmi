@@ -26,9 +26,12 @@ class PredictModel:
 
     def __init__(self):
         self.data_x = None
-        self.data_y = None
-        self.randomForest = None
-        self.labels_y = None
+        self.data_y_sell = None
+        self.data_y_buy = None
+        self.labels_y_sell = None
+        self.labels_y_buy = None
+        self.randomForest_for_sell = None
+        self.randomForest_for_buy = None
 
     """
     预处理特征数据。
@@ -41,7 +44,12 @@ class PredictModel:
         def percent_to_one(x):
             return int(x * 100) / 1000.0
         def toInt(x):
-            return int(x + 0.5)
+            v =  int(x + 0.5)
+            if v > 10:
+                v = 10
+            if v < -10:
+                v = -10
+            return v
         d = df
         d['buy_price'] = d.buy_price.apply(percent_to_one)  # 归一化
         d['sell_price'] = d.sell_price.apply(percent_to_one)  # 归一化
@@ -53,75 +61,98 @@ class PredictModel:
         df = df.drop(columns=['code', 'kPattern', 'name'])
         data = df.values
         x, y = np.split(data, indices_or_sections=(4,), axis=1)  # x为数据，y为标签
-        y = y[:, 0:1].astype('int')  # 取第一列
-        return x, y.ravel()
+        y_sell = y[:, 0:1].astype('int')  # 取第一列
+        y_buy = y[:, 0:1].astype('int')  # 取第一列
+
+        return x, y_sell.ravel(),y_buy.ravel()
 
     def setFeature(self, df:pd.DataFrame):
-        self.data_x,self.data_y = self.__pre_process(df)
-        label_value = np.unique(self.data_y)
-        self.labels_y = np.sort(label_value)
+        self.data_x,self.data_y_sell,self.data_y_buy = self.__pre_process(df)
+        self.labels_y_sell = np.sort(np.unique(self.data_y_sell))
+        self.labels_y_buy = np.sort(np.unique(self.data_y_buy))
+
 
     def saveToFile(self,fileName:str):
         with open(fileName, 'wb') as fp:
             pickle.dump(self.data_x, fp,-1)
-            pickle.dump(self.data_y, fp,-1)
-            pickle.dump(self.labels_y, fp,-1)
+            pickle.dump(self.data_y_sell, fp,-1)
+            pickle.dump(self.data_y_buy, fp,-1)
+            pickle.dump(self.labels_y_sell, fp,-1)
+            pickle.dump(self.labels_y_buy, fp,-1)
 
     def loadFromFile(self,fileName:str):
         with open(fileName, 'rb') as fp:
             self.data_x = pickle.load(fp)
-            self.data_y = pickle.load(fp)
-            self.labels_y = pickle.load(fp)
+            self.data_y_sell = pickle.load(fp)
+            self.data_y_buy = pickle.load(fp)
+            self.labels_y_sell = pickle.load(fp)
+            self.labels_y_buy = pickle.load(fp)
 
-    def getClassifier(self,x,y):
-        if self.randomForest is None:
-            self.randomForest = RandomForestClassifier(n_estimators=100, max_depth=None, min_samples_split=50,
-                                                       bootstrap=True)
-            self.randomForest.fit(self.data_x, self.data_y)
-        return self.randomForest
+    def getClassifier(self,isSell = True):
+        if isSell:
+            if self.randomForest_for_sell is None:
+                self.randomForest_for_sell = RandomForestClassifier(n_estimators=100, max_depth=None, min_samples_split=50,
+                                                           bootstrap=True)
+                self.randomForest_for_sell.fit(self.data_x, self.data_y_sell)
+            return self.randomForest_for_sell
+        else:
+            if self.randomForest_for_buy is None:
+                self.randomForest_for_buy = RandomForestClassifier(n_estimators=100, max_depth=None, min_samples_split=50,
+                                                           bootstrap=True)
+                self.randomForest_for_buy.fit(self.data_x, self.data_y_buy)
+            return self.randomForest_for_buy
 
     def predict(self,feature:pd.DataFrame) -> Sequence["PredictData"]:
-        x, y = self.__pre_process(feature)
-        classifier = self.getClassifier(self.data_x,self.data_y)
+        x, y_sell,y_buy = self.__pre_process(feature)
+        classifier = self.getClassifier()
 
         predic_y_proba = classifier.predict_proba(x)
         size = len(x)
         predict_data_list = []
         for i in range(0, size):
             y_proba_list = predic_y_proba[i]  ##预测值
-            index = -1  ##查找最高的index
-            max_proba = -100000
-            for j in range(0,len(y_proba_list)):
-                proba = y_proba_list[j]
-                if proba > max_proba:
-                    max_proba = proba
-                    index = j
-            assert index != -1
-            total_probal = 0.0
-            for j in range(index,len(y_proba_list)):
-                total_probal += y_proba_list[j]
-
-            probal_2 = None
-            percent_2 = None
-            if index > 0:
-                probal_2 = y_proba_list[index-1]
-                percent_2 = self.labels_y[index - 1]
-
-            if index < len(self.labels_y) -1:
-                if probal_2 is None or probal_2 < y_proba_list[index+1]:
-                    probal_2 = y_proba_list[index + 1]
-                    percent_2 = self.labels_y[index + 1]
-
-            #percent = self.labels_y[index]
-            percent = percent_2 *  probal_2 /(max_proba + probal_2) + self.labels_y[index] *  max_proba /(max_proba + probal_2)
+            percent,total_probal = self.__compute_prdict_sell(y_proba_list,self.labels_y_sell,True)
             predictData = PredictData(percent=percent,probability=total_probal)
-            predictData.precent_real = y[i]
+            predictData.precent_real = y_sell[i]
             predict_data_list.append(predictData)
 
         return predict_data_list
 
+    def __compute_prdict_sell(self,y_proba_list:[],y_label:[],isSell=True):
+        index = -1  ##查找最高的index
+        max_proba = -100000
+        for j in range(0, len(y_proba_list)):
+            proba = y_proba_list[j]
+            if proba > max_proba:
+                max_proba = proba
+                index = j
+        assert index != -1
+        total_probal = 0.0
+        if isSell:
+            for j in range(index, len(y_proba_list)):
+                total_probal += y_proba_list[j]
+        else:
+            for j in range(0, index+1):
+                total_probal += y_proba_list[j]
+
+        probal_2 = None
+        percent_2 = None
+        if index > 0:
+            probal_2 = y_proba_list[index - 1]
+            percent_2 = y_label[index - 1]
+
+        if index < len(y_label) - 1:
+            if probal_2 is None or probal_2 < y_proba_list[index + 1]:
+                probal_2 = y_proba_list[index + 1]
+                percent_2 = y_label[index + 1]
+
+        # percent = self.labels_y[index]
+        percent = percent_2 * probal_2 / (max_proba + probal_2) + y_label[index] * max_proba / (
+                    max_proba + probal_2)
+        return percent,total_probal
+
     def printCrossScoreTest(self):
-        x_train, x_test, y_train, y_test = model_selection.train_test_split(self.data_x, self.data_y, train_size=0.7, test_size=0.3)
+        x_train, x_test, y_train, y_test = model_selection.train_test_split(self.data_x, self.data_y_sell, train_size=0.7, test_size=0.3)
         y_train = y_train.ravel()
         y_test = y_test.ravel()
 
@@ -148,18 +179,27 @@ class PredictModel2(PredictModel):
 
     def __init__(self):
         super().__init__()
-        self.svm = None
+        self.svm_for_sell = None
+        self.svm_for_buy = None
 
-    def getClassifier(self,x,y):
-        if self.svm is None:
-            classifier = sklearn.svm.SVC(C=2, kernel='rbf', gamma=10, decision_function_shape='ovr',
-                                         probability=True)  # ovr:一对多策略
-            classifier.fit(x, y)  # ravel函数在降维时默认是行序优先
-            self.svm = classifier
-        return self.svm
+    def getClassifier(self,isSell=True):
+        if isSell:
+            if self.svm_for_sell is None:
+                self.svm_for_sell = RandomForestClassifier(n_estimators=100, max_depth=None,
+                                                                    min_samples_split=50,
+                                                                    bootstrap=True)
+                self.svm_for_sell.fit(self.data_x, self.data_y_sell)
+            return self.svm_for_sell
+        else:
+            if self.svm_for_buy is None:
+                self.svm_for_buy = RandomForestClassifier(n_estimators=100, max_depth=None,
+                                                                   min_samples_split=50,
+                                                                   bootstrap=True)
+                self.svm_for_buy.fit(self.data_x, self.data_y_buy)
+            return self.svm_for_buy
 
     def printCrossScoreTest(self):
-        train_data, test_data, train_label, test_label = model_selection.train_test_split(self.data_x, self.data_y, train_size=0.7,
+        train_data, test_data, train_label, test_label = model_selection.train_test_split(self.data_x, self.data_y_sell, train_size=0.7,
                                                                                           test_size=0.3)
         train_label = train_label.ravel()
         test_label = test_label.ravel()
@@ -200,7 +240,7 @@ if __name__ == "__main__":
         Generate_Feature_KPattern_skip1_predit2
 
     ##建立特征模型
-    #buildAndSaveModel(start,end,patternList)
+   # buildAndSaveModel(start,end,patternList)
 
 
 
