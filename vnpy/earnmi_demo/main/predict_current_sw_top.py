@@ -76,7 +76,7 @@ class PredictModel:
     def predict(self,feature:pd.DataFrame) -> Sequence["PredictData"]:
         x, y = self.__pre_process(feature)
         if self.randomForest is None:
-            self.randomForest = RandomForestClassifier(n_estimators=50, max_depth=None, min_samples_split=50,
+            self.randomForest = RandomForestClassifier(n_estimators=100, max_depth=None, min_samples_split=50,
                                                        bootstrap=True)
             self.randomForest.fit(self.data_x, self.data_y)
 
@@ -229,7 +229,8 @@ if __name__ == "__main__":
     predictStart = datetime(2020, 8, 18)
     predictEnd = datetime.now()
     #patternList = [535]
-
+    total_count = 0
+    fail_count = 0
     for kPattern in patternList:
         generateTrainData = Generate_Feature_KPattern_skip1_predit2(kPatters=[kPattern])
         sw.collect(predictStart, predictEnd, generateTrainData)
@@ -242,6 +243,7 @@ if __name__ == "__main__":
 
         traceDatas = generateTrainData.traceDatas
 
+
         for traceData in traceDatas:
             feature = generateTrainData.generateData([traceData])
             predictDatas =  model.predict(feature)
@@ -253,8 +255,9 @@ if __name__ == "__main__":
 
             profile_pct =  (predict_price - buy_price) / close_price
 
-            if profile_pct > 0.01:
+            if profile_pct > 0.01 and predict.probability > 0.7:
                 sell_day = -1
+                total_count +=1
                 for i in range(0, len(traceData.predictBars)):
                     bar: BarData = traceData.predictBars[i]
                     if predict_price < bar.high_price:
@@ -263,19 +266,15 @@ if __name__ == "__main__":
 
                 can_sell = sell_day != -1
                 if can_sell:
-                    print(f" success : profile_pct = {profile_pct},sell_day = {sell_day},prob={predict.probability}")
+                    print(f"SUC  : profile_pct = {profile_pct},sell_day = {sell_day},prob={predict.probability}")
                 else:
                     profile_pct = (traceData.predictBars[-1].close_price - buy_price) / close_price
-                    print(f" Fail : profile_pct = {profile_pct},prob={predict.probability}")
+                    fail_count += 1
+                    print(f"FAIL : profile_pct = {profile_pct},prob={predict.probability}")
 
+                #if profile_pct < 0.001:
 
-            ##canSell = False
-
-            # else:
-            #     print(f" watch : profile_pct = {profile_pct},prob={predict.probability}")
-
-
-
-
+    sucess_rate = 100 * ( 1 - (fail_count)/total_count)
+    print(f"total count:{total_count}, sucess_rate:%.2f%%" % (sucess_rate))
 
     pass
