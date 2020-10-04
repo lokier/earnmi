@@ -15,6 +15,7 @@ import pickle
 
 from earnmi.data.SWImpl import SWImpl
 from earnmi.model.PredictData import PredictData
+from vnpy.trader.object import BarData
 
 """
 
@@ -227,18 +228,54 @@ if __name__ == "__main__":
 
     predictStart = datetime(2020, 8, 18)
     predictEnd = datetime.now()
-    patternList = [535]
+    #patternList = [535]
 
     for kPattern in patternList:
         generateTrainData = Generate_Feature_KPattern_skip1_predit2(kPatters=[kPattern])
         sw.collect(predictStart, predictEnd, generateTrainData)
-        featureData = generateTrainData.getPandasData()
+
 
         filleName = f"models/predict_sw_top_k_{kPattern}.m"
 
         model = PredictModel()
         model.loadFromFile(filleName)
 
-        model.printPredictInfo(featureData);
+        traceDatas = generateTrainData.traceDatas
+
+        for traceData in traceDatas:
+            feature = generateTrainData.generateData([traceData])
+            predictDatas =  model.predict(feature)
+            predict = predictDatas[0]
+
+            close_price = traceData.occurBar.close_price
+            predict_price =  close_price* (1 + predict.percent / 100.0)
+            buy_price =  traceData.skipBar.close_price
+
+            profile_pct =  (predict_price - buy_price) / close_price
+
+            if profile_pct > 0.01:
+                sell_day = -1
+                for i in range(0, len(traceData.predictBars)):
+                    bar: BarData = traceData.predictBars[i]
+                    if predict_price < bar.high_price:
+                        sell_day = i
+                        break
+
+                can_sell = sell_day != -1
+                if can_sell:
+                    print(f" success : profile_pct = {profile_pct},sell_day = {sell_day},prob={predict.probability}")
+                else:
+                    profile_pct = (traceData.predictBars[-1].close_price - buy_price) / close_price
+                    print(f" Fail : profile_pct = {profile_pct},prob={predict.probability}")
+
+
+            ##canSell = False
+
+            # else:
+            #     print(f" watch : profile_pct = {profile_pct},prob={predict.probability}")
+
+
+
+
 
     pass

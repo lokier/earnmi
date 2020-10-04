@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.chart.Indicator import Indicator
@@ -25,14 +26,14 @@ class CountData(object):
 class Skip1_Predict2_TraceData(TraceData):
     isWanted = False
     kPatternValue = 1
-    starBar:BarData = None
+    occurBar:BarData = None
     skipBar:BarData = None
     sell_pct = -1000.0
     buy_pct = 10000.0
 
     def __init__(self,kPatternValue,bar):
         self.kPatternValue = kPatternValue
-        self.starBar = bar
+        self.occurBar = bar
         self.predictBars = []
 
 
@@ -66,7 +67,7 @@ class Find_KPattern_skip1_predit2(KBarCollector):
         return None
 
     def onTrace(self, traceData: Skip1_Predict2_TraceData, bar: BarData):
-        startBar = traceData.starBar
+        startBar = traceData.occurBar
         if traceData.skipBar is None:
             traceData.skipBar = bar
             close_pct = (bar.close_price - startBar.close_price) / startBar.close_price
@@ -169,6 +170,12 @@ class More_detail_KPattern_skip1_predit2(Find_KPattern_skip1_predit2):
             self.kPattersMap[value] = True
         pass
 
+    def onCreate(self):
+        super().onCreate()
+        self.occurDayMap.clear()
+        self.allTradyDayCount = 0
+        self.allTradeDay = 0
+
     def onStart(self, code: str) -> bool:
         self.allTradyDayCount = 0
         return Find_KPattern_skip1_predit2.onStart(self,code)
@@ -201,7 +208,7 @@ class More_detail_KPattern_skip1_predit2(Find_KPattern_skip1_predit2):
         countData.buy_disbute[self.pctEncoder.encode(buy_pct)] += 1
         countData.sell_disbute[self.pctEncoder.encode(sell_pct)] += 1
 
-        occurBar = traceData.starBar
+        occurBar = traceData.occurBar
         dayKey = occurBar.datetime.year * 13 * 35 + occurBar.datetime.month * 13 + occurBar.datetime.day
         self.occurDayMap[dayKey] = True
         pass
@@ -240,36 +247,44 @@ class Generate_Feature_KPattern_skip1_predit2(More_detail_KPattern_skip1_predit2
 
     def __init__(self, limit_close_pct=1, kPatters: [] = None):
         super().__init__(limit_close_pct,kPatters)
-        pct_split = [-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7]
-        self.trainDataSet = []
+        self.traceDatas = []
         self.sw = SWImpl()
-        self.pctEncoder = FloatEncoder(pct_split)
+        #pct_split = [-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7]
+        #self.pctEncoder = FloatEncoder(pct_split)
+
+    def onCreate(self):
+        super().onCreate()
+        self.traceDatas.clear()
 
     def doWantedTraceData(self,traceData: Skip1_Predict2_TraceData,countData:CountData):
         super().doWantedTraceData(traceData,countData)
-
-        occurBar = traceData.starBar
-        skipBar = traceData.skipBar
-        sell_pct = 100 * ((skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
-        buy_pct = 100 * ((skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
-
-        data = []
-        data.append(self.code)
-        data.append(self.sw.getSw2Name(self.code))
-        data.append(traceData.kPatternValue)
-        data.append(buy_pct)
-        data.append(sell_pct)
-        data.append(traceData.sell_pct)
-        data.append(traceData.buy_pct)
-        self.trainDataSet.append(data)
+        self.traceDatas.append(traceData)
         pass
 
-    def getPandasData(self) -> pd.DataFrame:
+    def generateData(self,traceDatas:Sequence["Skip1_Predict2_TraceData"]) ->pd.DataFrame:
+        trainDataSet = []
+        for traceData in traceDatas:
+            occurBar = traceData.occurBar
+            skipBar = traceData.skipBar
+            sell_pct = 100 * ((skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
+            buy_pct = 100 * ((skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
+            data = []
+            data.append(self.code)
+            data.append(self.sw.getSw2Name(self.code))
+            data.append(traceData.kPatternValue)
+            data.append(buy_pct)
+            data.append(sell_pct)
+            data.append(traceData.sell_pct)
+            data.append(traceData.buy_pct)
+            trainDataSet.append(data)
         cloumns = ["code", "name", "kPattern", "buy_price", "sell_price", "label_sell_price", "label_buy_price"]
-        return pd.DataFrame(self.trainDataSet, columns=cloumns)
+        return pd.DataFrame(trainDataSet, columns=cloumns)
+
+    def getPandasData(self) -> pd.DataFrame:
+        return self.generateData(self.traceDatas)
 
     def writeToXml(self) ->bool:
-        size = len(self.trainDataSet)
+        size = len(self.traceDatas)
         if size < 1:
             print("no need to write")
             return False
