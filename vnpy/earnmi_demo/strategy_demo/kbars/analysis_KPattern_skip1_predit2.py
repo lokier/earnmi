@@ -60,16 +60,29 @@ class Find_KPattern_skip1_predit2(KBarCollector):
     def collect(self, bar: BarData) -> TraceData:
         self.indicator.update_bar(bar)
         kPatternValue = KPattern.encode2KAgo1(self.indicator)
-        if not kPatternValue is None:
+        if not kPatternValue is None and self.indicator.count > 20:
             self.collect_k_count += 1
             traceData = Skip1_Predict2_TraceData(kPatternValue,bar)
             return traceData
         return None
 
+    def __between_0_100(self,value:int):
+        if value > 100:
+            return 100
+        elif value < 0:
+            return 0
+        return value
+
+
     def onTrace(self, traceData: Skip1_Predict2_TraceData, bar: BarData):
         startBar = traceData.occurBar
         if traceData.skipBar is None:
+            k,d,j = self.indicator.kdj(fast_period=9,slow_period=3,array=False)
+            k = self.__between_0_100(k)
+            j = self.__between_0_100(d)
             traceData.skipBar = bar
+            traceData.indicator_k = k
+            traceData.indicator_j = j
             close_pct = (bar.close_price - startBar.close_price) / startBar.close_price
             if close_pct > self.limit_close_pct:
                 traceData.isWanted = False
@@ -274,10 +287,13 @@ class Generate_Feature_KPattern_skip1_predit2(More_detail_KPattern_skip1_predit2
             data.append(traceData.kPatternValue)
             data.append(buy_pct)
             data.append(sell_pct)
+            data.append(traceData.indicator_k)
+            data.append(traceData.indicator_j)
+
             data.append(traceData.sell_pct)
             data.append(traceData.buy_pct)
             trainDataSet.append(data)
-        cloumns = ["code", "name", "kPattern", "buy_price", "sell_price", "label_sell_price", "label_buy_price"]
+        cloumns = ["code", "name", "kPattern", "buy_price", "sell_price","k","j", "label_sell_price", "label_buy_price"]
         return pd.DataFrame(trainDataSet, columns=cloumns)
 
     def getPandasData(self) -> pd.DataFrame:
@@ -306,9 +322,9 @@ if __name__ == "__main__":
     end = datetime(2020, 8, 17)
 
     ##查找有意义的k线形态
-    findKPatternCollector = Find_KPattern_skip1_predit2()
-    findKPatternCollector.print_on_destroy = True
-    sw.collect(start, end,findKPatternCollector)
+    # findKPatternCollector = Find_KPattern_skip1_predit2()
+    # findKPatternCollector.print_on_destroy = True
+    # sw.collect(start, end,findKPatternCollector)
 
     ##打印更详细的信息
     #printMoreDetail = More_detail_KPattern_skip1_predit2(kPatters=[712])
@@ -316,9 +332,9 @@ if __name__ == "__main__":
     #sw.collect(start, end,printMoreDetail)
 
     ##生成训练数据。
-    # generateTrainData = Generate_TrainData_KPattern_skip1_predit2(kPatters=[712])
-    # sw.collect(start, end,generateTrainData)
-    # trainData = generateTrainData.getPandasData()
-    ##generateTrainData.writeToXml()
+    generateTrainData = Generate_Feature_KPattern_skip1_predit2(kPatters=[712])
+    sw.collect(start, end,generateTrainData)
+    trainData = generateTrainData.getPandasData()
+    generateTrainData.writeToXml()
 
     pass

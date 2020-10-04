@@ -12,7 +12,6 @@ import pandas as pd
 from earnmi.chart.KPattern import KPattern
 from earnmi.data.SWImpl import SWImpl
 from earnmi.chart.Indicator import Indicator
-from earnmi_demo.strategy_demo.holdbars.analysisKPattern import CountItem
 
 
 def generateSWTrainData(kPatterns:[],start:datetime,end:datetime)-> pd.DataFrame:
