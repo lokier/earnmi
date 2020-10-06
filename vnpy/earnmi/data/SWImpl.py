@@ -681,6 +681,10 @@ class SWImpl(SW):
                 if traceObject is None:
                     continue
                 traceItems.append(traceObject)
+
+            ###将要结束，未追踪完的traceData
+            for traceObject in traceItems:
+                collector.onTraceStop(traceObject)
             collector.onEnd(code)
         collector.onDestroy()
 

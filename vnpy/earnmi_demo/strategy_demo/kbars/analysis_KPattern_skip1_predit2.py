@@ -12,7 +12,7 @@ import pandas as pd
 
 """
 分析k线形态，名称叫：KPattern_skip1_predit2
-当某个k线形态形成时，后面一天收盘价不超过limit_close_pct = 1的情况，分析下后面两天的开盘价有没有套利的空间。
+当某个k线形态形成时，后面一天收盘价涨跌不超过%的情况，分析下后面两天的开盘价有没有套利的空间。
 
 优化：
 1）k线形态以及后面三天应该是连续的交易日
@@ -30,6 +30,7 @@ class Skip1_Predict2_TraceData(TraceData):
     skipBar:BarData = None
     sell_pct = -1000.0
     buy_pct = 10000.0
+    code = None
 
     def __init__(self,kPatternValue,bar):
         self.kPatternValue = kPatternValue
@@ -63,6 +64,7 @@ class Find_KPattern_skip1_predit2(KBarCollector):
         if not kPatternValue is None and self.indicator.count > 20:
             self.collect_k_count += 1
             traceData = Skip1_Predict2_TraceData(kPatternValue,bar)
+            traceData.code = bar.symbol
             return traceData
         return None
 
@@ -83,8 +85,8 @@ class Find_KPattern_skip1_predit2(KBarCollector):
             traceData.skipBar = bar
             traceData.indicator_k = k
             traceData.indicator_j = j
-            close_pct = (bar.close_price - startBar.close_price) / startBar.close_price
-            if close_pct > self.limit_close_pct:
+            close_pct = 100 * (bar.close_price - startBar.close_price) / startBar.close_price
+            if abs(close_pct) > self.limit_close_pct:
                 traceData.isWanted = False
                 traceData.finished = True
             return
@@ -145,8 +147,8 @@ class Find_KPattern_skip1_predit2(KBarCollector):
             success_rate = 100 * dataItem.count_earn / dataItem.count_total
             if dataItem.count_total < 300:
                 continue
-            if success_rate < 40:
-                continue
+            # if success_rate < 40:
+            #     continue
             ret_list.append(key)
             if dataItem.count_earn > 0:
                 earn_pct = dataItem.pct_earn / dataItem.count_earn
@@ -262,6 +264,7 @@ class Generate_Feature_KPattern_skip1_predit2(More_detail_KPattern_skip1_predit2
         super().__init__(limit_close_pct,kPatters)
         self.traceDatas = []
         self.sw = SWImpl()
+        self.predictTraceDatas:['Skip1_Predict2_TraceData'] = []
         #pct_split = [-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7]
         #self.pctEncoder = FloatEncoder(pct_split)
 
@@ -273,6 +276,11 @@ class Generate_Feature_KPattern_skip1_predit2(More_detail_KPattern_skip1_predit2
         super().doWantedTraceData(traceData,countData)
         self.traceDatas.append(traceData)
         pass
+
+    def onTraceStop(self, traceData:Skip1_Predict2_TraceData):
+        super().onTraceStop(traceData)
+        if(not traceData.skipBar is None):
+            self.predictTraceDatas.append(traceData)
 
     def generateData(self,traceDatas:Sequence["Skip1_Predict2_TraceData"]) ->pd.DataFrame:
         trainDataSet = []
@@ -322,9 +330,9 @@ if __name__ == "__main__":
     end = datetime(2020, 8, 17)
 
     ##查找有意义的k线形态
-    # findKPatternCollector = Find_KPattern_skip1_predit2()
-    # findKPatternCollector.print_on_destroy = True
-    # sw.collect(start, end,findKPatternCollector)
+    findKPatternCollector = Find_KPattern_skip1_predit2()
+    findKPatternCollector.print_on_destroy = True
+    #sw.collect(start, end,findKPatternCollector)
 
     ##打印更详细的信息
     #printMoreDetail = More_detail_KPattern_skip1_predit2(kPatters=[712])
@@ -332,7 +340,8 @@ if __name__ == "__main__":
     #sw.collect(start, end,printMoreDetail)
 
     ##生成训练数据。
-    generateTrainData = Generate_Feature_KPattern_skip1_predit2(kPatters=[712])
+
+    generateTrainData = Generate_Feature_KPattern_skip1_predit2(kPatters=[884])
     sw.collect(start, end,generateTrainData)
     trainData = generateTrainData.getPandasData()
     generateTrainData.writeToXml()

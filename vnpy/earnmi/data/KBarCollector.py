@@ -33,6 +33,10 @@ class KBarCollector:
     def onTraceFinish(self, traceData:TraceData):
         pass
 
+    ##未追踪完成，便终止的traceData
+    def onTraceStop(self, traceData:TraceData):
+        pass
+
     def onEnd(self,code:str):
         pass
 
