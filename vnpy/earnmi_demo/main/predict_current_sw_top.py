@@ -14,7 +14,7 @@ import pickle
 
 
 from earnmi.data.SWImpl import SWImpl
-from earnmi.model.PredictData import PredictData
+from earnmi.model.PredictData2 import PredictData
 from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 
