@@ -72,7 +72,7 @@ class CoreEngineImpl(CoreEngine):
                 isFinished = collector.onTrace(traceObject, bar)
                 if isFinished:
                     toDeleteList.append(traceObject)
-                    finishedData.append(finishedData)
+                    finishedData.append(traceObject)
             for traceItem in toDeleteList:
                 traceItems.remove(traceItem)
             traceObject = collector.collect(bar)
