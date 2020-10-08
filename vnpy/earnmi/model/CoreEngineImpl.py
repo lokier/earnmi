@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from typing import Tuple, Sequence
 
@@ -12,6 +13,7 @@ from earnmi.model.CoreEngine import CoreEngine, BarDataSource, CoreCollector
 from earnmi.model.Dimension import Dimension, TYPE_3KAGO1
 from earnmi.model.PredictData import PredictData
 import numpy as np
+import pickle
 
 
 class SWDataSource(BarDataSource):
@@ -35,21 +37,73 @@ class SWDataSource(BarDataSource):
 
 class CoreEngineImpl(CoreEngine):
 
+    COLLECT_DATA_FILE_NAME = "colllect"
     __file_dir: str
     __collector:CoreCollector = None
 
-    def __init__(self, filePath: str):
-        self.__file_dir = filePath
+    def __init__(self, dirPath: str):
+        self.__file_dir = dirPath
+        if not os.path.exists(dirPath):
+            os.makedirs(dirPath)
+        collectDir = self.__getCollectDirPath()
+        if not os.path.exists(collectDir):
+            os.makedirs(collectDir)
+
+    def __getDimenisonFilePath(self):
+        return f"{self.__file_dir}/dimension.bin"
+
+    def __getCollectDirPath(self):
+        return  f"{self.__file_dir}/colllect"
+
+
+    def __getCollectFilePath(self,dimen:Dimension):
+        dirPath =  f"{self.__getCollectDirPath()}/{dimen.getKey()}"
+        return dirPath
 
     def build(self,soruce:BarDataSource,collector:CoreCollector):
         print("[CoreEngine]: build start...")
         self.__collector = collector
         collector.onCreate()
-        lists,code = soruce.onNextBars()
-        while not lists is None:
-           finished,stop = self.__collect__internel(lists,code,collector)
+        bars,code = soruce.onNextBars()
+        dataSet = {}
+        totalCount = 0
+        while not bars is None:
+           finished,stop = self.__collect__internel(bars,code,collector)
            print(f"[CoreEngine]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
-           lists, code = soruce.onNextBars()
+           totalCount += len(finished)
+           bars, code = soruce.onNextBars()
+           for data in finished:
+               ##收录
+               listData:[] = dataSet.get(data.dimen)
+               if listData is None:
+                   listData = []
+                   dataSet[data.dimen] = listData
+               listData.append(data)
+        dimes = dataSet.keys()
+        print(f"[CoreEngine]: 总共收集到{totalCount}数据，维度个数:{len(dimes)}")
+
+        print(f"[CoreEngine]: 开始保存数据")
+        MIN_SIZE = 300
+        saveDimens = []
+        saveCollectCount = 0
+        maxSize = 0
+        minSize = 9999999999
+        for dimen,listData in dataSet.items():
+            size = len(listData)
+            if size  < MIN_SIZE:
+                continue
+            maxSize = max(maxSize,size)
+            minSize = min(minSize,size)
+            saveDimens.append(dimen)
+            saveCollectCount += size
+            filePath = self.__getCollectFilePath(dimen)
+            with open(filePath, 'wb+') as fp:
+                pickle.dump(listData, fp, -1)
+
+        with open(self.__getDimenisonFilePath(), 'wb+') as fp:
+            pickle.dump(saveDimens, fp, -1)
+        print(f"[CoreEngine]: 总共保存{len(saveDimens)}个维度数据(>={MIN_SIZE})，共{saveCollectCount}个数据，其中最多{maxSize},最小{minSize}")
+
         collector.onDestroy()
         pass
 
@@ -130,7 +184,7 @@ if __name__ == "__main__":
 
     start = datetime(2014, 5, 1)
     end = datetime(2020, 8, 17)
-    engine = CoreEngineImpl("files")
+    engine = CoreEngineImpl("files/impltest")
     engine.build(SWDataSource(start,end),Collector3KAgo1())
 
     pass

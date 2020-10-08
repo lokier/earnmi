@@ -9,7 +9,11 @@ class Dimension(object):
     #维度的value值
     value:int
 
+    def __hash__(self) -> int:
+        return self.getKey().__hash__()
 
+    def getKey(self)->int:
+        return self.value * 100 + self.type
 
 if __name__ == "__main__":
 

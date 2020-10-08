@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 
 from earnmi.model.Dimension import Dimension
 from vnpy.trader.object import BarData
@@ -31,16 +32,32 @@ class CollectData(object):
 if __name__ == "__main__":
     import pickle
     from earnmi.model.CoreEngineImpl import CoreEngineImpl
+    from earnmi.data.SWImpl import SWImpl
 
 
-    def testSaveCollectData():
-        pass
+    def saveCollectData(bars:[]):
+
+        fileName  = "files/testSaveCollectData.bin"
+        with open(fileName, 'wb') as fp:
+            pickle.dump(bars, fp,-1)
+
+    def loadCollectData():
+        bars = None
+        fileName  = "files/testSaveCollectData.bin"
+        with open(fileName, 'rb') as fp:
+                bars = pickle.load(fp)
+        return bars
 
 
-    pickle.dump(self.data_x, fp, -1)
+    start = datetime(2014, 5, 1)
+    end = datetime(2020, 8, 17)
 
-    d1 = Dimension(type=1,value =34)
-    d2 = Dimension(type=1,value =34)
-    d3=d2
-    assert  d1 == d2
-    assert  d1 == d3
+    sw = SWImpl()
+
+    code = sw.getSW2List()[3];
+    bars = sw.getSW2Daily(code,start,end)
+    #saveCollectData(bars)
+    bars2 = loadCollectData()
+
+    assert  bars == bars2
+    assert  len(bars) == len(bars2) and len(bars2)!= 0
