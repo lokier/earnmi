@@ -496,7 +496,7 @@ if __name__ == "__main__":
     Generate_Feature_KPattern_skip1_predit2, Skip1_Predict2_TraceData
 
     ##建立特征模型
-    #buildAndSaveModel(start,end,patternList)
+    buildAndSaveModel(start,end,patternList)
 
     ##预测详情
     predictStart = datetime(2019, 5, 2)
@@ -504,5 +504,5 @@ if __name__ == "__main__":
     #printPerdictDetail(predictStart,predictEnd,patternList)
     #printBuyAndSellPower(predictStart,predictEnd,patternList)
 
-    printTop5(patternList);
+    #printTop5(patternList);
     pass
