@@ -1,15 +1,14 @@
 from dataclasses import dataclass
 
+TYPE_3KAGO1 = 1
 
 @dataclass
 class Dimension(object):
     #类型
-    type:int = 0
+    type:int
     #维度的value值
-    value:int = 0
+    value:int
 
-    def __post_init__(self):
-        pass
 
 
 if __name__ == "__main__":

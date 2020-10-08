@@ -39,16 +39,10 @@ class CoreCollector:
         pass
 
     """
-    追踪预测数据。
+    追踪预测数据。 返回是否追踪完成。
     """
+    @abstractmethod
     def onTrace(self, data: CollectData, newBar: BarData) ->bool:
-        pass
-
-    def onTraceFinish(self, traceData: CollectData):
-        pass
-
-    ##未追踪完成，便终止的traceData
-    def onTraceStop(self, data: CollectData):
         pass
 
     def onEnd(self, code: str):
@@ -62,6 +56,7 @@ class BarDataSource:
     """
     返回下一批BarData数据。 返回[bars,code]
     """
+    @abstractmethod
     def onNextBars(self) -> Tuple[Sequence['BarData'],str]:
         pass
 
@@ -83,6 +78,7 @@ class CoreEngine(object):
     """
     收集ColletorData数据，返回已经完成的CollectData, 未完成的CollectData
     """
+    @abstractmethod
     def collect(self,bars:['BarData']) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
         pass
 

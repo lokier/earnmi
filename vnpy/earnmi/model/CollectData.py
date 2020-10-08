@@ -13,16 +13,16 @@ class CollectData(object):
     dimen:Dimension
 
     """
-    维度值bars
+    生成维度值bars
     """
-    dimenBars:['BarData']
+    occurBars:['BarData'] = None
 
     """
-      预测情况的bar值
+      预测情况的bar值。
     """
-    predictBars:['BarData']
+    predictBars:['BarData'] = None
 
     def __post_init__(self):
-        self.dimenBars = []
+        self.occurBars = []
         self.predictBars = []
         pass
