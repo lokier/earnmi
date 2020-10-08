@@ -4,6 +4,9 @@
 """
 class FloatEncoder:
 
+    MAX_VALUE = 9999999
+    MIN_VALUE = -MAX_VALUE
+
     def __init__(self,splits:['float']):
         self.splits = splits
         self.n = len(splits)
@@ -14,22 +17,33 @@ class FloatEncoder:
     def mask(self) ->int:
         return self.n + 1
 
+    """
+    编码值
+    """
     def encode(self,value:float)->int:
         code = 0
         for i in range(self.n, 0, -1):
-            if value > self.splits[i - 1]:
+            if value >= self.splits[i - 1]:
                 code = i
                 break
         return code
 
-    def descriptEncdoe(self,encode:int):
+    """
+    分析编码值的代表范围,返回(min,max]的值范围
+    """
+    def parseEncode(self,encode:int):
         if encode < 0 or encode > self.n:
             raise RuntimeError("out of range encode")
         if encode == 0:
-            return f"[-max,{self.splits[encode]}]"
+            return FloatEncoder.MIN_VALUE,self.splits[encode]
         if encode < self.n:
-            return f"[{self.splits[encode-1]},{self.splits[encode]}]"
-        return f"[{self.splits[self.n - 1]},max]"
+            return self.splits[encode-1],self.splits[encode]
+        return self.splits[self.n - 1],FloatEncoder.MAX_VALUE
+
+    def descriptEncdoe(self,encode:int):
+        left,right = self.parseEncode(encode)
+
+        return f"[{left},{right}]"
 
 
 
@@ -40,6 +54,8 @@ if __name__ == "__main__":
 
     print(f"pctEncoder.encode(-6.2) : {pctEncoder.descriptEncdoe(pctEncoder.encode(-6.2))}")
     print(f"pctEncoder.encode(2.2) : {pctEncoder.descriptEncdoe(pctEncoder.encode(2.2))}")
+    print(f"pctEncoder.encode(-7.1) : {pctEncoder.descriptEncdoe(pctEncoder.encode(-7.1))}")
     print(f"pctEncoder.encode(-7) : {pctEncoder.descriptEncdoe(pctEncoder.encode(-7))}")
     print(f"pctEncoder.encode(-7.3) : {pctEncoder.descriptEncdoe(pctEncoder.encode(-7.3))}")
     print(f"pctEncoder.encode(7.2) : {pctEncoder.descriptEncdoe(pctEncoder.encode(7.2))}")
+    print(f"pctEncoder.encode(7) : {pctEncoder.descriptEncdoe(pctEncoder.encode(7))}")

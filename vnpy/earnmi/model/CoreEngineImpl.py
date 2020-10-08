@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from typing import Tuple, Sequence
 
+from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.chart.Indicator import Indicator
 from earnmi.chart.KPattern import KPattern
 from earnmi.model.QuantData import QuantData
@@ -17,9 +18,6 @@ import pickle
 
 
 class SWDataSource(BarDataSource):
-
-
-
     def __init__(self,start:datetime,end:datetime ):
         self.index = 0
         self.sw = SWImpl()
@@ -27,6 +25,8 @@ class SWDataSource(BarDataSource):
         self.end = end
 
     def onNextBars(self) -> Tuple[Sequence['BarData'], str]:
+        # if self.index > 2:
+        #     return None,None
         sw_code_list = self.sw.getSW2List()
         if self.index < len(sw_code_list):
             code = sw_code_list[self.index]
@@ -38,11 +38,15 @@ class SWDataSource(BarDataSource):
 class CoreEngineImpl(CoreEngine):
 
     COLLECT_DATA_FILE_NAME = "colllect"
-    __file_dir: str
-    __collector:CoreCollector = None
+    ##量化数据的涨幅分布区域。
+    quantFloatEncoder = FloatEncoder([-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7])
 
     def __init__(self, dirPath: str):
+        self.mAllDimension:['Dimension'] = None
+        self.mQuantDataMap:{}= None
         self.__file_dir = dirPath
+        self.__collector = dirPath
+
         if not os.path.exists(dirPath):
             os.makedirs(dirPath)
         collectDir = self.__getCollectDirPath()
@@ -52,6 +56,9 @@ class CoreEngineImpl(CoreEngine):
     def __getDimenisonFilePath(self):
         return f"{self.__file_dir}/dimension.bin"
 
+    def __getQuantDataFilePath(self):
+        return f"{self.__file_dir}/quantdata.bin"
+
     def __getCollectDirPath(self):
         return  f"{self.__file_dir}/colllect"
 
@@ -59,6 +66,36 @@ class CoreEngineImpl(CoreEngine):
     def __getCollectFilePath(self,dimen:Dimension):
         dirPath =  f"{self.__getCollectDirPath()}/{dimen.getKey()}"
         return dirPath
+
+    def __getSellBuyPredicPct(self,data:CollectData):
+        bars: ['BarData'] = data.predictBars
+        assert len(bars) > 0
+        startPrice = data.occurBars[-1].close_price
+        sell_pct = -99999
+        buy_pct = 9999999
+        for bar in bars:
+            __sell_pct = 100 * ((bar.high_price + bar.close_price) / 2 - startPrice) / startPrice
+            __buy_pct = 100 * ((bar.low_price + bar.close_price) / 2 - startPrice) / startPrice
+            sell_pct = max(__sell_pct,sell_pct)
+            buy_pct = max(__buy_pct,buy_pct)
+        return sell_pct,buy_pct
+
+    def load(self,collector:CoreCollector):
+        print("[CoreEngine]: load start...")
+        with open(self.__getDimenisonFilePath(), 'rb') as fp:
+            self.mAllDimension  = pickle.load(fp)
+        quantMap = {}
+        quantList = []
+        with open(self.__getQuantDataFilePath(), 'rb') as fp:
+            quantList = pickle.load(fp)
+        totalCount = 0
+        for quantData in quantList:
+            quantMap[quantData.dimen] = quantData
+            totalCount += quantData.count
+        self.mQuantDataMap = quantMap
+        print(f"[CoreEngine]: 总共加载{len(self.mAllDimension)}个维度数据,共{totalCount}个数据")
+
+        assert len(quantMap) == len(self.mAllDimension)
 
     def build(self,soruce:BarDataSource,collector:CoreCollector):
         print("[CoreEngine]: build start...")
@@ -79,6 +116,8 @@ class CoreEngineImpl(CoreEngine):
                    listData = []
                    dataSet[data.dimen] = listData
                listData.append(data)
+        collector.onDestroy()
+
         dimes = dataSet.keys()
         print(f"[CoreEngine]: 总共收集到{totalCount}数据，维度个数:{len(dimes)}")
 
@@ -104,8 +143,29 @@ class CoreEngineImpl(CoreEngine):
             pickle.dump(saveDimens, fp, -1)
         print(f"[CoreEngine]: 总共保存{len(saveDimens)}个维度数据(>={MIN_SIZE})，共{saveCollectCount}个数据，其中最多{maxSize},最小{minSize}")
 
-        collector.onDestroy()
-        pass
+        ##保存量化数据。
+        quantDataList = []
+        for dimen in saveDimens:
+            listData = dataSet[dimen]
+            sellRangeCount = {}
+            buyRangeCount = {}
+            for i in range(0,CoreEngineImpl.quantFloatEncoder.mask()):
+                sellRangeCount[i] = 0
+                buyRangeCount[i] = 0
+            for data in listData:
+                bars:['BarData'] = data.predictBars
+                assert len(bars) > 0
+                sell_pct, buy_pct = self.__getSellBuyPredicPct(data)
+                sell_encode = CoreEngineImpl.quantFloatEncoder.encode(sell_pct)
+                buy_encode = CoreEngineImpl.quantFloatEncoder.encode(buy_pct)
+                sellRangeCount[sell_encode] +=1
+                buyRangeCount[buy_encode] +=1
+            quantDataList.append(QuantData(dimen=dimen,count=len(listData),sellRangeCount=sellRangeCount,buyRangeCount=buyRangeCount))
+        filePath = self.__getQuantDataFilePath()
+        with open(filePath, 'wb+') as fp:
+            pickle.dump(quantDataList, fp, -1)
+
+        self.load(collector)
 
     def collect(self, bars: ['BarData']) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
         collector = self.__collector
@@ -114,6 +174,7 @@ class CoreEngineImpl(CoreEngine):
         finished,stop = self.__collect__internel(bars,code,collector)
         collector.onDestroy()
         return finished,stop
+
 
     def __collect__internel(self, barList: ['BarData'],symbol:str,collector:CoreCollector) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
         collector.onStart(symbol)
@@ -140,11 +201,11 @@ class CoreEngineImpl(CoreEngine):
         collector.onEnd(symbol)
         return finishedData,stopData
 
-    def loadAllDimesion(self, type: int) -> Sequence['Dimension']:
-        pass
+    def loadAllDimesion(self) -> Sequence['Dimension']:
+        return self.mAllDimension
 
     def queryQuantData(self, dimen: Dimension) -> QuantData:
-        pass
+        return self.mQuantDataMap.get(dimen)
 
     def predict(self, data: Tuple[CollectData, Sequence['CollectData']]) -> Tuple[PredictData, Sequence['PredictData']]:
         pass
@@ -185,6 +246,13 @@ if __name__ == "__main__":
     start = datetime(2014, 5, 1)
     end = datetime(2020, 8, 17)
     engine = CoreEngineImpl("files/impltest")
+
     engine.build(SWDataSource(start,end),Collector3KAgo1())
+    #engine.load(Collector3KAgo1())
+    dimens = engine.loadAllDimesion()
+    print(f"dimension：{dimens}")
+
+    quant = engine.queryQuantData(dimens[3])
+    print(f"dimension：{quant}")
 
     pass

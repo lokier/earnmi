@@ -86,7 +86,7 @@ class CoreEngine(object):
     加载所有的维度
     """
     @abstractmethod
-    def loadAllDimesion(self,type:int) -> Sequence['Dimension']:
+    def loadAllDimesion(self) -> Sequence['Dimension']:
         pass
 
     """
