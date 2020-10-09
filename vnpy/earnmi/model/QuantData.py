@@ -29,6 +29,7 @@ class QuantData(object):
     def __post_init__(self):
         pass
 
+
 if __name__ == "__main__":
     import pickle
     from earnmi.model.CoreEngineImpl import CoreEngineImpl

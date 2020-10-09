@@ -77,7 +77,7 @@ class CoreEngineImpl(CoreEngine):
             __sell_pct = 100 * ((bar.high_price + bar.close_price) / 2 - startPrice) / startPrice
             __buy_pct = 100 * ((bar.low_price + bar.close_price) / 2 - startPrice) / startPrice
             sell_pct = max(__sell_pct,sell_pct)
-            buy_pct = max(__buy_pct,buy_pct)
+            buy_pct = min(__buy_pct,buy_pct)
         return sell_pct,buy_pct
 
     def load(self,collector:CoreCollector):
@@ -210,6 +210,19 @@ class CoreEngineImpl(CoreEngine):
     def predict(self, data: Tuple[CollectData, Sequence['CollectData']]) -> Tuple[PredictData, Sequence['PredictData']]:
         pass
 
+    def toStr(self,data:QuantData) ->str:
+
+        info = f"count:{data.count}"
+        info+=",sell:["
+        for i in range(0,len(data.sellRangeCount)):
+            min,max = CoreEngineImpl.quantFloatEncoder.parseEncode(i)
+            info+=f"{min}:{max}=%.2f%%, " % (100 * data.sellRangeCount[i] / data.count)
+        info += "],buy:["
+        for i in range(0, len(data.buyRangeCount)):
+            min, max = CoreEngineImpl.quantFloatEncoder.parseEncode(i)
+            info += f"{min}:{max}=%.2f%%, " % (100 * data.buyRangeCount[i] / data.count)
+        info +="]"
+        return info
 
 if __name__ == "__main__":
     class Collector3KAgo1(CoreCollector):
@@ -252,7 +265,8 @@ if __name__ == "__main__":
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 
-    quant = engine.queryQuantData(dimens[3])
-    print(f"dimension：{quant}")
+    for dimen in dimens:
+        quant = engine.queryQuantData(dimen)
+        print(f"quant：{engine.toStr(quant)}")
 
     pass
