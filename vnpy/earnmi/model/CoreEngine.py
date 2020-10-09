@@ -3,7 +3,7 @@
 
 核心引擎
 """
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import Union, Tuple, Sequence
 
 from earnmi.model.CollectData import CollectData
@@ -60,21 +60,34 @@ class BarDataSource:
     def onNextBars(self) -> Tuple[Sequence['BarData'],str]:
         pass
 
-class CoreEngine(object):
+class PredictModel:
+
+    def dfjks(self):
+        pass
+
+class CoreEngine():
 
     """
     创建CoreEngine对象。
     """
     def create(dirName:str,collector:CoreCollector,dataSource:BarDataSource):
-        pass
+        from earnmi.model.CoreEngineImpl import CoreEngineImpl
+        engine = CoreEngineImpl(dirName)
+        engine.build(dataSource, collector)
+        return engine
 
     """
     加载已经存在的CoreEngine对象
     """
     def load(dirName:str,collector:CoreCollector):
+        from earnmi.model.CoreEngineImpl import CoreEngineImpl
+        engine = CoreEngineImpl(dirName)
+        engine.load(collector)
+        return engine
+
+    @abstractmethod
+    def setPredictModel(self,model:PredictModel):
         pass
-
-
     """
     收集ColletorData数据，返回已经完成的CollectData, 未完成的CollectData
     """

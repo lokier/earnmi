@@ -10,7 +10,7 @@ from vnpy.trader.object import BarData
 
 from earnmi.data.SWImpl import SWImpl
 from earnmi.model.CollectData import CollectData
-from earnmi.model.CoreEngine import CoreEngine, BarDataSource, CoreCollector
+from earnmi.model.CoreEngine import CoreEngine, BarDataSource, CoreCollector, PredictModel
 from earnmi.model.Dimension import Dimension, TYPE_3KAGO1
 from earnmi.model.PredictData import PredictData
 import numpy as np
@@ -46,12 +46,16 @@ class CoreEngineImpl(CoreEngine):
         self.mQuantDataMap:{}= None
         self.__file_dir = dirPath
         self.__collector = dirPath
+        self.predictModel:PredictModel = None
 
         if not os.path.exists(dirPath):
             os.makedirs(dirPath)
         collectDir = self.__getCollectDirPath()
         if not os.path.exists(collectDir):
             os.makedirs(collectDir)
+
+    def setPredictModel(self,model:PredictModel):
+        self.predictModel = model
 
     def __getDimenisonFilePath(self):
         return f"{self.__file_dir}/dimension.bin"
@@ -207,6 +211,7 @@ class CoreEngineImpl(CoreEngine):
     def queryQuantData(self, dimen: Dimension) -> QuantData:
         return self.mQuantDataMap.get(dimen)
 
+
     def predict(self, data: Tuple[CollectData, Sequence['CollectData']]) -> Tuple[PredictData, Sequence['PredictData']]:
         pass
 
@@ -260,8 +265,8 @@ if __name__ == "__main__":
     end = datetime(2020, 8, 17)
     engine = CoreEngineImpl("files/impltest")
 
-    engine.build(SWDataSource(start,end),Collector3KAgo1())
-    #engine.load(Collector3KAgo1())
+    #engine.build(SWDataSource(start,end),Collector3KAgo1())
+    engine.load(Collector3KAgo1())
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 
