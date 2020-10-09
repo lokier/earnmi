@@ -62,7 +62,8 @@ class BarDataSource:
 
 class PredictModel:
 
-    def dfjks(self):
+    @abstractmethod
+    def filter(self,coreEngine,):
         pass
 
 class CoreEngine():

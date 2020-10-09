@@ -19,11 +19,17 @@ class PredictData(object):
     """
     卖方概率分布
     """
-    sell_disbute:[]
+    sellRange1:[]
 
-    buy_disbute:[]
+    sellRange2: []
+
+    """
+     买方概率分布
+    """
+    buyRange1:[]
+
+    buyRange2:[]
+
 
     def __post_init__(self):
-        self.sell_disbute = []
-        self.buy_disbute = []
         pass
