@@ -10,6 +10,7 @@ jq = jqSdk.get()
 end_day = datetime(year=2019, month=6, day=30, hour=23)
 sw = SWImpl()
 __sw_code_list = sw.getSW2List()
+print(f"{type(__sw_code_list) is list} ")
 
 new_list = []
 count = 0

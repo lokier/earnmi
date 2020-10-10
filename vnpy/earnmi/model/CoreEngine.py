@@ -6,6 +6,7 @@
 from abc import abstractmethod, ABC
 from typing import Union, Tuple, Sequence
 
+from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.model.CollectData import CollectData
 from earnmi.model.Dimension import Dimension
 from earnmi.model.PredictData import PredictData
@@ -61,6 +62,10 @@ class BarDataSource:
         pass
 
 class PredictModel:
+
+    PctEncoder1 = FloatEncoder([-7, -5, -3, -2, -1, 0, 1, 2,3, 5, 7])
+    PctEncoder2 = FloatEncoder([-7.5, -5.5, -3.5, -2.5, -1.5, -0.5, 0.5,1.5,2.5, 3.5, 5.5, 7.5])
+
 
     @abstractmethod
     def predict(self, data: Tuple[CollectData, Sequence['CollectData']]) -> Tuple[PredictData, Sequence['PredictData']]:

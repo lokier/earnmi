@@ -21,6 +21,8 @@ class FloatEncoder:
     编码值
     """
     def encode(self,value:float)->int:
+        if value is None:
+            return None
         code = 0
         for i in range(self.n, 0, -1):
             if value >= self.splits[i - 1]:

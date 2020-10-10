@@ -21,6 +21,8 @@ import pandas as pd
 import pickle
 
 
+
+
 class SWDataSource(BarDataSource):
     def __init__(self,start:datetime,end:datetime ):
         self.index = 0
@@ -56,71 +58,86 @@ class SVMPredictModel(PredictModel):
     def __processSampleData(self, engine: CoreEngine, sampleData: Sequence['CollectData']) -> Sequence['CollectData']:
         return sampleData
 
-    """
-    生成特征值。(有4个标签）
-    返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
-    """
-    def __generateFeature(self, engine: CoreEngine, dataList: Sequence['CollectData']) -> Tuple[np.ndarray, np.ndarray,np.ndarray,np.ndarray,np.ndarray]:
-        print(f"[SVMPredictModel]: generate feature")
-
-        trainDataSet = []
-        for traceData in traceDatas:
-            occurBar = traceData.occurBar
-            skipBar = traceData.skipBar
-            sell_pct = 100 * (
-                        (skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
-            buy_pct = 100 * (
-                        (skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
-            data = []
-            data.append(self.code)
-            data.append(self.sw.getSw2Name(self.code))
-            data.append(traceData.kPatternValue)
-            data.append(buy_pct)
-            data.append(sell_pct)
-            data.append(traceData.indicator_k)
-            data.append(traceData.indicator_j)
-
-            data.append(traceData.sell_pct)
-            data.append(traceData.buy_pct)
-            trainDataSet.append(data)
-        cloumns = ["code", "name", "kPattern", "buy_price", "sell_price", "k", "j", "label_sell_price",
-                   "label_buy_price"]
-        return pd.DataFrame(trainDataSet, columns=cloumns)
-
-        pass
-
-    def __genereatePd(self, dataList: Sequence['CollectData']):
+    def __genereatePd(self, engine: CoreEngine,dataList: Sequence['CollectData']):
         trainDataSet = []
         for traceData in dataList:
             occurBar = traceData.occurBars[-1]
-
             assert len(traceData.predictBars) > 0
             skipBar = traceData.predictBars[0]
-
             sell_pct = 100 * (
                     (skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
             buy_pct = 100 * (
                     (skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
 
-            real_sell_pct = None
-            real_buy_pct = None
-            if len(traceData.predictBars) > 1:
-                sdff
-
+            real_sell_pct,real_buy_pct = CollectData.getSellBuyPredicPct(traceData)
+            label_sell_1 = PredictModel.PctEncoder1.encode(real_sell_pct)
+            label_sell_2 = PredictModel.PctEncoder2.encode(real_sell_pct)
+            label_buy_1 = PredictModel.PctEncoder1.encode(real_buy_pct)
+            label_buy_2 = PredictModel.PctEncoder2.encode(real_buy_pct)
             data = []
             data.append(buy_pct)
             data.append(sell_pct)
-            #data.append(traceData.indicator_k)
-            #data.append(traceData.indicator_j)
-            data.append(traceData.sell_pct)
-            data.append(traceData.buy_pct)
+            data.append(label_sell_1)
+            data.append(label_buy_1)
+            data.append(label_sell_2)
+            data.append(label_buy_2)
             trainDataSet.append(data)
-        cloumns = ["buy_price", "sell_price",
-                   "k", "j",
-                   "label_sell_price",
-                   "label_buy_price"
+        cloumns = ["buy_pct",
+                   "sell_pct",
+                   #"k", "j",
+                   "label_sell_1",
+                   "label_buy_1",
+                   "label_sell_2",
+                   "label_buy_2",
                    ]
-        return pd.DataFrame(trainDataSet, columns=cloumns)
+        orgin_pd =  pd.DataFrame(trainDataSet, columns=cloumns)
+        return orgin_pd
+
+    """
+    生成特征值。(有4个标签）
+    返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
+    """
+    def __generateFeature(self, engine: CoreEngine, dataList: Sequence['CollectData']):
+        print(f"[SVMPredictModel]: generate feature")
+        def set_0_or_1(x):
+            if x >= 2:
+                return 1
+            return 0
+
+        def percent_to_one(x):
+            return int(x * 100) / 1000.0
+
+        def toInt(x):
+            v = int(x + 0.5)
+            if v > 10:
+                v = 10
+            if v < -10:
+                v = -10
+            return v
+        d = self.__genereatePd(engine,dataList)
+        print(f"   origin:\n{d.head()}")
+
+        d['buy_pct'] = d.buy_pct.apply(percent_to_one)  # 归一化
+        d['sell_pct'] = d.sell_pct.apply(percent_to_one)  # 归一化
+        #d.k = d.k / 100
+        #d.j = d.j / 100
+        print(f"   convert:\n{d.head()}")
+        data = d.values
+        x, y = np.split(data, indices_or_sections=(2,), axis=1)  # x为数据，y为标签
+        y_1 = y[:, 0:1].flatten()  # 取第一列
+        y_2 = y[:, 1:2].flatten()  # 取第一列
+        y_3 = y[:, 2:3].flatten()  # 取第一列
+        y_4 = y[:, 3:4].flatten()  # 取第一列
+
+        print(f"   y_1:\n{y_1}")
+        print(f"   y_2:\n{y_2}")
+        print(f"   y_3:\n{y_3}")
+        print(f"   y_4:\n{y_4}")
+
+        print(f"[SVMPredictModel]: generate feature end!!!")
+        return x, y_1, y_2, y_3, y_4
+
+
 
     """
     建造模型
@@ -128,13 +145,13 @@ class SVMPredictModel(PredictModel):
     def build(self,engine:CoreEngine, sampleData:Sequence['CollectData']):
         print(f"[SVMPredictModel]: build Model....")
         self.orginSampleQuantData = engine.computeQuantData(sampleData)
-        trainDataList = self.__processSampleData(sampleData)
+        trainDataList = self.__processSampleData(self,sampleData)
         self.sampleQuantData = engine.computeQuantData(trainDataList)
         print(f"   history quantdata: {self.orginSampleQuantData}")
         print(f"   sample quantdata: {self.sampleQuantData}")
 
         ##建立特征值
-        x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.__generateFeature(self.sampleQuantData)
+        x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.__generateFeature(engine,trainDataList)
         self.classifierSell_1 = self.__createClassifier(x,y_sell_1)
         self.classifierSell_2 = self.__createClassifier(x,y_sell_2)
         self.classifierBuy_1 = self.__createClassifier(x,y_buy_1)
@@ -154,22 +171,35 @@ class SVMPredictModel(PredictModel):
 
 
     def predict(self, data) -> Union[PredictData, Sequence['PredictData']]:
-
+        single = False
         if type(data) is CollectData:
-            x, y_sell_1, y_buy_1, y_sell_2, y_buy_2 = self.__generateFeature([data])
-            pdData = self.__predictSingle(x[0],data)
-            return pdData
-        elif type(data) is Sequence['CollectData']:
-            x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.__generateFeature(data)
+            data = [data]
+            single = True
+        if type(data) is list:
+            x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.__generateFeature(self,data)
             retList = []
-            for i in range(0,x):
-                pdData = self.__predictSingle(x[i],data[i])
-                retList.append(pdData)
-            return retList
+            buyRange1_list = self.classifierBuy_1.predict_proba(x)
+            buyRange2_list = self.classifierBuy_2.predict_proba(x)
+            sellRange1_list = self.classifierSell_1.predict_proba(x)
+            sellRange2_list = self.classifierSell_2.predict_proba(x)
+            for i in range(0,len(data)):
+                collectData = data[i]
+                pData = PredictData(dimen=self.dimen, historyData=self.orginSampleQuantData,
+                                    sampleData=self.sampleQuantData, collectData=collectData)
+                pData.buyRange1 = buyRange1_list[i]
+                pData.buyRange2 = buyRange2_list[i]
+                pData.sellRange1 = sellRange1_list[i]
+                pData.sellRange2 = sellRange2_list[i]
+                retList.append(pData)
+            if single:
+                return retList[-1]
+            else:
+                return retList
         raise RuntimeError("unsupport data！！！")
 
     def __predictSingle(self,x,collectData:CollectData) -> PredictData:
         pData = PredictData(dimen =self.dimen,historyData= self.orginSampleQuantData,sampleData=self.sampleQuantData,collectData = collectData)
+
         pData.buyRange1 = self.classifierBuy_1.predict_proba(x)
         pData.buyRange2 = self.classifierBuy_2.predict_proba(x)
         pData.sellRange1 = self.classifierSell_1.predict_proba(x)
@@ -207,18 +237,7 @@ class CoreEngineImpl(CoreEngine):
         dirPath =  f"{self.__getCollectDirPath()}/{dimen.getKey()}"
         return dirPath
 
-    def __getSellBuyPredicPct(self,data:CollectData):
-        bars: ['BarData'] = data.predictBars
-        assert len(bars) > 0
-        startPrice = data.occurBars[-1].close_price
-        sell_pct = -99999
-        buy_pct = 9999999
-        for bar in bars:
-            __sell_pct = 100 * ((bar.high_price + bar.close_price) / 2 - startPrice) / startPrice
-            __buy_pct = 100 * ((bar.low_price + bar.close_price) / 2 - startPrice) / startPrice
-            sell_pct = max(__sell_pct,sell_pct)
-            buy_pct = min(__buy_pct,buy_pct)
-        return sell_pct,buy_pct
+
 
     def load(self,collector:CoreCollector):
         self.__collector = collector
@@ -253,7 +272,7 @@ class CoreEngineImpl(CoreEngine):
         for data in dataList:
             bars: ['BarData'] = data.predictBars
             assert len(bars) > 0
-            sell_pct, buy_pct = self.__getSellBuyPredicPct(data)
+            sell_pct, buy_pct = CollectData.getSellBuyPredicPct(data)
             sell_encode = CoreEngineImpl.quantFloatEncoder.encode(sell_pct)
             buy_encode = CoreEngineImpl.quantFloatEncoder.encode(buy_pct)
             sellRangeCount[sell_encode] += 1
@@ -348,7 +367,13 @@ class CoreEngineImpl(CoreEngine):
         return self.mQuantDataMap.get(dimen)
 
     def loadPredictModel(self, dimen: Dimension) -> PredictModel:
-        pass
+
+        collectDataList = self.loadCollectData(dimen)
+        if collectDataList is None:
+            return None
+        model = SVMPredictModel(dimen)
+        model.build(self,collectDataList)
+        return model
 
     def toStr(self,data:QuantData) ->str:
 
@@ -402,8 +427,8 @@ if __name__ == "__main__":
     end = datetime(2020, 8, 17)
     engine = CoreEngineImpl("files/impltest")
 
-    engine.build(SWDataSource(start,end),Collector2KAgo1())
-    #engine.load(Collector2KAgo1())
+    #engine.build(SWDataSource(start,end),Collector2KAgo1())
+    engine.load(Collector2KAgo1())
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 

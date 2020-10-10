@@ -10,7 +10,6 @@ market = MarketImpl()
 market.addNotice(code)
 market.setToday(datetime.now())
 
-
 bars = market.getHistory().getKbars(code,80)
 
 indicator = Indicator()
