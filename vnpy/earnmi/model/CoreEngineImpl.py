@@ -14,9 +14,10 @@ from vnpy.trader.object import BarData
 from earnmi.data.SWImpl import SWImpl
 from earnmi.model.CollectData import CollectData
 from earnmi.model.CoreEngine import CoreEngine, BarDataSource, CoreCollector, PredictModel
-from earnmi.model.Dimension import Dimension, TYPE_3KAGO1
+from earnmi.model.Dimension import Dimension, TYPE_3KAGO1, TYPE_2KAGO1
 from earnmi.model.PredictData import PredictData
 import numpy as np
+import pandas as pd
 import pickle
 
 
@@ -62,7 +63,64 @@ class SVMPredictModel(PredictModel):
     def __generateFeature(self, engine: CoreEngine, dataList: Sequence['CollectData']) -> Tuple[np.ndarray, np.ndarray,np.ndarray,np.ndarray,np.ndarray]:
         print(f"[SVMPredictModel]: generate feature")
 
+        trainDataSet = []
+        for traceData in traceDatas:
+            occurBar = traceData.occurBar
+            skipBar = traceData.skipBar
+            sell_pct = 100 * (
+                        (skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
+            buy_pct = 100 * (
+                        (skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
+            data = []
+            data.append(self.code)
+            data.append(self.sw.getSw2Name(self.code))
+            data.append(traceData.kPatternValue)
+            data.append(buy_pct)
+            data.append(sell_pct)
+            data.append(traceData.indicator_k)
+            data.append(traceData.indicator_j)
+
+            data.append(traceData.sell_pct)
+            data.append(traceData.buy_pct)
+            trainDataSet.append(data)
+        cloumns = ["code", "name", "kPattern", "buy_price", "sell_price", "k", "j", "label_sell_price",
+                   "label_buy_price"]
+        return pd.DataFrame(trainDataSet, columns=cloumns)
+
         pass
+
+    def __genereatePd(self, dataList: Sequence['CollectData']):
+        trainDataSet = []
+        for traceData in dataList:
+            occurBar = traceData.occurBars[-1]
+
+            assert len(traceData.predictBars) > 0
+            skipBar = traceData.predictBars[0]
+
+            sell_pct = 100 * (
+                    (skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
+            buy_pct = 100 * (
+                    (skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
+
+            real_sell_pct = None
+            real_buy_pct = None
+            if len(traceData.predictBars) > 1:
+                sdff
+
+            data = []
+            data.append(buy_pct)
+            data.append(sell_pct)
+            #data.append(traceData.indicator_k)
+            #data.append(traceData.indicator_j)
+            data.append(traceData.sell_pct)
+            data.append(traceData.buy_pct)
+            trainDataSet.append(data)
+        cloumns = ["buy_price", "sell_price",
+                   "k", "j",
+                   "label_sell_price",
+                   "label_buy_price"
+                   ]
+        return pd.DataFrame(trainDataSet, columns=cloumns)
 
     """
     建造模型
@@ -307,7 +365,7 @@ class CoreEngineImpl(CoreEngine):
         return info
 
 if __name__ == "__main__":
-    class Collector3KAgo1(CoreCollector):
+    class Collector2KAgo1(CoreCollector):
 
         def __init__(self):
             self.lasted3Bar = np.array([None,None,None])
@@ -322,18 +380,20 @@ if __name__ == "__main__":
             self.lasted3Bar[:-1] = self.lasted3Bar[1:]
             self.lasted3Bar[-1] = bar
 
-            kPatternValue = KPattern.encode3KAgo1(self.indicator)
+            kPatternValue = KPattern.encode2KAgo1(self.indicator)
             if not kPatternValue is None :
-                dimen = Dimension(type=TYPE_3KAGO1,value=kPatternValue)
+                dimen = Dimension(type=TYPE_2KAGO1,value=kPatternValue)
                 collectData = CollectData(dimen=dimen)
-                collectData.occurBars.append(self.lasted3Bar[0])
-                collectData.occurBars.append(self.lasted3Bar[1])
-                collectData.occurBars.append(self.lasted3Bar[2])
+                collectData.occurBars.append(self.lasted3Bar[-2])
+                collectData.occurBars.append(self.lasted3Bar[-1])
                 return collectData
             return None
 
         def onTrace(self, data: CollectData, newBar: BarData) -> bool:
-            data.predictBars.append(newBar)
+            if len(data.occurBars) < 3:
+                data.occurBars.append(newBar)
+            else:
+                data.predictBars.append(newBar)
             size = len(data.predictBars)
             return size >= 2
 
@@ -342,8 +402,8 @@ if __name__ == "__main__":
     end = datetime(2020, 8, 17)
     engine = CoreEngineImpl("files/impltest")
 
-    #engine.build(SWDataSource(start,end),Collector3KAgo1())
-    engine.load(Collector3KAgo1())
+    engine.build(SWDataSource(start,end),Collector2KAgo1())
+    #engine.load(Collector2KAgo1())
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 

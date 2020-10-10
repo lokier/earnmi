@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-TYPE_3KAGO1 = 1
+TYPE_2KAGO1 = 1
+TYPE_3KAGO1 = 2
 
 @dataclass
 class Dimension(object):
