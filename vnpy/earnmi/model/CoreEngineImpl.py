@@ -297,7 +297,7 @@ class CoreEngineImpl(CoreEngine):
         dataSet = {}
         totalCount = 0
         while not bars is None:
-           finished,stop = self.__collect__internel(bars,code,collector)
+           finished,stop = CoreCollector.collectBars(bars,code,collector)
            print(f"[CoreEngine]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
            totalCount += len(finished)
            bars, code = soruce.onNextBars()
@@ -340,35 +340,9 @@ class CoreEngineImpl(CoreEngine):
         collector = self.__collector
         collector.onCreate()
         code = bars[0].symbol
-        finished,stop = self.__collect__internel(bars,code,collector)
+        finished, stop = CoreCollector.collectBars(bars, code, collector)
         collector.onDestroy()
         return finished,stop
-
-
-    def __collect__internel(self, barList: ['BarData'],symbol:str,collector:CoreCollector) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
-        collector.onStart(symbol)
-        traceItems = []
-        finishedData = []
-        stopData = []
-        for bar in barList:
-            toDeleteList = []
-            newObject = collector.collect(bar)
-            for collectData in traceItems:
-                isFinished = collector.onTrace(collectData, bar)
-                if isFinished:
-                    toDeleteList.append(collectData)
-                    finishedData.append(collectData)
-            for collectData in toDeleteList:
-                traceItems.remove(collectData)
-            if newObject is None:
-                continue
-            traceItems.append(newObject)
-
-        ###将要结束，未追踪完的traceData
-        for traceObject in traceItems:
-            stopData.append(traceObject)
-        collector.onEnd(symbol)
-        return finishedData,stopData
 
     def loadAllDimesion(self) -> Sequence['Dimension']:
         return self.mAllDimension

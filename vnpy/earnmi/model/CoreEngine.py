@@ -52,6 +52,32 @@ class CoreCollector:
     def onDestroy(self):
         pass
 
+    def collectBars(barList: ['BarData'],symbol:str,collector) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
+        collector.onStart(symbol)
+        traceItems = []
+        finishedData = []
+        stopData = []
+        for bar in barList:
+            toDeleteList = []
+            newObject = collector.collect(bar)
+            for collectData in traceItems:
+                isFinished = collector.onTrace(collectData, bar)
+                if isFinished:
+                    toDeleteList.append(collectData)
+                    finishedData.append(collectData)
+            for collectData in toDeleteList:
+                traceItems.remove(collectData)
+            if newObject is None:
+                continue
+            traceItems.append(newObject)
+
+        ###将要结束，未追踪完的traceData
+        for traceObject in traceItems:
+            stopData.append(traceObject)
+        collector.onEnd(symbol)
+        return finishedData,stopData
+
+
 class BarDataSource:
 
     """
