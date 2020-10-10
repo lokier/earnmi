@@ -33,16 +33,16 @@ class PredictData(object):
     """
     卖方概率分布
     """
-    sellRange1:[]
+    sellRange1:[] = None
 
-    sellRange2: []
+    sellRange2: [] = None
 
     """
      买方概率分布
     """
-    buyRange1:[]
+    buyRange1:[] = None
 
-    buyRange2:[]
+    buyRange2:[] = None
 
 
     def __post_init__(self):

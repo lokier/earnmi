@@ -1,6 +1,9 @@
 import os
 from datetime import datetime
-from typing import Tuple, Sequence
+from typing import Tuple, Sequence, Union
+
+import sklearn
+from sklearn.ensemble import RandomForestClassifier
 
 from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.chart.Indicator import Indicator
@@ -38,23 +41,82 @@ class SVMPredictModel(PredictModel):
 
     def __init__(self,dimen:Dimension):
         self.dimen = dimen
+        self.orginSampleQuantData:QuantData = None
+        self.sampleQuantData:QuantData = None
+        self.classifierSell_1 = None
+        self.classifierSell_2 = None
+        self.classifierBuy_1 = None
+        self.classifierBuy_2 = None
 
+    """
+      预处理样本数据，比如，拆减等。
+      """
+
+    def __processSampleData(self, engine: CoreEngine, sampleData: Sequence['CollectData']) -> Sequence['CollectData']:
+        return sampleData
+
+    """
+    生成特征值。(有4个标签）
+    返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
+    """
+    def __generateFeature(self, engine: CoreEngine, dataList: Sequence['CollectData']) -> Tuple[np.ndarray, np.ndarray,np.ndarray,np.ndarray,np.ndarray]:
+        print(f"[SVMPredictModel]: generate feature")
+
+        pass
 
     """
     建造模型
     """
-    def build(self,sampleData:Sequence['CollectData']):
+    def build(self,engine:CoreEngine, sampleData:Sequence['CollectData']):
+        print(f"[SVMPredictModel]: build Model....")
+        self.orginSampleQuantData = engine.computeQuantData(sampleData)
+        trainDataList = self.__processSampleData(sampleData)
+        self.sampleQuantData = engine.computeQuantData(trainDataList)
+        print(f"   history quantdata: {self.orginSampleQuantData}")
+        print(f"   sample quantdata: {self.sampleQuantData}")
 
+        ##建立特征值
+        x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.__generateFeature(self.sampleQuantData)
+        self.classifierSell_1 = self.__createClassifier(x,y_sell_1)
+        self.classifierSell_2 = self.__createClassifier(x,y_sell_2)
+        self.classifierBuy_1 = self.__createClassifier(x,y_buy_1)
+        self.classifierBuy_2 = self.__createClassifier(x,y_buy_2)
+        print(f"[SVMPredictModel]: build finished!!!")
         pass
 
-    """
-    预处理样本数据，比如，拆检。
-    """
-    def processSampleData(self,engine:CoreEngine, sampleData:Sequence['CollectData']):
-        pass
+    def __createClassifier(self,x,y,useSVM=True):
+        classifier = None
+        if useSVM:
+            classifier = sklearn.svm.SVC(C=2, kernel='rbf', gamma=10, decision_function_shape='ovr', probability=True)  # ovr:一对多策略
+            classifier.fit(x, y)
+        else:
+            classifier = RandomForestClassifier(n_estimators=100, max_depth=None,min_samples_split=50, bootstrap=True)
+            classifier.fit(x, y)
+        return classifier
 
-    def predict(self, data: Tuple[CollectData, Sequence['CollectData']]) -> Tuple[PredictData, Sequence['PredictData']]:
-        pass
+
+    def predict(self, data) -> Union[PredictData, Sequence['PredictData']]:
+
+        if type(data) is CollectData:
+            x, y_sell_1, y_buy_1, y_sell_2, y_buy_2 = self.__generateFeature([data])
+            pdData = self.__predictSingle(x[0],data)
+            return pdData
+        elif type(data) is Sequence['CollectData']:
+            x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.__generateFeature(data)
+            retList = []
+            for i in range(0,x):
+                pdData = self.__predictSingle(x[i],data[i])
+                retList.append(pdData)
+            return retList
+        raise RuntimeError("unsupport data！！！")
+
+    def __predictSingle(self,x,collectData:CollectData) -> PredictData:
+        pData = PredictData(dimen =self.dimen,historyData= self.orginSampleQuantData,sampleData=self.sampleQuantData,collectData = collectData)
+        pData.buyRange1 = self.classifierBuy_1.predict_proba(x)
+        pData.buyRange2 = self.classifierBuy_2.predict_proba(x)
+        pData.sellRange1 = self.classifierSell_1.predict_proba(x)
+        pData.sellRange2 = self.classifierSell_2.predict_proba(x)
+        return pData
 
 
 class CoreEngineImpl(CoreEngine):
@@ -67,7 +129,7 @@ class CoreEngineImpl(CoreEngine):
         self.mAllDimension:['Dimension'] = None
         self.mQuantDataMap:{}= None
         self.__file_dir = dirPath
-        self.__collector = dirPath
+        self.__collector = None
 
         if not os.path.exists(dirPath):
             os.makedirs(dirPath)
@@ -101,6 +163,7 @@ class CoreEngineImpl(CoreEngine):
         return sell_pct,buy_pct
 
     def load(self,collector:CoreCollector):
+        self.__collector = collector
         print("[CoreEngine]: load start...")
         with open(self.__getDimenisonFilePath(), 'rb') as fp:
             self.mAllDimension  = pickle.load(fp)
@@ -287,5 +350,20 @@ if __name__ == "__main__":
     for dimen in dimens:
         quant = engine.queryQuantData(dimen)
         print(f"quant：{engine.toStr(quant)}")
+
+    ## 一个预测案例
+    sw = SWImpl()
+    code = sw.getSW2List()[3]
+    bars = sw.getSW2Daily(code,end,datetime.now())
+
+    finished,stop = engine.collect(bars)
+
+    for cData in finished:
+        model = engine.loadPredictModel(cData.dimen)
+        if model is None:
+            continue
+        pData = model.predict(cData)
+        print(f"pData:{pData}")
+        break
 
     pass
