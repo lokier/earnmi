@@ -34,6 +34,28 @@ class SWDataSource(BarDataSource):
             return self.sw.getSW2Daily(code,self.start,self.end),code
         return None,None
 
+class SVMPredictModel(PredictModel):
+
+    def __init__(self,dimen:Dimension):
+        self.dimen = dimen
+
+
+    """
+    建造模型
+    """
+    def build(self,sampleData:Sequence['CollectData']):
+
+        pass
+
+    """
+    预处理样本数据，比如，拆检。
+    """
+    def processSampleData(self,engine:CoreEngine, sampleData:Sequence['CollectData']):
+        pass
+
+    def predict(self, data: Tuple[CollectData, Sequence['CollectData']]) -> Tuple[PredictData, Sequence['PredictData']]:
+        pass
+
 
 class CoreEngineImpl(CoreEngine):
 
@@ -46,7 +68,6 @@ class CoreEngineImpl(CoreEngine):
         self.mQuantDataMap:{}= None
         self.__file_dir = dirPath
         self.__collector = dirPath
-        self.predictModel:PredictModel = None
 
         if not os.path.exists(dirPath):
             os.makedirs(dirPath)
@@ -54,14 +75,9 @@ class CoreEngineImpl(CoreEngine):
         if not os.path.exists(collectDir):
             os.makedirs(collectDir)
 
-    def setPredictModel(self,model:PredictModel):
-        self.predictModel = model
 
     def __getDimenisonFilePath(self):
         return f"{self.__file_dir}/dimension.bin"
-
-    def __getQuantDataFilePath(self):
-        return f"{self.__file_dir}/quantdata.bin"
 
     def __getCollectDirPath(self):
         return  f"{self.__file_dir}/colllect"
@@ -89,17 +105,39 @@ class CoreEngineImpl(CoreEngine):
         with open(self.__getDimenisonFilePath(), 'rb') as fp:
             self.mAllDimension  = pickle.load(fp)
         quantMap = {}
-        quantList = []
-        with open(self.__getQuantDataFilePath(), 'rb') as fp:
-            quantList = pickle.load(fp)
         totalCount = 0
-        for quantData in quantList:
-            quantMap[quantData.dimen] = quantData
+        for dimen in self.mAllDimension:
+            colectDatas = self.loadCollectData(dimen)
+            quantData = self.computeQuantData(colectDatas)
+            quantMap[dimen] = quantData
             totalCount += quantData.count
         self.mQuantDataMap = quantMap
         print(f"[CoreEngine]: 总共加载{len(self.mAllDimension)}个维度数据,共{totalCount}个数据")
 
         assert len(quantMap) == len(self.mAllDimension)
+
+    def loadCollectData(self, dimen: Dimension) -> Sequence['CollectData']:
+        filePath = self.__getCollectFilePath(dimen)
+        collectData = None
+        with open(filePath, 'rb') as fp:
+            collectData = pickle.load(fp)
+        return collectData
+
+    def computeQuantData(self, dataList: Sequence['CollectData']) -> QuantData:
+        sellRangeCount = {}
+        buyRangeCount = {}
+        for i in range(0, CoreEngineImpl.quantFloatEncoder.mask()):
+            sellRangeCount[i] = 0
+            buyRangeCount[i] = 0
+        for data in dataList:
+            bars: ['BarData'] = data.predictBars
+            assert len(bars) > 0
+            sell_pct, buy_pct = self.__getSellBuyPredicPct(data)
+            sell_encode = CoreEngineImpl.quantFloatEncoder.encode(sell_pct)
+            buy_encode = CoreEngineImpl.quantFloatEncoder.encode(buy_pct)
+            sellRangeCount[sell_encode] += 1
+            buyRangeCount[buy_encode] += 1
+        return QuantData(count=len(dataList),sellRangeCount=sellRangeCount,buyRangeCount=buyRangeCount)
 
     def build(self,soruce:BarDataSource,collector:CoreCollector):
         print("[CoreEngine]: build start...")
@@ -146,29 +184,6 @@ class CoreEngineImpl(CoreEngine):
         with open(self.__getDimenisonFilePath(), 'wb+') as fp:
             pickle.dump(saveDimens, fp, -1)
         print(f"[CoreEngine]: 总共保存{len(saveDimens)}个维度数据(>={MIN_SIZE})，共{saveCollectCount}个数据，其中最多{maxSize},最小{minSize}")
-
-        ##保存量化数据。
-        quantDataList = []
-        for dimen in saveDimens:
-            listData = dataSet[dimen]
-            sellRangeCount = {}
-            buyRangeCount = {}
-            for i in range(0,CoreEngineImpl.quantFloatEncoder.mask()):
-                sellRangeCount[i] = 0
-                buyRangeCount[i] = 0
-            for data in listData:
-                bars:['BarData'] = data.predictBars
-                assert len(bars) > 0
-                sell_pct, buy_pct = self.__getSellBuyPredicPct(data)
-                sell_encode = CoreEngineImpl.quantFloatEncoder.encode(sell_pct)
-                buy_encode = CoreEngineImpl.quantFloatEncoder.encode(buy_pct)
-                sellRangeCount[sell_encode] +=1
-                buyRangeCount[buy_encode] +=1
-            quantDataList.append(QuantData(dimen=dimen,count=len(listData),sellRangeCount=sellRangeCount,buyRangeCount=buyRangeCount))
-        filePath = self.__getQuantDataFilePath()
-        with open(filePath, 'wb+') as fp:
-            pickle.dump(quantDataList, fp, -1)
-
         self.load(collector)
 
     def collect(self, bars: ['BarData']) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
@@ -211,8 +226,7 @@ class CoreEngineImpl(CoreEngine):
     def queryQuantData(self, dimen: Dimension) -> QuantData:
         return self.mQuantDataMap.get(dimen)
 
-
-    def predict(self, data: Tuple[CollectData, Sequence['CollectData']]) -> Tuple[PredictData, Sequence['PredictData']]:
+    def loadPredictModel(self, dimen: Dimension) -> PredictModel:
         pass
 
     def toStr(self,data:QuantData) ->str:

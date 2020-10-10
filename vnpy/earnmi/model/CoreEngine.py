@@ -63,8 +63,10 @@ class BarDataSource:
 class PredictModel:
 
     @abstractmethod
-    def filter(self,coreEngine,):
+    def predict(self, data: Tuple[CollectData, Sequence['CollectData']]) -> Tuple[PredictData, Sequence['PredictData']]:
+        # 1、加载
         pass
+
 
 class CoreEngine():
 
@@ -80,15 +82,16 @@ class CoreEngine():
     """
     加载已经存在的CoreEngine对象
     """
-    def load(dirName:str,collector:CoreCollector):
+    def load(dirName: str, collector: CoreCollector):
         from earnmi.model.CoreEngineImpl import CoreEngineImpl
         engine = CoreEngineImpl(dirName)
         engine.load(collector)
         return engine
 
     @abstractmethod
-    def setPredictModel(self,model:PredictModel):
+    def loadPredictModel(self, dimen:Dimension) ->PredictModel:
         pass
+
     """
     收集ColletorData数据，返回已经完成的CollectData, 未完成的CollectData
     """
@@ -101,6 +104,14 @@ class CoreEngine():
     """
     @abstractmethod
     def loadAllDimesion(self) -> Sequence['Dimension']:
+        pass
+
+    @abstractmethod
+    def computeQuantData(self,data:Sequence['CollectData']) ->QuantData:
+        pass
+
+    @abstractmethod
+    def loadCollectData(self, dimen: Dimension) -> Sequence['CollectData']:
         pass
 
     """

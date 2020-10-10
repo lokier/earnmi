@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from earnmi.model.CollectData import CollectData
 from earnmi.model.Dimension import Dimension
+from earnmi.model.QuantData import QuantData
 
 """
  预测值数据
@@ -14,6 +15,19 @@ class PredictData(object):
         """
     dimen: Dimension
 
+    """
+    历史记录的量化数据
+    """
+    historyData:QuantData
+
+    """
+    训练样本的量化数据。
+    """
+    sampleData:QuantData
+
+    """
+    测试特征值得原始数据。
+    """
     collectData:CollectData
 
     """

@@ -12,7 +12,7 @@ class QuantData(object):
     """
     维度值
     """
-    dimen: Dimension
+    # dimen: Dimension
 
     count:int
 
