@@ -74,9 +74,14 @@ class SVMPredictModel(PredictModel):
             label_sell_2 = PredictModel.PctEncoder2.encode(real_sell_pct)
             label_buy_1 = PredictModel.PctEncoder1.encode(real_buy_pct)
             label_buy_2 = PredictModel.PctEncoder2.encode(real_buy_pct)
+
+            kdj = traceData.occurKdj[-1]
+
             data = []
             data.append(buy_pct)
             data.append(sell_pct)
+            data.append(kdj[0])
+            data.append(kdj[2])
             data.append(label_sell_1)
             data.append(label_buy_1)
             data.append(label_sell_2)
@@ -84,7 +89,8 @@ class SVMPredictModel(PredictModel):
             trainDataSet.append(data)
         cloumns = ["buy_pct",
                    "sell_pct",
-                   #"k", "j",
+                   "k",
+                   "j",
                    "label_sell_1",
                    "label_buy_1",
                    "label_sell_2",
@@ -99,10 +105,12 @@ class SVMPredictModel(PredictModel):
     """
     def __generateFeature(self, engine: CoreEngine, dataList: Sequence['CollectData']):
         print(f"[SVMPredictModel]: generate feature")
-        def set_0_or_1(x):
-            if x >= 2:
-                return 1
-            return 0
+        def set_0_between_100(x):
+            if x >100:
+                return 100
+            if x < 0:
+                return 0
+            return x
 
         def percent_to_one(x):
             return int(x * 100) / 1000.0
@@ -119,11 +127,13 @@ class SVMPredictModel(PredictModel):
 
         d['buy_pct'] = d.buy_pct.apply(percent_to_one)  # 归一化
         d['sell_pct'] = d.sell_pct.apply(percent_to_one)  # 归一化
-        #d.k = d.k / 100
-        #d.j = d.j / 100
+        d.k = d.k.apply(set_0_between_100)
+        d.j = d.j.apply(set_0_between_100)
+        d.k = d.k / 100
+        d.j = d.j / 100
         print(f"   convert:\n{d.head()}")
         data = d.values
-        x, y = np.split(data, indices_or_sections=(2,), axis=1)  # x为数据，y为标签
+        x, y = np.split(data, indices_or_sections=(4,), axis=1)  # x为数据，y为标签
         y_1 = y[:, 0:1].flatten()  # 取第一列
         y_2 = y[:, 1:2].flatten()  # 取第一列
         y_3 = y[:, 2:3].flatten()  # 取第一列
@@ -143,7 +153,7 @@ class SVMPredictModel(PredictModel):
     建造模型
     """
     def build(self,engine:CoreEngine, sampleData:Sequence['CollectData']):
-        print(f"[SVMPredictModel]: build Model....")
+        print(f"[SVMPredictModel]: build Model[{self.dimen}]....")
         self.orginSampleQuantData = engine.computeQuantData(sampleData)
         trainDataList = self.__processSampleData(self,sampleData)
         self.sampleQuantData = engine.computeQuantData(trainDataList)
@@ -342,17 +352,17 @@ class CoreEngineImpl(CoreEngine):
         stopData = []
         for bar in barList:
             toDeleteList = []
-            for traceObject in traceItems:
-                isFinished = collector.onTrace(traceObject, bar)
+            newObject = collector.collect(bar)
+            for collectData in traceItems:
+                isFinished = collector.onTrace(collectData, bar)
                 if isFinished:
-                    toDeleteList.append(traceObject)
-                    finishedData.append(traceObject)
-            for traceItem in toDeleteList:
-                traceItems.remove(traceItem)
-            traceObject = collector.collect(bar)
-            if traceObject is None:
+                    toDeleteList.append(collectData)
+                    finishedData.append(collectData)
+            for collectData in toDeleteList:
+                traceItems.remove(collectData)
+            if newObject is None:
                 continue
-            traceItems.append(traceObject)
+            traceItems.append(newObject)
 
         ###将要结束，未追踪完的traceData
         for traceObject in traceItems:
@@ -394,6 +404,7 @@ if __name__ == "__main__":
 
         def __init__(self):
             self.lasted3Bar = np.array([None,None,None])
+            self.lasted3BarKdj = np.array([None,None,None])
 
         def onStart(self, code: str) -> bool:
             self.indicator = Indicator(40)
@@ -403,20 +414,28 @@ if __name__ == "__main__":
         def collect(self, bar: BarData) -> CollectData:
             self.indicator.update_bar(bar)
             self.lasted3Bar[:-1] = self.lasted3Bar[1:]
+            self.lasted3BarKdj[:-1] = self.lasted3BarKdj[1:]
+            k, d, j = self.indicator.kdj(fast_period=9, slow_period=3)
             self.lasted3Bar[-1] = bar
+            self.lasted3BarKdj[-1] = [k, d, j]
+            if self.indicator.count >= 15:
+                kPatternValue = KPattern.encode2KAgo1(self.indicator)
+                if not kPatternValue is None :
+                    dimen = Dimension(type=TYPE_2KAGO1,value=kPatternValue)
+                    collectData = CollectData(dimen=dimen)
+                    collectData.occurBars.append(self.lasted3Bar[-2])
+                    collectData.occurBars.append(self.lasted3Bar[-1])
 
-            kPatternValue = KPattern.encode2KAgo1(self.indicator)
-            if not kPatternValue is None :
-                dimen = Dimension(type=TYPE_2KAGO1,value=kPatternValue)
-                collectData = CollectData(dimen=dimen)
-                collectData.occurBars.append(self.lasted3Bar[-2])
-                collectData.occurBars.append(self.lasted3Bar[-1])
-                return collectData
+                    collectData.occurKdj.append(self.lasted3BarKdj[-2])
+                    collectData.occurKdj.append(self.lasted3BarKdj[-1])
+
+                    return collectData
             return None
 
         def onTrace(self, data: CollectData, newBar: BarData) -> bool:
             if len(data.occurBars) < 3:
-                data.occurBars.append(newBar)
+                data.occurBars.append(self.lasted3Bar[-1])
+                data.occurKdj.append(self.lasted3BarKdj[-1])
             else:
                 data.predictBars.append(newBar)
             size = len(data.predictBars)
@@ -424,11 +443,11 @@ if __name__ == "__main__":
 
 
     start = datetime(2014, 5, 1)
-    end = datetime(2020, 8, 17)
+    end = datetime(2020, 5, 17)
     engine = CoreEngineImpl("files/impltest")
 
-    #engine.build(SWDataSource(start,end),Collector2KAgo1())
-    engine.load(Collector2KAgo1())
+    engine.build(SWDataSource(start,end),Collector2KAgo1())
+    #engine.load(Collector2KAgo1())
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 

@@ -18,6 +18,8 @@ class CollectData(object):
     """
     occurBars:['BarData'] = None
 
+    occurKdj:[] = None
+
     """
       预测情况的bar值。
     """
@@ -26,6 +28,7 @@ class CollectData(object):
     def __post_init__(self):
         self.occurBars = []
         self.predictBars = []
+        self.occurKdj = []
         pass
 
     def getSellBuyPredicPct(collectData):
