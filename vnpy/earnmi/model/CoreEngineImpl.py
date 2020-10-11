@@ -148,9 +148,9 @@ class SVMPredictModel(PredictModel):
                 return retList
         raise RuntimeError("unsupport data！！！")
 
-    def selfTest(self, low_score=90):
-        self.engine.printLog("start PredictModel.selfTest()",True)
-        predictList: Sequence['PredictData'] = model.predict(self.trainSampleDataList)
+    def selfTest(self) -> Tuple[float, float]:
+        self.engine.printLog("start PredictModel.selfTest()")
+        predictList: Sequence['PredictData'] = self.predict(self.trainSampleDataList)
         count = len(predictList);
         if count < 0:
             return
@@ -182,7 +182,8 @@ class SVMPredictModel(PredictModel):
                 buyOk +=1
         sell_core = sellOk / count
         buy_core = buyOk / count
-        self.engine.printLog("selfTest : sell_core=%.2f, buy_core=%.2f" % (sell_core * 100,buy_core * 100),True)
+        self.engine.printLog("selfTest : sell_core=%.2f, buy_core=%.2f" % (sell_core * 100,buy_core * 100))
+        return sell_core,buy_core
 
 class CoreEngineImpl(CoreEngine):
 

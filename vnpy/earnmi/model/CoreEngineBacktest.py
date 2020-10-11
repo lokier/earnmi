@@ -62,6 +62,8 @@ class CoreEngineBackTest():
             earn_pct = 0.0
             loss_pct = 0.0
             eran_count = 0
+            sell_core = 0.0
+            buy_core =0.0
 
             def getOkRate(self) ->float:
                 if self.count > 0:
@@ -76,7 +78,10 @@ class CoreEngineBackTest():
                 if self.count - self.eran_count > 0:
                     lost_pct = self.loss_pct / (self.count - self.eran_count)
                 ok_rate = self.getOkRate()
-                return f"count:{self.count},ok:{self.countOk}(%.2f%%),earn:{self.eran_count},earn_pct:%.2f%%,loss_pct:%.2f%%" % (ok_rate*100,earn_pct, lost_pct)
+                return f"count:{self.count},ok:{self.countOk}(%.2f%%),earn:{self.eran_count}" \
+                       f",earn_pct:%.2f%%,loss_pct:%.2f%%, " \
+                       f"模型能力:[sell_core: %.2f,buy_core:%.2f]" % \
+                       (ok_rate*100,earn_pct, lost_pct,100*self.sell_core,100*self.buy_core)
 
         dimeDataList:['DimeData'] = []
         run_cnt = 0
@@ -89,8 +94,11 @@ class CoreEngineBackTest():
                 print(f"不支持的维度:{dimen}")
             run_cnt +=1
             print(f"开始回测维度:{dimen},进度:[{run_cnt}/{limit_size}]")
+            sell_core,buy_core = model.selfTest()
             predictList: Sequence['PredictData'] = model.predict(listData)
             dimenData = DimenData(dimen=dimen)
+            dimenData.sell_core = sell_core
+            dimenData.buy_core = buy_core
             for predict in predictList:
                 deal,success,pct = self.computePredict(predict)
                 totalOccurPredict += 1

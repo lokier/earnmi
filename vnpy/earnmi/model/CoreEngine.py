@@ -38,10 +38,10 @@ class PredictModel:
         pass
 
     """
-    自我测试，指定low_score分数。
+    自我测试，返回sell_core,buy_score
     """
     @abstractmethod
-    def selfTest(self,low_score = 90):
+    def selfTest(self) ->Tuple[float,float]:
         pass
 
 
