@@ -16,6 +16,7 @@ from earnmi.model.CoreEngine import CoreEngine, BarDataSource, PredictModel
 from earnmi.model.Dimension import Dimension, TYPE_3KAGO1, TYPE_2KAGO1
 from earnmi.model.PredictData import PredictData
 import pickle
+import numpy as np
 from earnmi.model.CoreStrategy import CoreStrategy
 
 
@@ -49,6 +50,11 @@ class SVMPredictModel(PredictModel):
         self.classifierSell_2 = None
         self.classifierBuy_1 = None
         self.classifierBuy_2 = None
+        self.labelListSell1:[] = None  ##标签值列表
+        self.labelListSell2:[] = None  ##标签值列表
+        self.labelListBuy1:[] = None  ##标签值列表
+        self.labelListBuy2:[] = None  ##标签值列表
+
         self.trainSampleDataList = None  ##训练样本数据。
 
 
@@ -66,12 +72,27 @@ class SVMPredictModel(PredictModel):
         engine.printLog(f"   history quantdata: {self.orginSampleQuantData}")
         engine.printLog(f"   sample quantdata: {self.sampleQuantData}")
 
+
         ##建立特征值
         x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getCoreStrategy().generateFeature(engine, trainDataList)
+        y_sell_1 = y_sell_1.astype(int)
+        y_buy_1 = y_buy_1.astype(int)
+        y_sell_2 = y_sell_2.astype(int)
+        y_buy_2 = y_buy_2.astype(int)
+        self.labelListSell1 = np.sort(np.unique(y_sell_1))
+        self.labelListSell2 = np.sort(np.unique(y_sell_2))
+        self.labelListBuy1 = np.sort(np.unique(y_buy_1))
+        self.labelListBuy2 = np.sort(np.unique(y_buy_2))
+        engine.printLog(f"   labelListSell1: {self.labelListSell1}")
+        engine.printLog(f"   labelListSell2: {self.labelListSell2}")
+        engine.printLog(f"   labelListBuy1: {self.labelListBuy1}")
+        engine.printLog(f"   labelListBuy2: {self.labelListBuy2}")
+
         self.classifierSell_1 = self.__createClassifier(x,y_sell_1,useSVM=useSVM)
         self.classifierSell_2 = self.__createClassifier(x,y_sell_2,useSVM=useSVM)
         self.classifierBuy_1 = self.__createClassifier(x,y_buy_1,useSVM=useSVM)
         self.classifierBuy_2 = self.__createClassifier(x,y_buy_2,useSVM=useSVM)
+
         elapsed = (timeit.default_timer() - start)
         engine.printLog(f"build PredictModel finished! elapsed = %.3fs" % (elapsed),True)
         pass
@@ -86,6 +107,13 @@ class SVMPredictModel(PredictModel):
             classifier.fit(x, y)
         return classifier
 
+    def buldRangeList(self,label_list:[],probal_list:[]):
+        fillList = []
+        for index in range(0, len(probal_list)):
+            encode = label_list[index]
+            floatRange = FloatRange(encode=encode, probal=probal_list[index])
+            fillList.append(floatRange)
+        return fillList
 
     def predict(self, data) -> Union[PredictData, Sequence['PredictData']]:
         single = False
@@ -96,33 +124,18 @@ class SVMPredictModel(PredictModel):
         if type(data) is list:
             x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getCoreStrategy().generateFeature(engine, data)
             retList = []
-            buyRange1_list = self.classifierBuy_1.predict_proba(x)
-            buyRange2_list = self.classifierBuy_2.predict_proba(x)
-            sellRange1_list = self.classifierSell_1.predict_proba(x)
-            sellRange2_list = self.classifierSell_2.predict_proba(x)
+            buyRange1_probal_list = self.classifierBuy_1.predict_proba(x)
+            buyRange2_probal_list = self.classifierBuy_2.predict_proba(x)
+            sellRange1_probal_list = self.classifierSell_1.predict_proba(x)
+            sellRange2_probal_list = self.classifierSell_2.predict_proba(x)
             for i in range(0,len(data)):
                 collectData = data[i]
                 pData = PredictData(dimen=self.dimen, historyData=self.orginSampleQuantData,
                                     sampleData=self.sampleQuantData, collectData=collectData)
-                buyRange1 = buyRange1_list[i]
-                sellRange1 = sellRange1_list[i]
-                floatSellRangeList1 = []
-                floatBuyRangeList1 = []
-                for encode in range(0,len(buyRange1)):
-                    ###encode不是对应的标签是，每个buyRange的范围都是不一样的。
-                    sellRange = FloatRange(encode=encode,probal=sellRange1[encode])
-                    buyRange = FloatRange(encode=encode,probal=buyRange1[encode])
-                    floatSellRangeList1.append(sellRange)
-                    floatBuyRangeList1.append(buyRange)
-                sellRange2 = sellRange2_list[i]
-                buyRange2 = buyRange2_list[i]
-                floatSellRangeList2 = []
-                floatBuyRangeList2 = []
-                for encode in range(0, len(buyRange2)):
-                    sellRange = FloatRange(encode=encode, probal=sellRange2[encode])
-                    buyRange = FloatRange(encode=encode, probal=buyRange2[encode])
-                    floatSellRangeList2.append(sellRange)
-                    floatBuyRangeList2.append(buyRange)
+                floatSellRangeList1 = self.buldRangeList(self.labelListSell1,sellRange1_probal_list[i])
+                floatBuyRangeList1 = self.buldRangeList(self.labelListBuy1,buyRange1_probal_list[i])
+                floatSellRangeList2 = self.buldRangeList(self.labelListSell2,sellRange2_probal_list[i])
+                floatBuyRangeList2 = self.buldRangeList(self.labelListBuy2,buyRange2_probal_list[i])
 
                 pData.buyRange1 = FloatRange.sort(floatBuyRangeList1)
                 pData.buyRange2 = FloatRange.sort(floatBuyRangeList2)
@@ -148,17 +161,17 @@ class SVMPredictModel(PredictModel):
             sell_ok = False
             buy_ok = False
             sell_encode = PredictModel.PctEncoder1.encode(sell_pct)
-            buy_encode = PredictModel.PctEncoder1.encode(sell_pct)
+            buy_encode = PredictModel.PctEncoder1.encode(buy_pct)
             """
             命中前两个编码值，看做是预测成功
             """
-            Match_INDEX_SIZE = 2
+            Match_INDEX_SIZE = 1
             for i in range(0,Match_INDEX_SIZE):
                sell_ok = sell_ok or sell_encode == predict.sellRange1[i].encode
                buy_ok = buy_ok or buy_encode == predict.buyRange1[i].encode
 
             sell_encode = PredictModel.PctEncoder2.encode(sell_pct)
-            buy_encode = PredictModel.PctEncoder2.encode(sell_pct)
+            buy_encode = PredictModel.PctEncoder2.encode(buy_pct)
             for i in range(0, Match_INDEX_SIZE):
                 sell_ok = sell_ok or sell_encode == predict.sellRange2[i].encode
                 buy_ok = buy_ok or buy_encode == predict.buyRange2[i].encode

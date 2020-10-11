@@ -6,6 +6,7 @@
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
 from datetime import datetime
+from functools import cmp_to_key
 from typing import Union, Tuple, Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
@@ -62,6 +63,11 @@ class CoreEngineBackTest():
             loss_pct = 0.0
             eran_count = 0
 
+            def getOkRate(self) ->float:
+                if self.count > 0:
+                   return self.countOk / self.count
+                return 0
+
             def __str__(self) -> str:
                 earn_pct = 0.0
                 lost_pct = 0.0
@@ -69,10 +75,8 @@ class CoreEngineBackTest():
                     earn_pct = self.earn_pct / self.eran_count
                 if self.count - self.eran_count > 0:
                     lost_pct = self.loss_pct / (self.count - self.eran_count)
-                ok_rate = 0
-                if self.count > 0:
-                    ok_rate = self.countOk / self.count
-                return f"dim:{self.dimen},count:{self.count},ok:{self.countOk}(%.2f%%),earn:{self.eran_count},earn_pct:%.2f%%,loss_pct:%.2f%%" % (ok_rate*100,earn_pct, lost_pct)
+                ok_rate = self.getOkRate()
+                return f"count:{self.count},ok:{self.countOk}(%.2f%%),earn:{self.eran_count},earn_pct:%.2f%%,loss_pct:%.2f%%" % (ok_rate*100,earn_pct, lost_pct)
 
         dimeDataList:['DimeData'] = []
         run_cnt = 0
@@ -102,14 +106,20 @@ class CoreEngineBackTest():
                         dimenData.loss_pct += pct
             dimeDataList.append(dimenData)
 
+        print("\n\n")
         total = DimenData(dimen=None)
+
+        def diemdata_cmp(v1,v2):
+            return v1.getOkRate() - v2.getOkRate()
+
+        dimeDataList = sorted(dimeDataList, key=cmp_to_key(diemdata_cmp), reverse=False)
         for d in dimeDataList:
             total.loss_pct += d.loss_pct
             total.count += d.count
             total.eran_count += d.eran_count
             total.countOk += d.countOk
             total.earn_pct += d.earn_pct
-            print(f"{d}")
+            print(f"[{d.dimen.value}]: {d}")
 
         deal_rate = 0.0
         if totalOccurPredict > 0:
@@ -215,7 +225,7 @@ if __name__ == "__main__":
     engine = CoreEngine.load(dirName,strategy)
     backtest = CoreEngineBackTest(engine)
 
-    backtest.backtest(testDataSouce,strategy,limit=9999999)
+    backtest.backtest(testDataSouce,strategy,limit=2)
 
 
     pass
