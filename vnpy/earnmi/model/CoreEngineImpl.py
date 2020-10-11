@@ -7,8 +7,6 @@ import sklearn
 from sklearn.ensemble import RandomForestClassifier
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
-from earnmi.chart.Indicator import Indicator
-from earnmi.chart.KPattern import KPattern
 from earnmi.model.QuantData import QuantData
 from vnpy.trader.object import BarData
 
@@ -17,8 +15,6 @@ from earnmi.model.CollectData import CollectData
 from earnmi.model.CoreEngine import CoreEngine, BarDataSource, PredictModel
 from earnmi.model.Dimension import Dimension, TYPE_3KAGO1, TYPE_2KAGO1
 from earnmi.model.PredictData import PredictData
-import numpy as np
-import pandas as pd
 import pickle
 from earnmi.model.CoreStrategy import CoreStrategy
 
@@ -53,6 +49,7 @@ class SVMPredictModel(PredictModel):
         self.classifierSell_2 = None
         self.classifierBuy_1 = None
         self.classifierBuy_2 = None
+        self.trainSampleDataList = None  ##训练样本数据。
 
 
     """
@@ -64,6 +61,7 @@ class SVMPredictModel(PredictModel):
         engine.printLog(f"build PredictModel:dime={self.dimen}, use SVM ={useSVM}",True)
         self.orginSampleQuantData = engine.computeQuantData(sampleData)
         trainDataList = engine.getCoreStrategy().generateSampleData(engine, sampleData)
+        self.trainSampleDataList = trainDataList
         self.sampleQuantData = engine.computeQuantData(trainDataList)
         engine.printLog(f"   history quantdata: {self.orginSampleQuantData}")
         engine.printLog(f"   sample quantdata: {self.sampleQuantData}")
@@ -111,6 +109,7 @@ class SVMPredictModel(PredictModel):
                 floatSellRangeList1 = []
                 floatBuyRangeList1 = []
                 for encode in range(0,len(buyRange1)):
+                    ###encode不是对应的标签是，每个buyRange的范围都是不一样的。
                     sellRange = FloatRange(encode=encode,probal=sellRange1[encode])
                     buyRange = FloatRange(encode=encode,probal=buyRange1[encode])
                     floatSellRangeList1.append(sellRange)
@@ -136,7 +135,41 @@ class SVMPredictModel(PredictModel):
                 return retList
         raise RuntimeError("unsupport data！！！")
 
+    def selfTest(self, low_score=90):
+        self.engine.printLog("start PredictModel.selfTest()",True)
+        predictList: Sequence['PredictData'] = model.predict(self.trainSampleDataList)
+        count = len(predictList);
+        if count < 0:
+            return
+        sellOk = 0
+        buyOk = 0
+        for predict in predictList:
+            sell_pct,buy_pct = self.engine.getCoreStrategy().getSellBuyPctPredict(predict)
+            sell_ok = False
+            buy_ok = False
+            sell_encode = PredictModel.PctEncoder1.encode(sell_pct)
+            buy_encode = PredictModel.PctEncoder1.encode(sell_pct)
+            """
+            命中前两个编码值，看做是预测成功
+            """
+            Match_INDEX_SIZE = 2
+            for i in range(0,Match_INDEX_SIZE):
+               sell_ok = sell_ok or sell_encode == predict.sellRange1[i].encode
+               buy_ok = buy_ok or buy_encode == predict.buyRange1[i].encode
 
+            sell_encode = PredictModel.PctEncoder2.encode(sell_pct)
+            buy_encode = PredictModel.PctEncoder2.encode(sell_pct)
+            for i in range(0, Match_INDEX_SIZE):
+                sell_ok = sell_ok or sell_encode == predict.sellRange2[i].encode
+                buy_ok = buy_ok or buy_encode == predict.buyRange2[i].encode
+
+            if sell_ok:
+                sellOk +=1
+            if buy_ok:
+                buyOk +=1
+        sell_core = sellOk / count
+        buy_core = buyOk / count
+        self.engine.printLog("selfTest : sell_core=%.2f, buy_core=%.2f" % (sell_core * 100,buy_core * 100),True)
 
 class CoreEngineImpl(CoreEngine):
 
@@ -320,55 +353,18 @@ class CoreEngineImpl(CoreEngine):
         return info
 
 if __name__ == "__main__":
-    class Collector2KAgo1(CoreStrategy):
+    from earnmi.model.Strategy2kAlgo1 import Strategy2kAlgo1
 
-        def __init__(self):
-            self.lasted3Bar = np.array([None,None,None])
-            self.lasted3BarKdj = np.array([None,None,None])
-
-        def onStart(self, code: str) -> bool:
-            self.indicator = Indicator(40)
-            self.code = code
-            return True
-
-        def collect(self, bar: BarData) -> CollectData:
-            self.indicator.update_bar(bar)
-            self.lasted3Bar[:-1] = self.lasted3Bar[1:]
-            self.lasted3BarKdj[:-1] = self.lasted3BarKdj[1:]
-            k, d, j = self.indicator.kdj(fast_period=9, slow_period=3)
-            self.lasted3Bar[-1] = bar
-            self.lasted3BarKdj[-1] = [k, d, j]
-            if self.indicator.count >= 15:
-                kPatternValue = KPattern.encode2KAgo1(self.indicator)
-                if not kPatternValue is None :
-                    dimen = Dimension(type=TYPE_2KAGO1,value=kPatternValue)
-                    collectData = CollectData(dimen=dimen)
-                    collectData.occurBars.append(self.lasted3Bar[-2])
-                    collectData.occurBars.append(self.lasted3Bar[-1])
-
-                    collectData.occurKdj.append(self.lasted3BarKdj[-2])
-                    collectData.occurKdj.append(self.lasted3BarKdj[-1])
-
-                    return collectData
-            return None
-
-        def onTrace(self, data: CollectData, newBar: BarData) -> bool:
-            if len(data.occurBars) < 3:
-                data.occurBars.append(self.lasted3Bar[-1])
-                data.occurKdj.append(self.lasted3BarKdj[-1])
-            else:
-                data.predictBars.append(newBar)
-            size = len(data.predictBars)
-            return size >= 2
+    strategy = Strategy2kAlgo1()
 
 
     start = datetime(2014, 5, 1)
-    end = datetime(2020, 5, 17)
+    end = datetime(2018, 5, 17)
     engine = CoreEngineImpl("files/impltest")
     engine.enableLog = True
 
-    engine.build(SWDataSource(start,end),Collector2KAgo1())
-    #engine.load(Collector2KAgo1())
+    #engine.build(SWDataSource(start,end),strategy)
+    engine.load(strategy)
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 
@@ -377,6 +373,9 @@ if __name__ == "__main__":
         print(f"quant：{engine.toStr(quant)}")
 
     ## 一个预测案例
+    dimen = dimens[4]
+    model = engine.loadPredictModel(dimen)
+    model.selfTest()
 
 
     pass

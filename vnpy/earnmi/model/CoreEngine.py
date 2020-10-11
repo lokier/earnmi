@@ -37,6 +37,13 @@ class PredictModel:
         # 1、加载
         pass
 
+    """
+    自我测试，指定low_score分数。
+    """
+    @abstractmethod
+    def selfTest(self,low_score = 90):
+        pass
+
 
 class CoreEngine():
     quantFloatEncoder = FloatEncoder([-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7])
