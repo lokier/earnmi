@@ -8,88 +8,13 @@ from typing import Union, Tuple, Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.model.CollectData import CollectData
+from earnmi.model.CoreStrategy import CoreStrategy
 from earnmi.model.Dimension import Dimension
 from earnmi.model.PredictData import PredictData
 from earnmi.model.QuantData import QuantData
 
 from vnpy.trader.object import BarData
 
-
-"""
-收集Collector数据。
-"""
-class CoreCollector:
-
-
-    def onCreate(self):
-        pass
-
-    """
-    开始新的股票遍历,如果需要忽略该code，返回false。
-    """
-
-    def onStart(self, code: str) -> bool:
-        return True
-
-    """
-    收集bar，如果需要开始追踪这个bar，返回TraceData对象。
-    """
-
-    @abstractmethod
-    def collect(self, bar: BarData) -> CollectData:
-        pass
-
-    """
-    追踪预测数据。 返回是否追踪完成。
-    """
-    @abstractmethod
-    def onTrace(self, data: CollectData, newBar: BarData) ->bool:
-        pass
-
-    def onEnd(self, code: str):
-        pass
-
-    def onDestroy(self):
-        pass
-
-    """
-      预处理样本数据，比如，拆减等。
-      """
-    def generateSampleData(self, engine,collectList: Sequence['CollectData']) -> Sequence['CollectData']:
-        return collectList
-
-    """
-    生成特征值。(有4个标签）
-    返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
-    """
-    @abstractmethod
-    def generateFeature(self, engine, dataList: Sequence['CollectData']):
-        pass
-
-    def collectBars(barList: ['BarData'],symbol:str,collector) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
-        collector.onStart(symbol)
-        traceItems = []
-        finishedData = []
-        stopData = []
-        for bar in barList:
-            toDeleteList = []
-            newObject = collector.collect(bar)
-            for collectData in traceItems:
-                isFinished = collector.onTrace(collectData, bar)
-                if isFinished:
-                    toDeleteList.append(collectData)
-                    finishedData.append(collectData)
-            for collectData in toDeleteList:
-                traceItems.remove(collectData)
-            if newObject is None:
-                continue
-            traceItems.append(newObject)
-
-        ###将要结束，未追踪完的traceData
-        for traceObject in traceItems:
-            stopData.append(traceObject)
-        collector.onEnd(symbol)
-        return finishedData,stopData
 
 
 class BarDataSource:
@@ -119,19 +44,19 @@ class CoreEngine():
     """
     创建CoreEngine对象。
     """
-    def create(dirName:str,collector:CoreCollector,dataSource:BarDataSource):
+    def create(dirName:str, strategy:CoreStrategy, dataSource:BarDataSource):
         from earnmi.model.CoreEngineImpl import CoreEngineImpl
         engine = CoreEngineImpl(dirName)
-        engine.build(dataSource, collector)
+        engine.build(dataSource, strategy)
         return engine
 
     """
     加载已经存在的CoreEngine对象
     """
-    def load(dirName: str, collector: CoreCollector):
+    def load(dirName: str, strategy: CoreStrategy):
         from earnmi.model.CoreEngineImpl import CoreEngineImpl
         engine = CoreEngineImpl(dirName)
-        engine.load(collector)
+        engine.load(strategy)
         return engine
 
     @abstractmethod
@@ -139,7 +64,7 @@ class CoreEngine():
         pass
 
     @abstractmethod
-    def getCoreCollector(self) ->CoreCollector:
+    def getCoreStrategy(self) ->CoreStrategy:
         pass
 
     """

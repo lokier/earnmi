@@ -14,12 +14,13 @@ from vnpy.trader.object import BarData
 
 from earnmi.data.SWImpl import SWImpl
 from earnmi.model.CollectData import CollectData
-from earnmi.model.CoreEngine import CoreEngine, BarDataSource, CoreCollector, PredictModel
+from earnmi.model.CoreEngine import CoreEngine, BarDataSource, PredictModel
 from earnmi.model.Dimension import Dimension, TYPE_3KAGO1, TYPE_2KAGO1
 from earnmi.model.PredictData import PredictData
 import numpy as np
 import pandas as pd
 import pickle
+from earnmi.model.CoreStrategy import CoreStrategy
 
 
 
@@ -62,13 +63,13 @@ class SVMPredictModel(PredictModel):
         start = timeit.default_timer()
         engine.printLog(f"build PredictModel:dime={self.dimen}, use SVM ={useSVM}",True)
         self.orginSampleQuantData = engine.computeQuantData(sampleData)
-        trainDataList = engine.getCoreCollector().generateSampleData(engine,sampleData)
+        trainDataList = engine.getCoreStrategy().generateSampleData(engine, sampleData)
         self.sampleQuantData = engine.computeQuantData(trainDataList)
         engine.printLog(f"   history quantdata: {self.orginSampleQuantData}")
         engine.printLog(f"   sample quantdata: {self.sampleQuantData}")
 
         ##建立特征值
-        x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getCoreCollector().generateFeature(engine,trainDataList)
+        x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getCoreStrategy().generateFeature(engine, trainDataList)
         self.classifierSell_1 = self.__createClassifier(x,y_sell_1,useSVM=useSVM)
         self.classifierSell_2 = self.__createClassifier(x,y_sell_2,useSVM=useSVM)
         self.classifierBuy_1 = self.__createClassifier(x,y_buy_1,useSVM=useSVM)
@@ -95,7 +96,7 @@ class SVMPredictModel(PredictModel):
             data = [data]
             single = True
         if type(data) is list:
-            x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getCoreCollector().generateFeature(engine,data)
+            x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getCoreStrategy().generateFeature(engine, data)
             retList = []
             buyRange1_list = self.classifierBuy_1.predict_proba(x)
             buyRange2_list = self.classifierBuy_2.predict_proba(x)
@@ -146,7 +147,7 @@ class CoreEngineImpl(CoreEngine):
         self.mAllDimension:['Dimension'] = None
         self.mQuantDataMap:{}= None
         self.__file_dir = dirPath
-        self.__collector = None
+        self.__strategy = None
         self.enableLog = False
 
         if not os.path.exists(dirPath):
@@ -172,8 +173,8 @@ class CoreEngineImpl(CoreEngine):
 
 
 
-    def load(self,collector:CoreCollector):
-        self.__collector = collector
+    def load(self, strategy:CoreStrategy):
+        self.__strategy = strategy
         self.printLog("load() start...",True)
         with open(self.__getDimenisonFilePath(), 'rb') as fp:
             self.mAllDimension  = pickle.load(fp)
@@ -196,8 +197,8 @@ class CoreEngineImpl(CoreEngine):
             collectData = pickle.load(fp)
         return collectData
 
-    def getCoreCollector(self) ->CoreCollector:
-        return self.__collector
+    def getCoreStrategy(self) ->CoreStrategy:
+        return self.__strategy
 
     def computeQuantData(self, dataList: Sequence['CollectData']) -> QuantData:
         sellRangeCount = {}
@@ -234,15 +235,15 @@ class CoreEngineImpl(CoreEngine):
         buyRangeFloat = FloatRange.sort(buyRangeFloat)
         return QuantData(count=totalCount,sellRange=sellRangeFloat,buyRange=buyRangeFloat)
 
-    def build(self,soruce:BarDataSource,collector:CoreCollector):
+    def build(self, soruce:BarDataSource, strategy:CoreStrategy):
         self.printLog("build() start...",True)
-        self.__collector = collector
-        collector.onCreate()
+        self.__strategy = strategy
+        #collector.onCreate()
         bars,code = soruce.onNextBars()
         dataSet = {}
         totalCount = 0
         while not bars is None:
-           finished,stop = CoreCollector.collectBars(bars,code,collector)
+           finished,stop = CoreStrategy.collectBars(bars, code, strategy)
            self.printLog(f"collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
            totalCount += len(finished)
            bars, code = soruce.onNextBars()
@@ -253,7 +254,6 @@ class CoreEngineImpl(CoreEngine):
                    listData = []
                    dataSet[data.dimen] = listData
                listData.append(data)
-        collector.onDestroy()
 
         dimes = dataSet.keys()
         self.printLog(f"总共收集到{totalCount}数据，维度个数:{len(dimes)}")
@@ -279,14 +279,13 @@ class CoreEngineImpl(CoreEngine):
         with open(self.__getDimenisonFilePath(), 'wb+') as fp:
             pickle.dump(saveDimens, fp, -1)
         self.printLog(f"build() finished, 总共保存{len(saveDimens)}个维度数据(>={MIN_SIZE})，共{saveCollectCount}个数据，其中最多{maxSize},最小{minSize}",True)
-        self.load(collector)
+        self.load(strategy)
 
     def collect(self, bars: ['BarData']) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
-        collector = self.__collector
-        collector.onCreate()
+        collector = self.__strategy
+        #collector.onCreate()
         code = bars[0].symbol
-        finished, stop = CoreCollector.collectBars(bars, code, collector)
-        collector.onDestroy()
+        finished, stop = CoreStrategy.collectBars(bars, code, collector)
         return finished,stop
 
     def loadAllDimesion(self) -> Sequence['Dimension']:
@@ -321,7 +320,7 @@ class CoreEngineImpl(CoreEngine):
         return info
 
 if __name__ == "__main__":
-    class Collector2KAgo1(CoreCollector):
+    class Collector2KAgo1(CoreStrategy):
 
         def __init__(self):
             self.lasted3Bar = np.array([None,None,None])

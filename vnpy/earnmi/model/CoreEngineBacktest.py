@@ -10,13 +10,12 @@ from typing import Union, Tuple, Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
 from earnmi.model.CollectData import CollectData
-from earnmi.model.CoreEngine import CoreEngine, CoreCollector, BarDataSource,PredictModel
+from earnmi.model.CoreEngine import CoreEngine, BarDataSource,PredictModel
 from earnmi.model.CoreEngineImpl import SWDataSource
-from earnmi.model.CoreStrategy import CoreStrategy
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
 from earnmi.model.PredictData import PredictData
 from earnmi.model.QuantData import QuantData
-
+from earnmi.model.CoreStrategy import CoreStrategy
 from vnpy.trader.object import BarData
 import numpy as np
 import pandas as pd
@@ -33,13 +32,12 @@ class CoreEngineBackTest():
     def __init__(self,engine:CoreEngine):
         self.coreEngine:CoreEngine = engine
 
-    def backtest(self, soruce: BarDataSource,collector:CoreCollector,limit=9999999):
-        collector.onCreate()
+    def backtest(self, soruce: BarDataSource, strategy:CoreStrategy, limit=9999999):
         bars, code = soruce.onNextBars()
         dataSet = {}
         totalCount = 0
         while not bars is None:
-            finished, stop = CoreCollector.collectBars(bars, code, collector)
+            finished, stop = CoreStrategy.collectBars(bars, code, strategy)
             print(f"[backtest]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(finished)
             bars, code = soruce.onNextBars()
@@ -50,7 +48,6 @@ class CoreEngineBackTest():
                     listData = []
                     dataSet[data.dimen] = listData
                 listData.append(data)
-        collector.onDestroy()
 
         dimes = dataSet.keys()
         totalDeal = 0
@@ -154,7 +151,7 @@ class CoreEngineBackTest():
 
         return deal,success,pct
 
-    def collect(self, barList: ['BarData'],symbol:str,collector:CoreCollector) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
+    def collect(self, barList: ['BarData'], symbol:str, collector:CoreStrategy) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
         collector.onStart(symbol)
         traceItems = []
         finishedData = []
@@ -182,19 +179,19 @@ class CoreEngineBackTest():
 
 if __name__ == "__main__":
 
-    class Collector2KAgo1(CoreCollector):
+    class Collector2KAgo1(CoreStrategy):
 
         def __init__(self):
             self.lasted3Bar = np.array([None,None,None])
             self.lasted3BarKdj = np.array([None,None,None])
 
-        def onStart(self, code: str) -> bool:
+        def onCollectStart(self, code: str) -> bool:
             from earnmi.chart.Indicator import Indicator
             self.indicator = Indicator(40)
             self.code = code
             return True
 
-        def collect(self, bar: BarData) -> CollectData:
+        def onCollectTrace(self, bar: BarData) -> CollectData:
             self.indicator.update_bar(bar)
             self.lasted3Bar[:-1] = self.lasted3Bar[1:]
             self.lasted3BarKdj[:-1] = self.lasted3BarKdj[1:]
@@ -216,7 +213,7 @@ if __name__ == "__main__":
                     return collectData
             return None
 
-        def onTrace(self, data: CollectData, newBar: BarData) -> bool:
+        def onCollect(self, data: CollectData, newBar: BarData) -> bool:
             if len(data.occurBars) < 3:
                 data.occurBars.append(self.lasted3Bar[-1])
                 data.occurKdj.append(self.lasted3BarKdj[-1])
@@ -322,12 +319,12 @@ if __name__ == "__main__":
 
 
     dirName = "files/backtest"
-    colletor = Collector2KAgo1()
-    #engine = CoreEngine.create(dirName,colletor,trainDataSouce)
-    engine = CoreEngine.load(dirName,colletor)
+    strategy = Collector2KAgo1()
+    engine = CoreEngine.create(dirName,strategy,trainDataSouce)
+    #engine = CoreEngine.load(dirName,strategy)
     backtest = CoreEngineBackTest(engine)
 
-    backtest.backtest(testDataSouce,colletor,limit=1)
+    backtest.backtest(testDataSouce,strategy,limit=1)
 
 
     pass
