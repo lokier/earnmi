@@ -88,7 +88,7 @@ class CoreEngineBackTest():
         limit_size = min(limit,len(dataSet))
         for dimen, listData in dataSet.items():
             if run_cnt >= limit_size:
-                continue
+                break
             model = self.coreEngine.loadPredictModel(dimen)
             if model is None:
                 print(f"不支持的维度:{dimen}")
