@@ -40,7 +40,7 @@ class CoreEngineBackTest():
         totalCount = 0
         while not bars is None:
             finished, stop = CoreCollector.collectBars(bars, code, collector)
-            print(f"[CoreEngine]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
+            print(f"[backtest]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(finished)
             bars, code = soruce.onNextBars()
             for data in finished:

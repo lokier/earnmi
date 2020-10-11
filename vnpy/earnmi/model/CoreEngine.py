@@ -145,6 +145,9 @@ class CoreEngine():
     def loadCollectData(self, dimen: Dimension) -> Sequence['CollectData']:
         pass
 
+    @abstractmethod
+    def printLog(self,info:str,forcePrint = False):
+        pass
     """
     加载某一维度的量化数据对象
     """

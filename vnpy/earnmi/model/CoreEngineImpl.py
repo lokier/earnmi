@@ -1,4 +1,5 @@
 import os
+import timeit
 from datetime import datetime
 from typing import Tuple, Sequence, Union
 
@@ -42,7 +43,8 @@ class SWDataSource(BarDataSource):
 
 class SVMPredictModel(PredictModel):
 
-    def __init__(self,dimen:Dimension):
+    def __init__(self,engine:CoreEngine,dimen:Dimension):
+        self.engine = engine
         self.dimen = dimen
         self.orginSampleQuantData:QuantData = None
         self.sampleQuantData:QuantData = None
@@ -55,10 +57,10 @@ class SVMPredictModel(PredictModel):
       预处理样本数据，比如，拆减等。
       """
 
-    def __processSampleData(self, engine: CoreEngine, sampleData: Sequence['CollectData']) -> Sequence['CollectData']:
+    def __processSampleData(self, sampleData: Sequence['CollectData']) -> Sequence['CollectData']:
         return sampleData
 
-    def __genereatePd(self, engine: CoreEngine,dataList: Sequence['CollectData']):
+    def __genereatePd(self,dataList: Sequence['CollectData']):
         trainDataSet = []
         for traceData in dataList:
             occurBar = traceData.occurBars[-1]
@@ -103,8 +105,9 @@ class SVMPredictModel(PredictModel):
     生成特征值。(有4个标签）
     返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
     """
-    def __generateFeature(self, engine: CoreEngine, dataList: Sequence['CollectData']):
-        print(f"[SVMPredictModel]: generate feature")
+    def __generateFeature(self,dataList: Sequence['CollectData']):
+        engine = self.engine
+        engine.printLog(f"[SVMPredictModel]: generate feature")
         def set_0_between_100(x):
             if x >100:
                 return 100
@@ -122,8 +125,8 @@ class SVMPredictModel(PredictModel):
             if v < -10:
                 v = -10
             return v
-        d = self.__genereatePd(engine,dataList)
-        print(f"   origin:\n{d.head()}")
+        d = self.__genereatePd(dataList)
+        engine.printLog(f"   origin:\n{d.head()}")
 
         d['buy_pct'] = d.buy_pct.apply(percent_to_one)  # 归一化
         d['sell_pct'] = d.sell_pct.apply(percent_to_one)  # 归一化
@@ -131,7 +134,7 @@ class SVMPredictModel(PredictModel):
         d.j = d.j.apply(set_0_between_100)
         d.k = d.k / 100
         d.j = d.j / 100
-        print(f"   convert:\n{d.head()}")
+        engine.printLog(f"   convert:\n{d.head()}")
         data = d.values
         x, y = np.split(data, indices_or_sections=(4,), axis=1)  # x为数据，y为标签
         y_1 = y[:, 0:1].flatten()  # 取第一列
@@ -139,12 +142,12 @@ class SVMPredictModel(PredictModel):
         y_3 = y[:, 2:3].flatten()  # 取第一列
         y_4 = y[:, 3:4].flatten()  # 取第一列
 
-        print(f"   y_1:\n{y_1}")
-        print(f"   y_2:\n{y_2}")
-        print(f"   y_3:\n{y_3}")
-        print(f"   y_4:\n{y_4}")
+        engine.printLog(f"   y_1:\n{y_1}")
+        engine.printLog(f"   y_2:\n{y_2}")
+        engine.printLog(f"   y_3:\n{y_3}")
+        engine.printLog(f"   y_4:\n{y_4}")
 
-        print(f"[SVMPredictModel]: generate feature end!!!")
+        engine.printLog(f"[SVMPredictModel]: generate feature end!!!")
         return x, y_1, y_2, y_3, y_4
 
 
@@ -153,20 +156,23 @@ class SVMPredictModel(PredictModel):
     建造模型
     """
     def build(self,engine:CoreEngine, sampleData:Sequence['CollectData']):
-        print(f"[SVMPredictModel]: build Model[{self.dimen}]....")
+        useSVM = True
+        start = timeit.default_timer()
+        engine.printLog(f"build PredictModel:dime={self.dimen}, use SVM ={useSVM}",True)
         self.orginSampleQuantData = engine.computeQuantData(sampleData)
-        trainDataList = self.__processSampleData(self,sampleData)
+        trainDataList = self.__processSampleData(sampleData)
         self.sampleQuantData = engine.computeQuantData(trainDataList)
-        print(f"   history quantdata: {self.orginSampleQuantData}")
-        print(f"   sample quantdata: {self.sampleQuantData}")
+        engine.printLog(f"   history quantdata: {self.orginSampleQuantData}")
+        engine.printLog(f"   sample quantdata: {self.sampleQuantData}")
 
         ##建立特征值
-        x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.__generateFeature(engine,trainDataList)
-        self.classifierSell_1 = self.__createClassifier(x,y_sell_1)
-        self.classifierSell_2 = self.__createClassifier(x,y_sell_2)
-        self.classifierBuy_1 = self.__createClassifier(x,y_buy_1)
-        self.classifierBuy_2 = self.__createClassifier(x,y_buy_2)
-        print(f"[SVMPredictModel]: build finished!!!")
+        x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.__generateFeature(trainDataList)
+        self.classifierSell_1 = self.__createClassifier(x,y_sell_1,useSVM=useSVM)
+        self.classifierSell_2 = self.__createClassifier(x,y_sell_2,useSVM=useSVM)
+        self.classifierBuy_1 = self.__createClassifier(x,y_buy_1,useSVM=useSVM)
+        self.classifierBuy_2 = self.__createClassifier(x,y_buy_2,useSVM=useSVM)
+        elapsed = (timeit.default_timer() - start)
+        engine.printLog(f"build PredictModel finished! elapsed = %.3fs" % (elapsed),True)
         pass
 
     def __createClassifier(self,x,y,useSVM=True):
@@ -186,7 +192,7 @@ class SVMPredictModel(PredictModel):
             data = [data]
             single = True
         if type(data) is list:
-            x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.__generateFeature(self,data)
+            x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.__generateFeature(data)
             retList = []
             buyRange1_list = self.classifierBuy_1.predict_proba(x)
             buyRange2_list = self.classifierBuy_2.predict_proba(x)
@@ -228,6 +234,7 @@ class CoreEngineImpl(CoreEngine):
         self.mQuantDataMap:{}= None
         self.__file_dir = dirPath
         self.__collector = None
+        self.enableLog = False
 
         if not os.path.exists(dirPath):
             os.makedirs(dirPath)
@@ -235,6 +242,9 @@ class CoreEngineImpl(CoreEngine):
         if not os.path.exists(collectDir):
             os.makedirs(collectDir)
 
+    def printLog(self,info:str,forcePrint = False):
+        if self.enableLog or forcePrint:
+            print(f"[CoreEngineImpl]: {info}")
 
     def __getDimenisonFilePath(self):
         return f"{self.__file_dir}/dimension.bin"
@@ -251,7 +261,7 @@ class CoreEngineImpl(CoreEngine):
 
     def load(self,collector:CoreCollector):
         self.__collector = collector
-        print("[CoreEngine]: load start...")
+        self.printLog("load() start...",True)
         with open(self.__getDimenisonFilePath(), 'rb') as fp:
             self.mAllDimension  = pickle.load(fp)
         quantMap = {}
@@ -262,7 +272,7 @@ class CoreEngineImpl(CoreEngine):
             quantMap[dimen] = quantData
             totalCount += quantData.count
         self.mQuantDataMap = quantMap
-        print(f"[CoreEngine]: 总共加载{len(self.mAllDimension)}个维度数据,共{totalCount}个数据")
+        self.printLog(f"load() finished,总共加载{len(self.mAllDimension)}个维度数据,共{totalCount}个数据",True)
 
         assert len(quantMap) == len(self.mAllDimension)
 
@@ -290,7 +300,7 @@ class CoreEngineImpl(CoreEngine):
         return QuantData(count=len(dataList),sellRangeCount=sellRangeCount,buyRangeCount=buyRangeCount)
 
     def build(self,soruce:BarDataSource,collector:CoreCollector):
-        print("[CoreEngine]: build start...")
+        self.printLog("build() start...",True)
         self.__collector = collector
         collector.onCreate()
         bars,code = soruce.onNextBars()
@@ -298,7 +308,7 @@ class CoreEngineImpl(CoreEngine):
         totalCount = 0
         while not bars is None:
            finished,stop = CoreCollector.collectBars(bars,code,collector)
-           print(f"[CoreEngine]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
+           self.printLog(f"collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
            totalCount += len(finished)
            bars, code = soruce.onNextBars()
            for data in finished:
@@ -311,9 +321,9 @@ class CoreEngineImpl(CoreEngine):
         collector.onDestroy()
 
         dimes = dataSet.keys()
-        print(f"[CoreEngine]: 总共收集到{totalCount}数据，维度个数:{len(dimes)}")
+        self.printLog(f"总共收集到{totalCount}数据，维度个数:{len(dimes)}")
 
-        print(f"[CoreEngine]: 开始保存数据")
+        self.printLog(f"开始保存数据")
         MIN_SIZE = 300
         saveDimens = []
         saveCollectCount = 0
@@ -333,7 +343,7 @@ class CoreEngineImpl(CoreEngine):
 
         with open(self.__getDimenisonFilePath(), 'wb+') as fp:
             pickle.dump(saveDimens, fp, -1)
-        print(f"[CoreEngine]: 总共保存{len(saveDimens)}个维度数据(>={MIN_SIZE})，共{saveCollectCount}个数据，其中最多{maxSize},最小{minSize}")
+        self.printLog(f"build() finished, 总共保存{len(saveDimens)}个维度数据(>={MIN_SIZE})，共{saveCollectCount}个数据，其中最多{maxSize},最小{minSize}",True)
         self.load(collector)
 
     def collect(self, bars: ['BarData']) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
@@ -355,7 +365,7 @@ class CoreEngineImpl(CoreEngine):
         collectDataList = self.loadCollectData(dimen)
         if collectDataList is None:
             return None
-        model = SVMPredictModel(dimen)
+        model = SVMPredictModel(self,dimen)
         model.build(self,collectDataList)
         return model
 
@@ -419,6 +429,7 @@ if __name__ == "__main__":
     start = datetime(2014, 5, 1)
     end = datetime(2020, 5, 17)
     engine = CoreEngineImpl("files/impltest")
+    engine.enableLog = True
 
     engine.build(SWDataSource(start,end),Collector2KAgo1())
     #engine.load(Collector2KAgo1())
