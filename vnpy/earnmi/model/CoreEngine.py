@@ -52,6 +52,20 @@ class CoreCollector:
     def onDestroy(self):
         pass
 
+    """
+      预处理样本数据，比如，拆减等。
+      """
+    def generateSampleData(self, engine,collectList: Sequence['CollectData']) -> Sequence['CollectData']:
+        return collectList
+
+    """
+    生成特征值。(有4个标签）
+    返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
+    """
+    @abstractmethod
+    def generateFeature(self, engine, dataList: Sequence['CollectData']):
+        pass
+
     def collectBars(barList: ['BarData'],symbol:str,collector) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
         collector.onStart(symbol)
         traceItems = []
@@ -122,6 +136,10 @@ class CoreEngine():
 
     @abstractmethod
     def loadPredictModel(self, dimen:Dimension) ->PredictModel:
+        pass
+
+    @abstractmethod
+    def getCoreCollector(self) ->CoreCollector:
         pass
 
     """

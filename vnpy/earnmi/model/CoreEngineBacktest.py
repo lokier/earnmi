@@ -134,13 +134,21 @@ class CoreEngineBackTest():
         quantoEncoder = CoreEngine.quantFloatEncoder
         historyQunta = predict.historyData
         sampleQunta = predict.sampleData
-        print(f"\nsample: {sampleQunta.getInfo(quantoEncoder)}, history: {historyQunta.getInfo(quantoEncoder)}")
+        occurBar:BarData = collectData.occurBars[-1]
+
+
+        print(f"\nsmaple->sell{self.__getFloatRangeInfo(sampleQunta.sellRange,CoreEngine.quantFloatEncoder)}")
+        print(f"smaple->buy{self.__getFloatRangeInfo(sampleQunta.buyRange,CoreEngine.quantFloatEncoder)}")
+        print(f"history->sell{self.__getFloatRangeInfo(historyQunta.sellRange, CoreEngine.quantFloatEncoder)}")
+        print(f"history->buy{self.__getFloatRangeInfo(historyQunta.buyRange, CoreEngine.quantFloatEncoder)}")
         print(f"probal_sell_1: {self.__getFloatRangeInfo(predict.sellRange1,PredictModel.PctEncoder1)}")
         print(f"probal_sell_2: {self.__getFloatRangeInfo(predict.sellRange2,PredictModel.PctEncoder2)}")
         print(f"probal_buy_1: {self.__getFloatRangeInfo(predict.buyRange1,PredictModel.PctEncoder1)}")
         print(f"probal_buy_2: {self.__getFloatRangeInfo(predict.buyRange2,PredictModel.PctEncoder2)}")
+        sell_pct,buy_pct = CollectData.getSellBuyPredicPct(collectData)
 
-        occurBar:BarData = collectData.occurBars[-1]
+        print(f"real->  sell:{sell_pct}, buy:{buy_pct} ")
+
 
 
 
@@ -217,6 +225,97 @@ if __name__ == "__main__":
             size = len(data.predictBars)
             return size >= 2
 
+        def __genereatePd(self, dataList: Sequence['CollectData']):
+            trainDataSet = []
+            for traceData in dataList:
+                occurBar = traceData.occurBars[-1]
+                assert len(traceData.predictBars) > 0
+                skipBar = traceData.predictBars[0]
+                sell_pct = 100 * (
+                        (skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
+                buy_pct = 100 * (
+                        (skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
+
+                real_sell_pct, real_buy_pct = CollectData.getSellBuyPredicPct(traceData)
+                label_sell_1 = PredictModel.PctEncoder1.encode(real_sell_pct)
+                label_sell_2 = PredictModel.PctEncoder2.encode(real_sell_pct)
+                label_buy_1 = PredictModel.PctEncoder1.encode(real_buy_pct)
+                label_buy_2 = PredictModel.PctEncoder2.encode(real_buy_pct)
+
+                kdj = traceData.occurKdj[-1]
+
+                data = []
+                data.append(buy_pct)
+                data.append(sell_pct)
+                data.append(kdj[0])
+                data.append(kdj[2])
+                data.append(label_sell_1)
+                data.append(label_buy_1)
+                data.append(label_sell_2)
+                data.append(label_buy_2)
+                trainDataSet.append(data)
+            cloumns = ["buy_pct",
+                       "sell_pct",
+                       "k",
+                       "j",
+                       "label_sell_1",
+                       "label_buy_1",
+                       "label_sell_2",
+                       "label_buy_2",
+                       ]
+            orgin_pd = pd.DataFrame(trainDataSet, columns=cloumns)
+            return orgin_pd
+
+        """
+        生成特征值。(有4个标签）
+        返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
+        """
+
+        def generateFeature(self, engine, dataList: Sequence['CollectData']):
+            engine.printLog(f"[SVMPredictModel]: generate feature")
+
+            def set_0_between_100(x):
+                if x > 100:
+                    return 100
+                if x < 0:
+                    return 0
+                return x
+
+            def percent_to_one(x):
+                return int(x * 100) / 1000.0
+
+            def toInt(x):
+                v = int(x + 0.5)
+                if v > 10:
+                    v = 10
+                if v < -10:
+                    v = -10
+                return v
+
+            d = self.__genereatePd(dataList)
+            engine.printLog(f"   origin:\n{d.head()}")
+
+            d['buy_pct'] = d.buy_pct.apply(percent_to_one)  # 归一化
+            d['sell_pct'] = d.sell_pct.apply(percent_to_one)  # 归一化
+            d.k = d.k.apply(set_0_between_100)
+            d.j = d.j.apply(set_0_between_100)
+            d.k = d.k / 100
+            d.j = d.j / 100
+            engine.printLog(f"   convert:\n{d.head()}")
+            data = d.values
+            x, y = np.split(data, indices_or_sections=(4,), axis=1)  # x为数据，y为标签
+            y_1 = y[:, 0:1].flatten()  # 取第一列
+            y_2 = y[:, 1:2].flatten()  # 取第一列
+            y_3 = y[:, 2:3].flatten()  # 取第一列
+            y_4 = y[:, 3:4].flatten()  # 取第一列
+
+            engine.printLog(f"   y_1:\n{y_1}")
+            engine.printLog(f"   y_2:\n{y_2}")
+            engine.printLog(f"   y_3:\n{y_3}")
+            engine.printLog(f"   y_4:\n{y_4}")
+
+            engine.printLog(f"[SVMPredictModel]: generate feature end!!!")
+            return x, y_1, y_2, y_3, y_4
 
     trainDataSouce = SWDataSource( start = datetime(2014, 2, 1),end = datetime(2019, 9, 1))
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))

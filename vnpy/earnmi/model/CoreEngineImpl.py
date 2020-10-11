@@ -53,104 +53,6 @@ class SVMPredictModel(PredictModel):
         self.classifierBuy_1 = None
         self.classifierBuy_2 = None
 
-    """
-      预处理样本数据，比如，拆减等。
-      """
-
-    def __processSampleData(self, sampleData: Sequence['CollectData']) -> Sequence['CollectData']:
-        return sampleData
-
-    def __genereatePd(self,dataList: Sequence['CollectData']):
-        trainDataSet = []
-        for traceData in dataList:
-            occurBar = traceData.occurBars[-1]
-            assert len(traceData.predictBars) > 0
-            skipBar = traceData.predictBars[0]
-            sell_pct = 100 * (
-                    (skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
-            buy_pct = 100 * (
-                    (skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
-
-            real_sell_pct,real_buy_pct = CollectData.getSellBuyPredicPct(traceData)
-            label_sell_1 = PredictModel.PctEncoder1.encode(real_sell_pct)
-            label_sell_2 = PredictModel.PctEncoder2.encode(real_sell_pct)
-            label_buy_1 = PredictModel.PctEncoder1.encode(real_buy_pct)
-            label_buy_2 = PredictModel.PctEncoder2.encode(real_buy_pct)
-
-            kdj = traceData.occurKdj[-1]
-
-            data = []
-            data.append(buy_pct)
-            data.append(sell_pct)
-            data.append(kdj[0])
-            data.append(kdj[2])
-            data.append(label_sell_1)
-            data.append(label_buy_1)
-            data.append(label_sell_2)
-            data.append(label_buy_2)
-            trainDataSet.append(data)
-        cloumns = ["buy_pct",
-                   "sell_pct",
-                   "k",
-                   "j",
-                   "label_sell_1",
-                   "label_buy_1",
-                   "label_sell_2",
-                   "label_buy_2",
-                   ]
-        orgin_pd =  pd.DataFrame(trainDataSet, columns=cloumns)
-        return orgin_pd
-
-    """
-    生成特征值。(有4个标签）
-    返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
-    """
-    def __generateFeature(self,dataList: Sequence['CollectData']):
-        engine = self.engine
-        engine.printLog(f"[SVMPredictModel]: generate feature")
-        def set_0_between_100(x):
-            if x >100:
-                return 100
-            if x < 0:
-                return 0
-            return x
-
-        def percent_to_one(x):
-            return int(x * 100) / 1000.0
-
-        def toInt(x):
-            v = int(x + 0.5)
-            if v > 10:
-                v = 10
-            if v < -10:
-                v = -10
-            return v
-        d = self.__genereatePd(dataList)
-        engine.printLog(f"   origin:\n{d.head()}")
-
-        d['buy_pct'] = d.buy_pct.apply(percent_to_one)  # 归一化
-        d['sell_pct'] = d.sell_pct.apply(percent_to_one)  # 归一化
-        d.k = d.k.apply(set_0_between_100)
-        d.j = d.j.apply(set_0_between_100)
-        d.k = d.k / 100
-        d.j = d.j / 100
-        engine.printLog(f"   convert:\n{d.head()}")
-        data = d.values
-        x, y = np.split(data, indices_or_sections=(4,), axis=1)  # x为数据，y为标签
-        y_1 = y[:, 0:1].flatten()  # 取第一列
-        y_2 = y[:, 1:2].flatten()  # 取第一列
-        y_3 = y[:, 2:3].flatten()  # 取第一列
-        y_4 = y[:, 3:4].flatten()  # 取第一列
-
-        engine.printLog(f"   y_1:\n{y_1}")
-        engine.printLog(f"   y_2:\n{y_2}")
-        engine.printLog(f"   y_3:\n{y_3}")
-        engine.printLog(f"   y_4:\n{y_4}")
-
-        engine.printLog(f"[SVMPredictModel]: generate feature end!!!")
-        return x, y_1, y_2, y_3, y_4
-
-
 
     """
     建造模型
@@ -160,13 +62,13 @@ class SVMPredictModel(PredictModel):
         start = timeit.default_timer()
         engine.printLog(f"build PredictModel:dime={self.dimen}, use SVM ={useSVM}",True)
         self.orginSampleQuantData = engine.computeQuantData(sampleData)
-        trainDataList = self.__processSampleData(sampleData)
+        trainDataList = engine.getCoreCollector().generateSampleData(engine,sampleData)
         self.sampleQuantData = engine.computeQuantData(trainDataList)
         engine.printLog(f"   history quantdata: {self.orginSampleQuantData}")
         engine.printLog(f"   sample quantdata: {self.sampleQuantData}")
 
         ##建立特征值
-        x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.__generateFeature(trainDataList)
+        x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getCoreCollector().generateFeature(engine,trainDataList)
         self.classifierSell_1 = self.__createClassifier(x,y_sell_1,useSVM=useSVM)
         self.classifierSell_2 = self.__createClassifier(x,y_sell_2,useSVM=useSVM)
         self.classifierBuy_1 = self.__createClassifier(x,y_buy_1,useSVM=useSVM)
@@ -188,11 +90,12 @@ class SVMPredictModel(PredictModel):
 
     def predict(self, data) -> Union[PredictData, Sequence['PredictData']]:
         single = False
+        engine = self.engine
         if type(data) is CollectData:
             data = [data]
             single = True
         if type(data) is list:
-            x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.__generateFeature(data)
+            x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getCoreCollector().generateFeature(engine,data)
             retList = []
             buyRange1_list = self.classifierBuy_1.predict_proba(x)
             buyRange2_list = self.classifierBuy_2.predict_proba(x)
@@ -293,9 +196,13 @@ class CoreEngineImpl(CoreEngine):
             collectData = pickle.load(fp)
         return collectData
 
+    def getCoreCollector(self) ->CoreCollector:
+        return self.__collector
+
     def computeQuantData(self, dataList: Sequence['CollectData']) -> QuantData:
         sellRangeCount = {}
         buyRangeCount = {}
+        totalCount = len(dataList)
         for i in range(0, CoreEngineImpl.quantFloatEncoder.mask()):
             sellRangeCount[i] = 0
             buyRangeCount[i] = 0
@@ -307,7 +214,25 @@ class CoreEngineImpl(CoreEngine):
             buy_encode = CoreEngineImpl.quantFloatEncoder.encode(buy_pct)
             sellRangeCount[sell_encode] += 1
             buyRangeCount[buy_encode] += 1
-        return QuantData(count=len(dataList),sellRangeCount=sellRangeCount,buyRangeCount=buyRangeCount)
+        sellRangeFloat = []
+        for encode,count in sellRangeCount.items():
+            probal = 0.0
+            if totalCount>0:
+                probal = count / totalCount
+            floatRange = FloatRange(encode=encode,probal=probal)
+            sellRangeFloat.append(floatRange)
+
+        buyRangeFloat = []
+        for encode,count in buyRangeCount.items():
+            probal = 0.0
+            if totalCount>0:
+                probal = count / totalCount
+            floatRange = FloatRange(encode=encode,probal=probal)
+            buyRangeFloat.append(floatRange)
+
+        sellRangeFloat = FloatRange.sort(sellRangeFloat)
+        buyRangeFloat = FloatRange.sort(buyRangeFloat)
+        return QuantData(count=totalCount,sellRange=sellRangeFloat,buyRange=buyRangeFloat)
 
     def build(self,soruce:BarDataSource,collector:CoreCollector):
         self.printLog("build() start...",True)
@@ -383,13 +308,15 @@ class CoreEngineImpl(CoreEngine):
 
         info = f"count:{data.count}"
         info+=",sell:["
-        for i in range(0,len(data.sellRangeCount)):
-            min,max = CoreEngineImpl.quantFloatEncoder.parseEncode(i)
-            info+=f"{min}:{max}=%.2f%%, " % (100 * data.sellRangeCount[i] / data.count)
+        for fRange in data.sellRange:
+            item:FloatRange = fRange
+            min,max = CoreEngineImpl.quantFloatEncoder.parseEncode(item.encode)
+            info+=f"{min}:{max}=%.2f%%, " % (100 * item.probal)
         info += "],buy:["
-        for i in range(0, len(data.buyRangeCount)):
-            min, max = CoreEngineImpl.quantFloatEncoder.parseEncode(i)
-            info += f"{min}:{max}=%.2f%%, " % (100 * data.buyRangeCount[i] / data.count)
+        for fRange in data.buyRange:
+            item: FloatRange = fRange
+            min, max = CoreEngineImpl.quantFloatEncoder.parseEncode(item.encode)
+            info += f"{min}:{max}=%.2f%%, " % (100 * item.probal)
         info +="]"
         return info
 
@@ -451,18 +378,6 @@ if __name__ == "__main__":
         print(f"quant：{engine.toStr(quant)}")
 
     ## 一个预测案例
-    sw = SWImpl()
-    code = sw.getSW2List()[3]
-    bars = sw.getSW2Daily(code,end,datetime.now())
 
-    finished,stop = engine.collect(bars)
-
-    for cData in finished:
-        model = engine.loadPredictModel(cData.dimen)
-        if model is None:
-            continue
-        pData = model.predict(cData)
-        print(f"pData:{pData}")
-        break
 
     pass
