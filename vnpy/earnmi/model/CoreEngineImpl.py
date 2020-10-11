@@ -342,13 +342,17 @@ class CoreEngineImpl(CoreEngine):
         return self.mQuantDataMap.get(dimen)
 
     def loadPredictModel(self, dimen: Dimension) -> PredictModel:
-
-        collectDataList = self.loadCollectData(dimen)
-        if collectDataList is None:
+        try:
+            collectDataList = self.loadCollectData(dimen)
+            if collectDataList is None:
+                return None
+            model = SVMPredictModel(self,dimen)
+            model.build(self,collectDataList)
+            return model
+        except FileNotFoundError:
             return None
-        model = SVMPredictModel(self,dimen)
-        model.build(self,collectDataList)
-        return model
+        except BaseException:
+            return None
 
     def toStr(self,data:QuantData) ->str:
 

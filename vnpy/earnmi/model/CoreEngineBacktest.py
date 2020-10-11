@@ -233,7 +233,7 @@ if __name__ == "__main__":
     engine = CoreEngine.load(dirName,strategy)
     backtest = CoreEngineBackTest(engine)
 
-    backtest.backtest(testDataSouce,strategy,limit=2)
+    backtest.backtest(testDataSouce,strategy,limit=99999)
 
 
     pass
