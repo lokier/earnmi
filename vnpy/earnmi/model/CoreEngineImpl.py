@@ -64,9 +64,10 @@ class SVMPredictModel(PredictModel):
     def build(self,engine:CoreEngine, sampleData:Sequence['CollectData']):
         useSVM = True
         start = timeit.default_timer()
-        engine.printLog(f"build PredictModel:dime={self.dimen}, use SVM ={useSVM}",True)
         self.orginSampleQuantData = engine.computeQuantData(sampleData)
         trainDataList = engine.getCoreStrategy().generateSampleData(engine, sampleData)
+        size = len(trainDataList)
+        engine.printLog(f"build PredictModel:dime={self.dimen}, sample size:{size} use SVM ={useSVM}",True)
         self.trainSampleDataList = trainDataList
         self.sampleQuantData = engine.computeQuantData(trainDataList)
         engine.printLog(f"   history quantdata: {self.orginSampleQuantData}")
