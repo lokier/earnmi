@@ -6,7 +6,7 @@ from typing import Tuple, Sequence, Union
 import sklearn
 from sklearn.ensemble import RandomForestClassifier
 
-from earnmi.chart.FloatEncoder import FloatEncoder
+from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
 from earnmi.chart.Indicator import Indicator
 from earnmi.chart.KPattern import KPattern
 from earnmi.model.QuantData import QuantData
@@ -202,10 +202,29 @@ class SVMPredictModel(PredictModel):
                 collectData = data[i]
                 pData = PredictData(dimen=self.dimen, historyData=self.orginSampleQuantData,
                                     sampleData=self.sampleQuantData, collectData=collectData)
-                pData.buyRange1 = buyRange1_list[i]
-                pData.buyRange2 = buyRange2_list[i]
-                pData.sellRange1 = sellRange1_list[i]
-                pData.sellRange2 = sellRange2_list[i]
+                buyRange1 = buyRange1_list[i]
+                sellRange1 = sellRange1_list[i]
+                floatSellRangeList1 = []
+                floatBuyRangeList1 = []
+                for encode in range(0,len(buyRange1)):
+                    sellRange = FloatRange(encode=encode,probal=sellRange1[encode])
+                    buyRange = FloatRange(encode=encode,probal=buyRange1[encode])
+                    floatSellRangeList1.append(sellRange)
+                    floatBuyRangeList1.append(buyRange)
+                sellRange2 = sellRange2_list[i]
+                buyRange2 = buyRange2_list[i]
+                floatSellRangeList2 = []
+                floatBuyRangeList2 = []
+                for encode in range(0, len(buyRange2)):
+                    sellRange = FloatRange(encode=encode, probal=sellRange2[encode])
+                    buyRange = FloatRange(encode=encode, probal=buyRange2[encode])
+                    floatSellRangeList2.append(sellRange)
+                    floatBuyRangeList2.append(buyRange)
+
+                pData.buyRange1 = FloatRange.sort(floatBuyRangeList1)
+                pData.buyRange2 = FloatRange.sort(floatBuyRangeList2)
+                pData.sellRange1 = FloatRange.sort(floatSellRangeList1)
+                pData.sellRange2 = FloatRange.sort(floatSellRangeList2)
                 retList.append(pData)
             if single:
                 return retList[-1]
@@ -213,21 +232,12 @@ class SVMPredictModel(PredictModel):
                 return retList
         raise RuntimeError("unsupport data！！！")
 
-    def __predictSingle(self,x,collectData:CollectData) -> PredictData:
-        pData = PredictData(dimen =self.dimen,historyData= self.orginSampleQuantData,sampleData=self.sampleQuantData,collectData = collectData)
-
-        pData.buyRange1 = self.classifierBuy_1.predict_proba(x)
-        pData.buyRange2 = self.classifierBuy_2.predict_proba(x)
-        pData.sellRange1 = self.classifierSell_1.predict_proba(x)
-        pData.sellRange2 = self.classifierSell_2.predict_proba(x)
-        return pData
 
 
 class CoreEngineImpl(CoreEngine):
 
     COLLECT_DATA_FILE_NAME = "colllect"
     ##量化数据的涨幅分布区域。
-    quantFloatEncoder = FloatEncoder([-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7])
 
     def __init__(self, dirPath: str):
         self.mAllDimension:['Dimension'] = None

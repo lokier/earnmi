@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.model.Dimension import Dimension
 
 # @dataclass
@@ -29,6 +30,23 @@ class QuantData(object):
     def __post_init__(self):
         pass
 
+    def getInfo(self,encoder:FloatEncoder):
+        info = f"count={self.count}, sell:["
+        for i in range(0,len(self.sellRangeCount)):
+            min,max = encoder.parseEncode(i)
+            rate = 0.0
+            if self.count>0:
+                rate = self.sellRangeCount[i] % self.count
+            info+=f"({min,max})=%.2f%%," % (100*rate)
+        info+="], buy:["
+        for i in range(0, len(self.buyRangeCount)):
+            min, max = encoder.parseEncode(i)
+            rate = 0.0
+            if self.count > 0:
+                rate = self.buyRangeCount[i] % self.count
+            info += f"({min, max})=%.2f%%," % (100 * rate)
+        info +="]"
+        return info
 
 if __name__ == "__main__":
     import pickle

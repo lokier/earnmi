@@ -100,6 +100,7 @@ class PredictModel:
 
 
 class CoreEngine():
+    quantFloatEncoder = FloatEncoder([-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7])
 
     """
     创建CoreEngine对象。

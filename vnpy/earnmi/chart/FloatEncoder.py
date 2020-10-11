@@ -1,4 +1,29 @@
 
+
+"""
+ 预测值数据
+"""
+from dataclasses import dataclass
+from functools import cmp_to_key
+
+
+def FloatRangeCompare(d1, d2):
+    return d1.probal - d2.probal
+
+@dataclass
+class FloatRange(object):
+    """
+    FloatEncoder里的编码值
+    """
+    encode:int
+    """
+    概率或者分布概率值
+    """
+    probal:float
+
+    def sort(lists:['FloatRange'],reverse = True)->['FloatRange']:
+        return sorted(lists, key=cmp_to_key(FloatRangeCompare), reverse=reverse)
+
 """
   浮点值范围编码值
 """

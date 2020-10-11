@@ -8,9 +8,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Union, Tuple, Sequence
 
-from earnmi.chart.FloatEncoder import FloatEncoder
+from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
 from earnmi.model.CollectData import CollectData
-from earnmi.model.CoreEngine import CoreEngine, CoreCollector, BarDataSource
+from earnmi.model.CoreEngine import CoreEngine, CoreCollector, BarDataSource,PredictModel
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.CoreStrategy import CoreStrategy
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
@@ -117,9 +117,34 @@ class CoreEngineBackTest():
         print(f"总共产生{totalOccurPredict}个预测,交易{totalDeal}个，交易率:%.2f%%" % (100 *deal_rate))
         print(f"total:{total}")
 
+    def __getFloatRangeInfo(self,ranges:['FloatRange'],encoder:FloatEncoder):
+        info = "["
+        for i in range(0,len(ranges)):
+            r:FloatRange = ranges[i]
+            min,max = encoder.parseEncode(r.encode)
+            info+=f"({min}:{max})=%.2f%%," % (100 * r.probal)
+        return info +"]"
 
     def computePredict(self,predict:PredictData):
-        return True,False,0
+        deal = False
+        success = False
+        pct = 0.0
+
+        collectData = predict.collectData
+        quantoEncoder = CoreEngine.quantFloatEncoder
+        historyQunta = predict.historyData
+        sampleQunta = predict.sampleData
+        print(f"\nsample: {sampleQunta.getInfo(quantoEncoder)}, history: {historyQunta.getInfo(quantoEncoder)}")
+        print(f"probal_sell_1: {self.__getFloatRangeInfo(predict.sellRange1,PredictModel.PctEncoder1)}")
+        print(f"probal_sell_2: {self.__getFloatRangeInfo(predict.sellRange2,PredictModel.PctEncoder2)}")
+        print(f"probal_buy_1: {self.__getFloatRangeInfo(predict.buyRange1,PredictModel.PctEncoder1)}")
+        print(f"probal_buy_2: {self.__getFloatRangeInfo(predict.buyRange2,PredictModel.PctEncoder2)}")
+
+        occurBar:BarData = collectData.occurBars[-1]
+
+
+
+        return deal,success,pct
 
     def collect(self, barList: ['BarData'],symbol:str,collector:CoreCollector) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
         collector.onStart(symbol)
