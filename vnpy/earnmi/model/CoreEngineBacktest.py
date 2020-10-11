@@ -68,7 +68,10 @@ class CoreEngineBackTest():
                     earn_pct = self.earn_pct / self.eran_count
                 if self.count - self.eran_count > 0:
                     lost_pct = self.loss_pct / (self.count - self.eran_count)
-                return f"count:{self.count},ok:{self.countOk},earn:{self.eran_count},earn_pct:%.2f%%,loss_pct:%.2f%%" % (earn_pct * 100, lost_pct * 100)
+                ok_rate = 0
+                if self.count > 0:
+                    ok_rate = self.countOk / self.count
+                return f"count:{self.count},ok:{self.countOk}(%.2f%%),earn:{self.eran_count},earn_pct:%.2f%%,loss_pct:%.2f%%" % (ok_rate*100,earn_pct, lost_pct)
 
         dimeDataList:['DimeData'] = []
         run_cnt = 0
@@ -85,9 +88,9 @@ class CoreEngineBackTest():
             dimenData = DimenData()
             for predict in predictList:
                 deal,success,pct = self.computePredict(predict)
-                totalOccurPredict += 0
+                totalOccurPredict += 1
                 if deal:
-                    totalDeal += 0
+                    totalDeal += 1
                     dimenData.count +=1
                     if success:
                         dimenData.countOk +=1
@@ -125,28 +128,62 @@ class CoreEngineBackTest():
     def computePredict(self,predict:PredictData):
         deal = False
         success = False
-        pct = 0.0
+        earn_pct = 0.0
 
         collectData = predict.collectData
         quantoEncoder = CoreEngine.quantFloatEncoder
         historyQunta = predict.historyData
         sampleQunta = predict.sampleData
-        occurBar:BarData = collectData.occurBars[-1]
+        occurBar:BarData = collectData.occurBars[-2]
+        skipBar:BarData = collectData.occurBars[-1]
 
 
-        print(f"\nsmaple->sell{self.__getFloatRangeInfo(sampleQunta.sellRange,CoreEngine.quantFloatEncoder)}")
-        print(f"smaple->buy{self.__getFloatRangeInfo(sampleQunta.buyRange,CoreEngine.quantFloatEncoder)}")
-        print(f"history->sell{self.__getFloatRangeInfo(historyQunta.sellRange, CoreEngine.quantFloatEncoder)}")
-        print(f"history->buy{self.__getFloatRangeInfo(historyQunta.buyRange, CoreEngine.quantFloatEncoder)}")
-        print(f"probal_sell_1: {self.__getFloatRangeInfo(predict.sellRange1,PredictModel.PctEncoder1)}")
-        print(f"probal_sell_2: {self.__getFloatRangeInfo(predict.sellRange2,PredictModel.PctEncoder2)}")
-        print(f"probal_buy_1: {self.__getFloatRangeInfo(predict.buyRange1,PredictModel.PctEncoder1)}")
-        print(f"probal_buy_2: {self.__getFloatRangeInfo(predict.buyRange2,PredictModel.PctEncoder2)}")
+
         sell_pct,buy_pct = engine.getCoreStrategy().getSellBuyPctLabel(collectData)
 
-        print(f"real->  sell:{sell_pct}, buy:{buy_pct} ")
 
-        return deal,success,pct
+        min1,max1 = PredictModel.PctEncoder1.parseEncode(predict.sellRange1[0].encode)
+        min2,max2 = PredictModel.PctEncoder2.parseEncode(predict.sellRange2[0].encode)
+        total_probal = predict.sellRange2[0].probal + predict.sellRange1[0].probal
+        predict_sell_pct = (min1 + max1) / 2 * predict.sellRange1[0].probal /total_probal + (min2 + max2) / 2 * predict.sellRange2[0].probal /total_probal
+
+        min1, max1 = PredictModel.PctEncoder1.parseEncode(predict.buyRange1[0].encode)
+        min2, max2 = PredictModel.PctEncoder2.parseEncode(predict.buyRange2[0].encode)
+        total_probal = predict.sellRange2[0].probal + predict.sellRange1[0].probal
+        predict_buy_pct = (min1 + max1) / 2 * predict.buyRange1[0].probal /total_probal + (min2 + max2) / 2 * predict.buyRange2[0].probal /total_probal
+
+        buy_price = skipBar.close_price
+        buy_pct = (buy_price - occurBar.close_price) / occurBar.close_price  ##买入的价格
+
+        if predict_buy_pct > 0.2 and predict_sell_pct > buy_pct:
+
+            print(f"\nsmaple->sell{self.__getFloatRangeInfo(sampleQunta.sellRange, CoreEngine.quantFloatEncoder)}")
+            print(f"smaple->buy{self.__getFloatRangeInfo(sampleQunta.buyRange, CoreEngine.quantFloatEncoder)}")
+            print(f"history->sell{self.__getFloatRangeInfo(historyQunta.sellRange, CoreEngine.quantFloatEncoder)}")
+            print(f"history->buy{self.__getFloatRangeInfo(historyQunta.buyRange, CoreEngine.quantFloatEncoder)}")
+            print(f"probal_sell_1: {self.__getFloatRangeInfo(predict.sellRange1, PredictModel.PctEncoder1)}")
+            print(f"probal_sell_2: {self.__getFloatRangeInfo(predict.sellRange2, PredictModel.PctEncoder2)}")
+            print(f"probal_buy_1: {self.__getFloatRangeInfo(predict.buyRange1, PredictModel.PctEncoder1)}")
+            print(f"probal_buy_2: {self.__getFloatRangeInfo(predict.buyRange2, PredictModel.PctEncoder2)}")
+            print(f"predict->  sell:{predict_sell_pct}, buy:{predict_buy_pct} ")
+            print(f"real   ->  sell:{sell_pct}, buy:{buy_pct} ")
+
+            deal = True
+            max_price = -99999999
+            min_price = 999999999
+            for bar in collectData.predictBars:
+                max_price = max(max_price,bar.high_price)
+                min_price = min(min_price,bar.low_price)
+            max_pct = 100 * (max_price - occurBar.close_price) /occurBar.close_price
+            #"是否预测成功"
+            success = predict_sell_pct <= max_pct
+
+            sell_price = collectData.predictBars[-1].close_price
+            if success:
+                sell_price = occurBar.close_price * (1+predict_sell_pct)
+            earn_pct = 100 * (sell_price - buy_price) / buy_price
+
+        return deal,success,earn_pct
 
     def collect(self, barList: ['BarData'], symbol:str, collector:CoreStrategy) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
         collector.onStart(symbol)
