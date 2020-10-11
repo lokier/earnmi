@@ -180,7 +180,7 @@ class CoreEngineBackTest():
 
             sell_price = collectData.predictBars[-1].close_price
             if success:
-                sell_price = occurBar.close_price * (1+predict_sell_pct)
+                sell_price = occurBar.close_price * (1+predict_sell_pct / 100)
             earn_pct = 100 * (sell_price - buy_price) / buy_price
 
         return deal,success,earn_pct
