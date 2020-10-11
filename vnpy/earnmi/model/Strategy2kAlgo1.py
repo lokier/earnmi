@@ -59,6 +59,9 @@ class Strategy2kAlgo1(CoreStrategy):
         size = len(data.predictBars)
         return size >= 2
 
+    def canPredict(self,collectData:CollectData)->bool:
+        return len(collectData.occurBars)>= 3
+
     def getSellBuyPctLabel(self, collectData: CollectData):
         bars: ['BarData'] = collectData.predictBars
         if len(bars) > 0:
@@ -78,19 +81,22 @@ class Strategy2kAlgo1(CoreStrategy):
         trainDataSet = []
         for traceData in dataList:
             occurBar = traceData.occurBars[-2]
-            assert len(traceData.predictBars) > 0
             skipBar = traceData.occurBars[-1]
             sell_pct = 100 * (
                     (skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
             buy_pct = 100 * (
                     (skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
 
-            real_sell_pct, real_buy_pct = self.getSellBuyPctLabel(traceData)
-            label_sell_1 = PredictModel.PctEncoder1.encode(real_sell_pct)
-            label_buy_1 = PredictModel.PctEncoder1.encode(real_buy_pct)
-
-            label_sell_2 = PredictModel.PctEncoder2.encode(real_sell_pct)
-            label_buy_2 = PredictModel.PctEncoder2.encode(real_buy_pct)
+            label_sell_1 = None
+            label_buy_1 = None
+            label_sell_2 = None
+            label_buy_2 = None
+            if len(traceData.predictBars) > 0:
+                real_sell_pct, real_buy_pct = self.getSellBuyPctLabel(traceData)
+                label_sell_1 = PredictModel.PctEncoder1.encode(real_sell_pct)
+                label_buy_1 = PredictModel.PctEncoder1.encode(real_buy_pct)
+                label_sell_2 = PredictModel.PctEncoder2.encode(real_sell_pct)
+                label_buy_2 = PredictModel.PctEncoder2.encode(real_buy_pct)
 
             kdj = traceData.occurKdj[-1]
 

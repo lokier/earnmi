@@ -5,7 +5,7 @@
 """
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import cmp_to_key
 from typing import Union, Tuple, Sequence
 
@@ -17,6 +17,7 @@ from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
 from earnmi.model.PredictData import PredictData
 from earnmi.model.QuantData import QuantData
 from earnmi.model.CoreStrategy import CoreStrategy
+from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 import numpy as np
 import pandas as pd
@@ -28,10 +29,102 @@ import pandas as pd
 
 
 
-class CoreEngineBackTest():
+class CoreEngineRunner():
 
     def __init__(self,engine:CoreEngine):
         self.coreEngine:CoreEngine = engine
+    """
+    计算未来两天最有可能涨的股票SW指数。
+    """
+    def computeSWLatestTop(self, strategy:CoreStrategy,dimenValues:[]= None):
+        end = utils.to_end_date(datetime.now() - timedelta(days=1))  ##昨天数据集
+        start = end - timedelta(days=60)
+        soruce = SWDataSource(start, end)
+
+        print(f"computeSWLatestTop: end : {end},dimenValues:{dimenValues}")
+        dataSet = {}
+        canPredicCount = 0
+        bars, code = soruce.onNextBars()
+        while not bars is None:
+            finished, stop = CoreStrategy.collectBars(bars, code, strategy)
+            print(f"[computeSWLatestTop]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
+            bars, code = soruce.onNextBars()
+            for data in stop:
+                if not strategy.canPredict(data):
+                    continue
+                allow_predict = True
+                if len(dimenValues) > 0:
+                    allow_predict = False
+                    for value in dimenValues:
+                        if value == data.dimen.value:
+                            allow_predict = True
+                if not allow_predict:
+                    continue
+                ##收录
+                canPredicCount +=1
+                listData: [] = dataSet.get(data.dimen)
+                if listData is None:
+                    listData = []
+                    dataSet[data.dimen] = listData
+                listData.append(data)
+        print(f"收集到{canPredicCount}个预测对象,维度{len(dataSet)}个")
+
+        @dataclass
+        class TopItem(object):
+            predict_price:float = 0
+            duration_day = 0
+            code:str = 0
+            name:str = 0
+            end_date:datetime = None
+
+            def __str__(self) -> str:
+                predict_price = int(self.predict_price * 100) / 100
+                return f"code:{self.code},name:{self.name},day:{self.duration_day},predict_price:{predict_price},end_date:{self.end_date}"
+
+
+        from earnmi.data.SWImpl import SWImpl
+        sw = SWImpl()
+        engine = self.coreEngine
+        run_cnt = 0
+        limit_size  = len(dataSet.items())
+        topList = []
+        for dimen, listData in dataSet.items():
+            run_cnt +=1
+            model = self.coreEngine.loadPredictModel(dimen)
+            if model is None:
+                print(f"不支持的维度:{dimen}")
+                continue
+            print(f"开始计算维度:{dimen},进度:[{run_cnt}/{limit_size}]")
+
+            predictList: Sequence['PredictData'] = model.predict(listData)
+
+            for predict in predictList:
+                cData = predict.collectData
+                predict_sell_pct, predict_buy_pct = engine.getCoreStrategy().getSellBuyPctPredict(predict)
+
+                occurBar: BarData = cData.occurBars[-2]
+                skipBar: BarData = cData.occurBars[-1]
+
+                high_price = skipBar.close_price
+                for i in range(0,len(cData.predictBars)):
+                    bar = cData.predictBars[i]
+                    high_price = max(bar.high_price,high_price)
+
+                predict_price = occurBar.close_price * (1 + predict_sell_pct / 100)
+                if high_price < predict_price:
+                    topItem = TopItem()
+                    topItem.code = occurBar.symbol
+                    topItem.name = sw.getSw2Name(topItem.code)
+                    topItem.duration_day = len(cData.predictBars)
+                    topItem.predict_price = predict_price
+                    topItem.end_date = skipBar.datetime
+                    topList.append(topItem)
+
+        for topItem in topList:
+            print(f"{topItem}")
+        print(f"total:{len(topList)}")
+
+        pass
 
     def backtest(self, soruce: BarDataSource, strategy:CoreStrategy, limit=9999999):
         bars, code = soruce.onNextBars()
@@ -145,6 +238,12 @@ class CoreEngineBackTest():
             info+=f"({min}:{max})=%.2f%%," % (100 * r.probal)
         return info +"]"
 
+    """"
+    """
+    def computeBuyPrice(self):
+
+        return None
+
     def computePredict(self,predict:PredictData):
         deal = False
         success = False
@@ -163,9 +262,9 @@ class CoreEngineBackTest():
 
         predict_sell_pct, predict_buy_pct = engine.getCoreStrategy().getSellBuyPctPredict(predict)
         buy_price = skipBar.close_price
-        buy_pct = (buy_price - occurBar.close_price) / occurBar.close_price  ##买入的价格
+        buy_point_pct = (buy_price - occurBar.close_price) / occurBar.close_price  ##买入的价格
 
-        if predict_buy_pct > 0.2 and predict_sell_pct > buy_pct:
+        if predict_buy_pct > 0.2 and predict_sell_pct > buy_point_pct:
 
             # print(f"\nsmaple->sell{self.__getFloatRangeInfo(sampleQunta.sellRange, CoreEngine.quantFloatEncoder)}")
             # print(f"smaple->buy{self.__getFloatRangeInfo(sampleQunta.buyRange, CoreEngine.quantFloatEncoder)}")
@@ -195,46 +294,20 @@ class CoreEngineBackTest():
 
         return deal,success,earn_pct
 
-    def collect(self, barList: ['BarData'], symbol:str, collector:CoreStrategy) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
-        collector.onStart(symbol)
-        traceItems = []
-        finishedData = []
-        stopData = []
-        for bar in barList:
-            toDeleteList = []
-            newObject = collector.collect(bar)
-            for collectData in traceItems:
-                isFinished = collector.onTrace(collectData, bar)
-                if isFinished:
-                    toDeleteList.append(collectData)
-                    finishedData.append(collectData)
-            for collectData in toDeleteList:
-                traceItems.remove(collectData)
-            if newObject is None:
-                continue
-            traceItems.append(newObject)
-
-        ###将要结束，未追踪完的traceData
-        for traceObject in traceItems:
-            stopData.append(traceObject)
-        collector.onEnd(symbol)
-        return finishedData,stopData
 
 
 if __name__ == "__main__":
 
     dirName = "files/backtest"
-
-
     trainDataSouce = SWDataSource( start = datetime(2014, 2, 1),end = datetime(2019, 9, 1))
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))
     from earnmi.model.Strategy2kAlgo1 import Strategy2kAlgo1
     strategy = Strategy2kAlgo1()
-    #engine = CoreEngine.create(dirName,strategy,trainDataSouce)
-    engine = CoreEngine.load(dirName,strategy)
-    backtest = CoreEngineBackTest(engine)
+    engine = CoreEngine.create(dirName,strategy,trainDataSouce)
+    #engine = CoreEngine.load(dirName,strategy)
+    runner = CoreEngineRunner(engine)
 
-    backtest.backtest(testDataSouce,strategy,limit=99999)
+    runner.backtest(testDataSouce,strategy,limit=99999)
 
 
     pass
