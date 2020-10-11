@@ -31,19 +31,6 @@ class CollectData(object):
         self.occurKdj = []
         pass
 
-    def getSellBuyPredicPct(collectData):
-        bars: ['BarData'] = collectData.predictBars
-        if len(bars) > 0:
-            startPrice = collectData.occurBars[-1].close_price
-            sell_pct = -99999
-            buy_pct = 9999999
-            for bar in bars:
-                __sell_pct = 100 * ((bar.high_price + bar.close_price) / 2 - startPrice) / startPrice
-                __buy_pct = 100 * ((bar.low_price + bar.close_price) / 2 - startPrice) / startPrice
-                sell_pct = max(__sell_pct, sell_pct)
-                buy_pct = min(__buy_pct, buy_pct)
-            return sell_pct, buy_pct
-        return None,None
 
 
 if __name__ == "__main__":

@@ -142,12 +142,9 @@ class CoreEngineBackTest():
         print(f"probal_sell_2: {self.__getFloatRangeInfo(predict.sellRange2,PredictModel.PctEncoder2)}")
         print(f"probal_buy_1: {self.__getFloatRangeInfo(predict.buyRange1,PredictModel.PctEncoder1)}")
         print(f"probal_buy_2: {self.__getFloatRangeInfo(predict.buyRange2,PredictModel.PctEncoder2)}")
-        sell_pct,buy_pct = CollectData.getSellBuyPredicPct(collectData)
+        sell_pct,buy_pct = engine.getCoreStrategy().getSellBuyPctLabel(collectData)
 
         print(f"real->  sell:{sell_pct}, buy:{buy_pct} ")
-
-
-
 
         return deal,success,pct
 
@@ -222,18 +219,33 @@ if __name__ == "__main__":
             size = len(data.predictBars)
             return size >= 2
 
+        def getSellBuyPctLabel(self, collectData: CollectData):
+            bars: ['BarData'] = collectData.predictBars
+            if len(bars) > 0:
+                occurBar = collectData.occurBars[-2]
+                startPrice = occurBar.close_price
+                sell_pct = -99999
+                buy_pct = 9999999
+                for bar in bars:
+                    __sell_pct = 100 * ((bar.high_price + bar.close_price) / 2 - startPrice) / startPrice
+                    __buy_pct = 100 * ((bar.low_price + bar.close_price) / 2 - startPrice) / startPrice
+                    sell_pct = max(__sell_pct, sell_pct)
+                    buy_pct = min(__buy_pct, buy_pct)
+                return sell_pct, buy_pct
+            return None, None
+
         def __genereatePd(self, dataList: Sequence['CollectData']):
             trainDataSet = []
             for traceData in dataList:
-                occurBar = traceData.occurBars[-1]
+                occurBar = traceData.occurBars[-2]
                 assert len(traceData.predictBars) > 0
-                skipBar = traceData.predictBars[0]
+                skipBar = traceData.occurBars[-1]
                 sell_pct = 100 * (
                         (skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
                 buy_pct = 100 * (
                         (skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
 
-                real_sell_pct, real_buy_pct = CollectData.getSellBuyPredicPct(traceData)
+                real_sell_pct, real_buy_pct = self.getSellBuyPctLabel(traceData)
                 label_sell_1 = PredictModel.PctEncoder1.encode(real_sell_pct)
                 label_sell_2 = PredictModel.PctEncoder2.encode(real_sell_pct)
                 label_buy_1 = PredictModel.PctEncoder1.encode(real_buy_pct)
@@ -267,7 +279,6 @@ if __name__ == "__main__":
         生成特征值。(有4个标签）
         返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
         """
-
         def generateFeature(self, engine, dataList: Sequence['CollectData']):
             engine.printLog(f"[SVMPredictModel]: generate feature")
 
@@ -320,8 +331,8 @@ if __name__ == "__main__":
 
     dirName = "files/backtest"
     strategy = Collector2KAgo1()
-    engine = CoreEngine.create(dirName,strategy,trainDataSouce)
-    #engine = CoreEngine.load(dirName,strategy)
+    #engine = CoreEngine.create(dirName,strategy,trainDataSouce)
+    engine = CoreEngine.load(dirName,strategy)
     backtest = CoreEngineBackTest(engine)
 
     backtest.backtest(testDataSouce,strategy,limit=1)

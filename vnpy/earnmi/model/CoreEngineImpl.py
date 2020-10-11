@@ -210,7 +210,7 @@ class CoreEngineImpl(CoreEngine):
         for data in dataList:
             bars: ['BarData'] = data.predictBars
             assert len(bars) > 0
-            sell_pct, buy_pct = CollectData.getSellBuyPredicPct(data)
+            sell_pct, buy_pct = self.getCoreStrategy().getSellBuyPctLabel(data)
             sell_encode = CoreEngineImpl.quantFloatEncoder.encode(sell_pct)
             buy_encode = CoreEngineImpl.quantFloatEncoder.encode(buy_pct)
             sellRangeCount[sell_encode] += 1
