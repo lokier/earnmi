@@ -92,6 +92,7 @@ class CoreEngineBackTest():
             model = self.coreEngine.loadPredictModel(dimen)
             if model is None:
                 print(f"不支持的维度:{dimen}")
+                continue
             run_cnt +=1
             print(f"开始回测维度:{dimen},进度:[{run_cnt}/{limit_size}]")
             sell_core,buy_core = model.selfTest()
