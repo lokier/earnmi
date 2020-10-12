@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from earnmi.chart.FloatEncoder import FloatEncoder
+from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
 from earnmi.model.Dimension import Dimension
 
 # @dataclass
@@ -16,6 +16,18 @@ class QuantData(object):
     # dimen: Dimension
 
     count:int
+
+    """
+    最佳卖出力量值
+    """
+    bestSellPct = 0
+    bestSellProbal = 0.0
+
+    """
+    最佳买入力量值
+    """
+    bestBuyPct = 0
+    bestBuyProbal = 0.0
 
     """
     卖方力量分布

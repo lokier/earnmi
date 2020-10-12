@@ -26,14 +26,9 @@ class PredictData(object):
     dimen: Dimension
 
     """
-    历史记录的量化数据
-    """
-    historyData:QuantData
-
-    """
     训练样本的量化数据。
     """
-    sampleData:QuantData
+    quantData:QuantData
 
     """
     测试特征值得原始数据。

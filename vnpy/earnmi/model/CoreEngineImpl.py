@@ -44,8 +44,7 @@ class SVMPredictModel(PredictModel):
     def __init__(self,engine:CoreEngine,dimen:Dimension):
         self.engine = engine
         self.dimen = dimen
-        self.orginSampleQuantData:QuantData = None
-        self.sampleQuantData:QuantData = None
+        self.quantData:QuantData = None
         self.classifierSell_1 = None
         self.classifierSell_2 = None
         self.classifierBuy_1 = None
@@ -64,14 +63,12 @@ class SVMPredictModel(PredictModel):
     def build(self,engine:CoreEngine, sampleData:Sequence['CollectData']):
         useSVM = True
         start = timeit.default_timer()
-        self.orginSampleQuantData = engine.computeQuantData(sampleData)
+        self.quantData = engine.queryQuantData(self.dimen)
         trainDataList = engine.getCoreStrategy().generateSampleData(engine, sampleData)
         size = len(trainDataList)
         engine.printLog(f"build PredictModel:dime={self.dimen}, sample size:{size} use SVM ={useSVM}",True)
         self.trainSampleDataList = trainDataList
-        self.sampleQuantData = engine.computeQuantData(trainDataList)
-        engine.printLog(f"   history quantdata: {self.orginSampleQuantData}")
-        engine.printLog(f"   sample quantdata: {self.sampleQuantData}")
+        engine.printLog(f"   history quantdata: {self.quantData}")
 
 
         ##建立特征值
@@ -131,8 +128,7 @@ class SVMPredictModel(PredictModel):
             sellRange2_probal_list = self.classifierSell_2.predict_proba(x)
             for i in range(0,len(data)):
                 collectData = data[i]
-                pData = PredictData(dimen=self.dimen, historyData=self.orginSampleQuantData,
-                                    sampleData=self.sampleQuantData, collectData=collectData)
+                pData = PredictData(dimen=self.dimen, quantData=self.quantData, collectData=collectData)
                 floatSellRangeList1 = self.buldRangeList(self.labelListSell1,sellRange1_probal_list[i])
                 floatBuyRangeList1 = self.buldRangeList(self.labelListBuy1,buyRange1_probal_list[i])
                 floatSellRangeList2 = self.buldRangeList(self.labelListSell2,sellRange2_probal_list[i])
@@ -382,8 +378,8 @@ if __name__ == "__main__":
     engine = CoreEngineImpl("files/impltest")
     engine.enableLog = True
 
-    #engine.build(SWDataSource(start,end),strategy)
-    engine.load(strategy)
+    engine.build(SWDataSource(start,end),strategy)
+    #engine.load(strategy)
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 
