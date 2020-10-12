@@ -5,7 +5,7 @@
 """
 from dataclasses import dataclass
 from functools import cmp_to_key
-
+import numpy as np
 
 
 
@@ -22,6 +22,11 @@ class FloatEncoder:
         self.splits = splits
         self.n = len(splits)
         pass
+
+    def shift(self,shift:float):
+        new_splits = np.array(self.splits)
+        new_splits = new_splits + shift
+        return FloatEncoder(list(new_splits))
     """
     掩码值
     """
@@ -96,3 +101,9 @@ if __name__ == "__main__":
     print(f"pctEncoder.encode(-7.3) : {pctEncoder.descriptEncdoe(pctEncoder.encode(-7.3))}")
     print(f"pctEncoder.encode(7.2) : {pctEncoder.descriptEncdoe(pctEncoder.encode(7.2))}")
     print(f"pctEncoder.encode(7) : {pctEncoder.descriptEncdoe(pctEncoder.encode(7))}")
+
+    print(f"origin:{pctEncoder.splits}")
+    assert  pctEncoder.encode(-6.5) == 1
+    pctEncoder = pctEncoder.shift(0.9)
+    assert  pctEncoder.encode(-6.5) == 0
+    print(f"shift: {pctEncoder.splits}")

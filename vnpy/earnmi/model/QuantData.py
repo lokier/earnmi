@@ -18,6 +18,13 @@ class QuantData(object):
     count:int
 
     """
+    卖方中间值pct，该中间值把概率分布分成50%
+    """
+    #sellCenterPct:float
+
+    #buyCenterPct:float
+
+    """
     卖方力量分布
     """
     sellRange:['FloatRange']

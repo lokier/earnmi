@@ -260,41 +260,38 @@ class CoreEngineImpl(CoreEngine):
 
         return
 
-    def __computeQuantData(self,sellEncoder:FloatEncoder,buyEncoder:FloatEncoder,dataList: Sequence['CollectData']):
-        sellRangeCount = {}
-        buyRangeCount = {}
-        totalCount = len(dataList)
-        for i in range(0, sellEncoder.mask()):
-            sellRangeCount[i] = 0
-        for i in range(0, buyEncoder.mask()):
-            buyRangeCount[i] = 0
+    def __computeRangeFloatList(self,pct_list:[],encoder:FloatEncoder)->Sequence['FloatRange']:
+        rangeCount = {}
+        totalCount = len(pct_list)
+        for i in range(0, encoder.mask()):
+            rangeCount[i] = 0
+        for pct in pct_list:
+            encode = encoder.encode(pct)
+            rangeCount[encode] +=1
 
+        rangeList = []
+        for encode, count in rangeCount.items():
+            probal = 0.0
+            if totalCount > 0:
+                probal = count / totalCount
+            floatRange = FloatRange(encode=encode, probal=probal)
+            rangeList.append(floatRange)
+        return FloatRange.sort(rangeList)
+
+
+    def __computeQuantData(self,sellEncoder:FloatEncoder,buyEncoder:FloatEncoder,dataList: Sequence['CollectData']):
+
+        sell_pct_list = []
+        buy_pct_list = []
+        totalCount = len(dataList)
         for data in dataList:
             bars: ['BarData'] = data.predictBars
             assert len(bars) > 0
             sell_pct, buy_pct = self.getCoreStrategy().getSellBuyPctLabel(data)
-            sell_encode = sellEncoder.encode(sell_pct)
-            buy_encode = buyEncoder.encode(buy_pct)
-            sellRangeCount[sell_encode] += 1
-            buyRangeCount[buy_encode] += 1
-        sellRangeFloat = []
-        for encode, count in sellRangeCount.items():
-            probal = 0.0
-            if totalCount > 0:
-                probal = count / totalCount
-            floatRange = FloatRange(encode=encode, probal=probal)
-            sellRangeFloat.append(floatRange)
-
-        buyRangeFloat = []
-        for encode, count in buyRangeCount.items():
-            probal = 0.0
-            if totalCount > 0:
-                probal = count / totalCount
-            floatRange = FloatRange(encode=encode, probal=probal)
-            buyRangeFloat.append(floatRange)
-
-        sellRangeFloat = FloatRange.sort(sellRangeFloat)
-        buyRangeFloat = FloatRange.sort(buyRangeFloat)
+            sell_pct_list.append(sell_pct)
+            buy_pct_list.append(buy_pct)
+        sellRangeFloat = self.__computeRangeFloatList(sell_pct_list,sellEncoder)
+        buyRangeFloat = self.__computeRangeFloatList(buy_pct_list,buyEncoder)
         return QuantData(count=totalCount,sellRange=sellRangeFloat,buyRange=buyRangeFloat,sellSplits=sellEncoder.splits,buySplits=buyEncoder.splits)
 
     def build(self, soruce:BarDataSource, strategy:CoreStrategy):
