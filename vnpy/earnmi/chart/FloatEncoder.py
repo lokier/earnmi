@@ -86,7 +86,7 @@ class FloatRange(object):
         for i in range(0, len(ranges)):
             r: FloatRange = ranges[i]
             min, max = encoder.parseEncode(r.encode)
-            info += f"({min}:{max})=%.2f%%," % (100 * r.probal)
+            info += f"(%.2f:%.2f)=%.2f%%," % (min,max,100 * r.probal)
         return info + "]"
 
 if __name__ == "__main__":

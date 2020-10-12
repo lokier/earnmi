@@ -20,9 +20,9 @@ class QuantData(object):
     """
     卖方中间值pct，该中间值把概率分布分成50%
     """
-    #sellCenterPct:float
+    sellCenterPct:float
 
-    #buyCenterPct:float
+    buyCenterPct:float
 
     """
     卖方力量分布

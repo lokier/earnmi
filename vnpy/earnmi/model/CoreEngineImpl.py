@@ -249,18 +249,59 @@ class CoreEngineImpl(CoreEngine):
         return self.__computeQuantData(CoreEngineImpl.quantFloatEncoder,CoreEngineImpl.quantFloatEncoder,dataList)
 
     """
+        计算编码分区最佳的QuantData
+        """
+    def __findCenterPct(self,pct_list, min_pct,max_pct,best_pct,best_probal) -> Union[float, float]:
+        if max_pct - min_pct < 0.01:
+            return best_pct, best_probal
+
+        pct = (max_pct + min_pct) / 2
+        encoder = FloatEncoder([pct])
+        flaotRangeList = self.__computeRangeFloatList(pct_list, encoder,False)
+        probal = flaotRangeList[0].probal
+
+        if abs(probal - 0.5) < abs(best_probal - 0.5):
+            best_pct = pct
+            best_probal = probal
+
+        if probal > 0.5:
+            ##说明pct值过大
+            pct2,probal2 = self.__findCenterPct(pct_list,min_pct,pct,best_pct,best_probal)
+        else:
+            pct2,probal2 = self.__findCenterPct(pct_list,pct,max_pct,best_pct,best_probal)
+
+        if abs(probal2 - 0.5) < abs(best_probal - 0.5):
+            best_pct = pct2
+            best_probal = probal2
+
+        return best_pct,best_probal
+
+    """
     计算编码分区最佳的QuantData
     """
-    def __findBestQuantData(self,maxRange,floatEncoder:FloatEncoder,dataList: Sequence['CollectData'])->QuantData:
+    def __findBestFloatEncoder(self,pct_list:[],originEncoder:FloatEncoder)->Union[FloatEncoder,Sequence['FloatRange']]:
+        SCALE = 5000
+        min,max = originEncoder.parseEncode(int(originEncoder.mask()/2))
+        min = int(min * SCALE)
+        max = int(max * SCALE)
+        step = int((max - min) / 100)
 
-        if maxRange < 0.04:
-            return None
-        leftQuant = self.__findBestQuantData(maxRange/2,)
-        rightQuant = self.__findBestQuantData(maxRange/2,)
+        bestProbal = 0
+        bestEncoder = originEncoder
+        bestRnageList = None
+        for shift in range(min,max,step):
+            d = shift / SCALE
+            encoder = originEncoder.shift(d)
+            flaotRangeList = self.__computeRangeFloatList(pct_list, encoder)
+            probal = flaotRangeList[0].probal
+            if probal > bestProbal:
+                bestProbal = probal
+                bestEncoder = encoder
+                bestRnageList = flaotRangeList
 
-        return
+        return bestEncoder,bestRnageList
 
-    def __computeRangeFloatList(self,pct_list:[],encoder:FloatEncoder)->Sequence['FloatRange']:
+    def __computeRangeFloatList(self,pct_list:[],encoder:FloatEncoder,sort = True)->Sequence['FloatRange']:
         rangeCount = {}
         totalCount = len(pct_list)
         for i in range(0, encoder.mask()):
@@ -276,8 +317,9 @@ class CoreEngineImpl(CoreEngine):
                 probal = count / totalCount
             floatRange = FloatRange(encode=encode, probal=probal)
             rangeList.append(floatRange)
-        return FloatRange.sort(rangeList)
-
+        if sort:
+            return FloatRange.sort(rangeList)
+        return rangeList
 
     def __computeQuantData(self,sellEncoder:FloatEncoder,buyEncoder:FloatEncoder,dataList: Sequence['CollectData']):
 
@@ -290,9 +332,15 @@ class CoreEngineImpl(CoreEngine):
             sell_pct, buy_pct = self.getCoreStrategy().getSellBuyPctLabel(data)
             sell_pct_list.append(sell_pct)
             buy_pct_list.append(buy_pct)
-        sellRangeFloat = self.__computeRangeFloatList(sell_pct_list,sellEncoder)
-        buyRangeFloat = self.__computeRangeFloatList(buy_pct_list,buyEncoder)
-        return QuantData(count=totalCount,sellRange=sellRangeFloat,buyRange=buyRangeFloat,sellSplits=sellEncoder.splits,buySplits=buyEncoder.splits)
+        sellEncoder,sellRangeFloat = self.__findBestFloatEncoder(sell_pct_list,sellEncoder)
+        buyEncoder,buyRangeFloat = self.__findBestFloatEncoder(buy_pct_list,buyEncoder)
+
+        sell_center_pct, best_probal1 = self.__findCenterPct(sell_pct_list,sellEncoder.splits[0],sellEncoder.splits[-1],0.0,0.0)
+        buy_center_pct, best_probal2 = self.__findCenterPct(buy_pct_list,buyEncoder.splits[0],buyEncoder.splits[-1],0.0,0.0)
+        return QuantData(count=totalCount,sellRange=sellRangeFloat,buyRange=buyRangeFloat,
+                         sellCenterPct=sell_center_pct,
+                         buyCenterPct=buy_center_pct,
+                         sellSplits=sellEncoder.splits,buySplits=buyEncoder.splits)
 
     def build(self, soruce:BarDataSource, strategy:CoreStrategy):
         self.printLog("build() start...",True)
@@ -386,7 +434,7 @@ if __name__ == "__main__":
 
     for dimen in dimens:
         quant = engine.queryQuantData(dimen)
-        print(f"quant: count={quant.count}, dimen = {dimen}")
+        print(f"quant: count={quant.count}, dimen = {dimen},sellCenter={quant.sellCenterPct},buyCenter = {quant.buyCenterPct}")
         print(f"     sell{FloatRange.toStr(quant.sellRange, quant.getSellFloatEncoder())}")
         print(f"     buy{FloatRange.toStr(quant.buyRange, quant.getBuyFloatEncoder())}")
 
