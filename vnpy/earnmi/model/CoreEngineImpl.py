@@ -186,6 +186,7 @@ class CoreEngineImpl(CoreEngine):
 
     COLLECT_DATA_FILE_NAME = "colllect"
     ##量化数据的涨幅分布区域。
+    quantFloatEncoder = FloatEncoder([-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7])
 
     def __init__(self, dirPath: str):
         self.mAllDimension:['Dimension'] = None
@@ -245,39 +246,42 @@ class CoreEngineImpl(CoreEngine):
         return self.__strategy
 
     def computeQuantData(self, dataList: Sequence['CollectData']) -> QuantData:
+        return self.__computeQuantData(CoreEngineImpl.quantFloatEncoder,dataList)
+
+    def __computeQuantData(self,floatEncoder:FloatEncoder,dataList: Sequence['CollectData']):
         sellRangeCount = {}
         buyRangeCount = {}
         totalCount = len(dataList)
-        for i in range(0, CoreEngineImpl.quantFloatEncoder.mask()):
+        for i in range(0, floatEncoder.mask()):
             sellRangeCount[i] = 0
             buyRangeCount[i] = 0
         for data in dataList:
             bars: ['BarData'] = data.predictBars
             assert len(bars) > 0
             sell_pct, buy_pct = self.getCoreStrategy().getSellBuyPctLabel(data)
-            sell_encode = CoreEngineImpl.quantFloatEncoder.encode(sell_pct)
-            buy_encode = CoreEngineImpl.quantFloatEncoder.encode(buy_pct)
+            sell_encode = floatEncoder.encode(sell_pct)
+            buy_encode = floatEncoder.encode(buy_pct)
             sellRangeCount[sell_encode] += 1
             buyRangeCount[buy_encode] += 1
         sellRangeFloat = []
-        for encode,count in sellRangeCount.items():
+        for encode, count in sellRangeCount.items():
             probal = 0.0
-            if totalCount>0:
+            if totalCount > 0:
                 probal = count / totalCount
-            floatRange = FloatRange(encode=encode,probal=probal)
+            floatRange = FloatRange(encode=encode, probal=probal)
             sellRangeFloat.append(floatRange)
 
         buyRangeFloat = []
-        for encode,count in buyRangeCount.items():
+        for encode, count in buyRangeCount.items():
             probal = 0.0
-            if totalCount>0:
+            if totalCount > 0:
                 probal = count / totalCount
-            floatRange = FloatRange(encode=encode,probal=probal)
+            floatRange = FloatRange(encode=encode, probal=probal)
             buyRangeFloat.append(floatRange)
 
         sellRangeFloat = FloatRange.sort(sellRangeFloat)
         buyRangeFloat = FloatRange.sort(buyRangeFloat)
-        return QuantData(count=totalCount,sellRange=sellRangeFloat,buyRange=buyRangeFloat)
+        return QuantData(count=totalCount,sellRange=sellRangeFloat,buyRange=buyRangeFloat,floatSplits=floatEncoder.splits)
 
     def build(self, soruce:BarDataSource, strategy:CoreStrategy):
         self.printLog("build() start...",True)
@@ -355,14 +359,15 @@ class CoreEngineImpl(CoreEngine):
 
         info = f"count:{data.count}"
         info+=",sell:["
+        floatEncoder = data.getFloatEncoder()
         for fRange in data.sellRange:
             item:FloatRange = fRange
-            min,max = CoreEngineImpl.quantFloatEncoder.parseEncode(item.encode)
+            min,max = floatEncoder.parseEncode(item.encode)
             info+=f"{min}:{max}=%.2f%%, " % (100 * item.probal)
         info += "],buy:["
         for fRange in data.buyRange:
             item: FloatRange = fRange
-            min, max = CoreEngineImpl.quantFloatEncoder.parseEncode(item.encode)
+            min, max = floatEncoder.parseEncode(item.encode)
             info += f"{min}:{max}=%.2f%%, " % (100 * item.probal)
         info +="]"
         return info
@@ -378,8 +383,8 @@ if __name__ == "__main__":
     engine = CoreEngineImpl("files/impltest")
     engine.enableLog = True
 
-    engine.build(SWDataSource(start,end),strategy)
-    #engine.load(strategy)
+    #engine.build(SWDataSource(start,end),strategy)
+    engine.load(strategy)
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 

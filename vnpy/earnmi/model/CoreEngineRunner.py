@@ -250,9 +250,7 @@ class CoreEngineRunner():
         earn_pct = 0.0
 
         collectData = predict.collectData
-        quantoEncoder = CoreEngine.quantFloatEncoder
-        historyQunta = predict.historyData
-        sampleQunta = predict.sampleData
+        sampleQunta:QuantData = predict.quantData
         occurBar:BarData = collectData.occurBars[-2]
         skipBar:BarData = collectData.occurBars[-1]
 
@@ -265,11 +263,9 @@ class CoreEngineRunner():
         buy_point_pct = (buy_price - occurBar.close_price) / occurBar.close_price  ##买入的价格
 
         if predict_buy_pct > 0.2 and predict_sell_pct > buy_point_pct:
-
-            print(f"\nsmaple->sell{self.__getFloatRangeInfo(sampleQunta.sellRange, CoreEngine.quantFloatEncoder)}")
-            print(f"smaple->buy{self.__getFloatRangeInfo(sampleQunta.buyRange, CoreEngine.quantFloatEncoder)}")
-            print(f"history->sell{self.__getFloatRangeInfo(historyQunta.sellRange, CoreEngine.quantFloatEncoder)}")
-            print(f"history->buy{self.__getFloatRangeInfo(historyQunta.buyRange, CoreEngine.quantFloatEncoder)}")
+            quantFloatEncoder = sampleQunta.getFloatEncoder()
+            print(f"\nsample->sell{self.__getFloatRangeInfo(sampleQunta.sellRange,quantFloatEncoder)}")
+            print(f"sample->buy{self.__getFloatRangeInfo(sampleQunta.buyRange, quantFloatEncoder)}")
             print(f"probal_sell_1: {self.__getFloatRangeInfo(predict.sellRange1, PredictModel.PctEncoder1)}")
             print(f"probal_sell_2: {self.__getFloatRangeInfo(predict.sellRange2, PredictModel.PctEncoder2)}")
             print(f"probal_buy_1: {self.__getFloatRangeInfo(predict.buyRange1, PredictModel.PctEncoder1)}")

@@ -18,18 +18,6 @@ class QuantData(object):
     count:int
 
     """
-    最佳卖出力量值
-    """
-    bestSellPct = 0
-    bestSellProbal = 0.0
-
-    """
-    最佳买入力量值
-    """
-    bestBuyPct = 0
-    bestBuyProbal = 0.0
-
-    """
     卖方力量分布
     """
     sellRange:['FloatRange']
@@ -39,8 +27,13 @@ class QuantData(object):
     """
     buyRange:['FloatRange']
 
+    floatSplits:['float']
+
     def __post_init__(self):
         pass
+
+    def getFloatEncoder(self) ->FloatEncoder:
+        return FloatEncoder(self.floatSplits)
 
 
 if __name__ == "__main__":
