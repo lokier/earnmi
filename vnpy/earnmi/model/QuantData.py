@@ -27,14 +27,18 @@ class QuantData(object):
     """
     buyRange:['FloatRange']
 
-    floatSplits:['float']
+    sellSplits:['float']
+
+    buySplits:['float']
 
     def __post_init__(self):
         pass
 
-    def getFloatEncoder(self) ->FloatEncoder:
-        return FloatEncoder(self.floatSplits)
+    def getSellFloatEncoder(self) ->FloatEncoder:
+        return FloatEncoder(self.sellSplits)
 
+    def getBuyFloatEncoder(self) ->FloatEncoder:
+        return FloatEncoder(self.buySplits)
 
 if __name__ == "__main__":
     import pickle

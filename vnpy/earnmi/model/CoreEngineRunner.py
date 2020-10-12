@@ -231,12 +231,7 @@ class CoreEngineRunner():
         print(f"total:{total}")
 
     def __getFloatRangeInfo(self,ranges:['FloatRange'],encoder:FloatEncoder):
-        info = "["
-        for i in range(0,len(ranges)):
-            r:FloatRange = ranges[i]
-            min,max = encoder.parseEncode(r.encode)
-            info+=f"({min}:{max})=%.2f%%," % (100 * r.probal)
-        return info +"]"
+        return FloatRange.toStr(ranges,encoder)
 
     """"
     """
@@ -263,9 +258,8 @@ class CoreEngineRunner():
         buy_point_pct = (buy_price - occurBar.close_price) / occurBar.close_price  ##买入的价格
 
         if predict_buy_pct > 0.2 and predict_sell_pct > buy_point_pct:
-            quantFloatEncoder = sampleQunta.getFloatEncoder()
-            print(f"\nsample->sell{self.__getFloatRangeInfo(sampleQunta.sellRange,quantFloatEncoder)}")
-            print(f"sample->buy{self.__getFloatRangeInfo(sampleQunta.buyRange, quantFloatEncoder)}")
+            print(f"\nsample->sell{self.__getFloatRangeInfo(sampleQunta.sellRange,sampleQunta.getSellFloatEncoder())}")
+            print(f"sample->buy{self.__getFloatRangeInfo(sampleQunta.buyRange, sampleQunta.getBuyFloatEncoder())}")
             print(f"probal_sell_1: {self.__getFloatRangeInfo(predict.sellRange1, PredictModel.PctEncoder1)}")
             print(f"probal_sell_2: {self.__getFloatRangeInfo(predict.sellRange2, PredictModel.PctEncoder2)}")
             print(f"probal_buy_1: {self.__getFloatRangeInfo(predict.buyRange1, PredictModel.PctEncoder1)}")

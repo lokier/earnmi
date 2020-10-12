@@ -186,7 +186,7 @@ class CoreEngineImpl(CoreEngine):
 
     COLLECT_DATA_FILE_NAME = "colllect"
     ##量化数据的涨幅分布区域。
-    quantFloatEncoder = FloatEncoder([-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7])
+    quantFloatEncoder = FloatEncoder([-7, -4.5, -3, -1.5, 0, 1.5, 3, 4.5, 7])
 
     def __init__(self, dirPath: str):
         self.mAllDimension:['Dimension'] = None
@@ -246,21 +246,35 @@ class CoreEngineImpl(CoreEngine):
         return self.__strategy
 
     def computeQuantData(self, dataList: Sequence['CollectData']) -> QuantData:
-        return self.__computeQuantData(CoreEngineImpl.quantFloatEncoder,dataList)
+        return self.__computeQuantData(CoreEngineImpl.quantFloatEncoder,CoreEngineImpl.quantFloatEncoder,dataList)
 
-    def __computeQuantData(self,floatEncoder:FloatEncoder,dataList: Sequence['CollectData']):
+    """
+    计算编码分区最佳的QuantData
+    """
+    def __findBestQuantData(self,maxRange,floatEncoder:FloatEncoder,dataList: Sequence['CollectData'])->QuantData:
+
+        if maxRange < 0.04:
+            return None
+        leftQuant = self.__findBestQuantData(maxRange/2,)
+        rightQuant = self.__findBestQuantData(maxRange/2,)
+
+        return
+
+    def __computeQuantData(self,sellEncoder:FloatEncoder,buyEncoder:FloatEncoder,dataList: Sequence['CollectData']):
         sellRangeCount = {}
         buyRangeCount = {}
         totalCount = len(dataList)
-        for i in range(0, floatEncoder.mask()):
+        for i in range(0, sellEncoder.mask()):
             sellRangeCount[i] = 0
+        for i in range(0, buyEncoder.mask()):
             buyRangeCount[i] = 0
+
         for data in dataList:
             bars: ['BarData'] = data.predictBars
             assert len(bars) > 0
             sell_pct, buy_pct = self.getCoreStrategy().getSellBuyPctLabel(data)
-            sell_encode = floatEncoder.encode(sell_pct)
-            buy_encode = floatEncoder.encode(buy_pct)
+            sell_encode = sellEncoder.encode(sell_pct)
+            buy_encode = buyEncoder.encode(buy_pct)
             sellRangeCount[sell_encode] += 1
             buyRangeCount[buy_encode] += 1
         sellRangeFloat = []
@@ -281,7 +295,7 @@ class CoreEngineImpl(CoreEngine):
 
         sellRangeFloat = FloatRange.sort(sellRangeFloat)
         buyRangeFloat = FloatRange.sort(buyRangeFloat)
-        return QuantData(count=totalCount,sellRange=sellRangeFloat,buyRange=buyRangeFloat,floatSplits=floatEncoder.splits)
+        return QuantData(count=totalCount,sellRange=sellRangeFloat,buyRange=buyRangeFloat,sellSplits=sellEncoder.splits,buySplits=buyEncoder.splits)
 
     def build(self, soruce:BarDataSource, strategy:CoreStrategy):
         self.printLog("build() start...",True)
@@ -355,22 +369,7 @@ class CoreEngineImpl(CoreEngine):
         except BaseException:
             return None
 
-    def toStr(self,data:QuantData) ->str:
 
-        info = f"count:{data.count}"
-        info+=",sell:["
-        floatEncoder = data.getFloatEncoder()
-        for fRange in data.sellRange:
-            item:FloatRange = fRange
-            min,max = floatEncoder.parseEncode(item.encode)
-            info+=f"{min}:{max}=%.2f%%, " % (100 * item.probal)
-        info += "],buy:["
-        for fRange in data.buyRange:
-            item: FloatRange = fRange
-            min, max = floatEncoder.parseEncode(item.encode)
-            info += f"{min}:{max}=%.2f%%, " % (100 * item.probal)
-        info +="]"
-        return info
 
 if __name__ == "__main__":
     from earnmi.model.Strategy2kAlgo1 import Strategy2kAlgo1
@@ -390,12 +389,14 @@ if __name__ == "__main__":
 
     for dimen in dimens:
         quant = engine.queryQuantData(dimen)
-        print(f"quant：{engine.toStr(quant)}")
+        print(f"quant: count={quant.count}, dimen = {dimen}")
+        print(f"     sell{FloatRange.toStr(quant.sellRange, quant.getSellFloatEncoder())}")
+        print(f"     buy{FloatRange.toStr(quant.buyRange, quant.getBuyFloatEncoder())}")
 
     ## 一个预测案例
-    dimen = dimens[4]
-    model = engine.loadPredictModel(dimen)
-    model.selfTest()
+    # dimen = dimens[4]
+    # model = engine.loadPredictModel(dimen)
+    # model.selfTest()
 
 
     pass

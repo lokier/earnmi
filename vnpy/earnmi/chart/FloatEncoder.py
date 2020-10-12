@@ -7,22 +7,8 @@ from dataclasses import dataclass
 from functools import cmp_to_key
 
 
-def FloatRangeCompare(d1, d2):
-    return d1.probal - d2.probal
 
-@dataclass
-class FloatRange(object):
-    """
-    FloatEncoder里的编码值
-    """
-    encode:int
-    """
-    概率或者分布概率值
-    """
-    probal:float
 
-    def sort(lists:['FloatRange'],reverse = True)->['FloatRange']:
-        return sorted(lists, key=cmp_to_key(FloatRangeCompare), reverse=reverse)
 
 """
   浮点值范围编码值
@@ -72,7 +58,31 @@ class FloatEncoder:
 
         return f"[{left},{right}]"
 
+def FloatRangeCompare(d1, d2):
+    return d1.probal - d2.probal
 
+@dataclass
+class FloatRange(object):
+    """
+    FloatEncoder里的编码值
+    """
+    encode:int
+    """
+    概率或者分布概率值
+    """
+    probal:float
+
+    def sort(lists:['FloatRange'],reverse = True)->['FloatRange']:
+        return sorted(lists, key=cmp_to_key(FloatRangeCompare), reverse=reverse)
+    
+    @staticmethod
+    def toStr(ranges:['FloatRange'],encoder:FloatEncoder)->str:
+        info = "["
+        for i in range(0, len(ranges)):
+            r: FloatRange = ranges[i]
+            min, max = encoder.parseEncode(r.encode)
+            info += f"({min}:{max})=%.2f%%," % (100 * r.probal)
+        return info + "]"
 
 if __name__ == "__main__":
     pct_split = [-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7]
