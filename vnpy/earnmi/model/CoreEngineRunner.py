@@ -266,16 +266,16 @@ class CoreEngineRunner():
 
         if predict_buy_pct > 0.2 and predict_sell_pct > buy_point_pct:
 
-            # print(f"\nsmaple->sell{self.__getFloatRangeInfo(sampleQunta.sellRange, CoreEngine.quantFloatEncoder)}")
-            # print(f"smaple->buy{self.__getFloatRangeInfo(sampleQunta.buyRange, CoreEngine.quantFloatEncoder)}")
-            # print(f"history->sell{self.__getFloatRangeInfo(historyQunta.sellRange, CoreEngine.quantFloatEncoder)}")
-            # print(f"history->buy{self.__getFloatRangeInfo(historyQunta.buyRange, CoreEngine.quantFloatEncoder)}")
-            # print(f"probal_sell_1: {self.__getFloatRangeInfo(predict.sellRange1, PredictModel.PctEncoder1)}")
-            # print(f"probal_sell_2: {self.__getFloatRangeInfo(predict.sellRange2, PredictModel.PctEncoder2)}")
-            # print(f"probal_buy_1: {self.__getFloatRangeInfo(predict.buyRange1, PredictModel.PctEncoder1)}")
-            # print(f"probal_buy_2: {self.__getFloatRangeInfo(predict.buyRange2, PredictModel.PctEncoder2)}")
-            # print(f"predict->  sell:{predict_sell_pct}, buy:{predict_buy_pct} ")
-            # print(f"real   ->  sell:{sell_pct}, buy:{buy_pct} ")
+            print(f"\nsmaple->sell{self.__getFloatRangeInfo(sampleQunta.sellRange, CoreEngine.quantFloatEncoder)}")
+            print(f"smaple->buy{self.__getFloatRangeInfo(sampleQunta.buyRange, CoreEngine.quantFloatEncoder)}")
+            print(f"history->sell{self.__getFloatRangeInfo(historyQunta.sellRange, CoreEngine.quantFloatEncoder)}")
+            print(f"history->buy{self.__getFloatRangeInfo(historyQunta.buyRange, CoreEngine.quantFloatEncoder)}")
+            print(f"probal_sell_1: {self.__getFloatRangeInfo(predict.sellRange1, PredictModel.PctEncoder1)}")
+            print(f"probal_sell_2: {self.__getFloatRangeInfo(predict.sellRange2, PredictModel.PctEncoder2)}")
+            print(f"probal_buy_1: {self.__getFloatRangeInfo(predict.buyRange1, PredictModel.PctEncoder1)}")
+            print(f"probal_buy_2: {self.__getFloatRangeInfo(predict.buyRange2, PredictModel.PctEncoder2)}")
+            print(f"predict->  sell:{predict_sell_pct}, buy:{predict_buy_pct} ")
+            print(f"real   ->  sell:{sell_pct}, buy:{buy_pct} ")
 
             deal = True
             max_price = -99999999

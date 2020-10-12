@@ -704,6 +704,7 @@ if __name__ == "__main__":
         # 字符串格式
         dt = start.strftime('%Y%m%d')
         url = f"http://106.15.58.126/sw_k.action?username=raodongming&password=58edde63081e2ce001cf5800f68df36f&id={code}&num={count}&datetime={dt}&period=d&srcIndex=1"
+        print(f"url:{url}")
         res = requests.get(url=url)
         text = res.text
         print(url)
