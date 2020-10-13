@@ -91,7 +91,7 @@ class CoreEngine():
      评估盈利能力，并打印出来。
     """
     @abstractmethod
-    def printTopDimension(self,low_power_pct = 0.0):
+    def printTopDimension(self,pow_rate_limit = 1.0):
         pass
 
     @abstractmethod

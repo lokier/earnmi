@@ -41,6 +41,54 @@ class QuantData(object):
     def __post_init__(self):
         pass
 
+    """
+    多空双方力量对比：
+    0附近之间表示多空力量一直
+    1左右表示,多方量比空方大一倍
+    -1左右表示,空方量比多方大一倍
+    """
+    def getPowerRate(self):
+        sellMin, sellMax = self.getSellFloatEncoder().parseEncode(self.sellRange[0].encode)
+        buyMin, buyMax = self.getBuyFloatEncoder().parseEncode(self.buyRange[0].encode)
+        buy_power_pct = (buyMax + buyMin) / 2    # 买方力量的主力值越高，说明看多情况更好（大于0是铁定赚钱）
+        sell_power_pct = (sellMax + sellMin) / 2   # 越高说明赚钱效益更好
+
+        delta =  abs(sell_power_pct) - abs(buy_power_pct)
+
+        if abs(delta) < 0.05:
+            #多空力量差不多
+            return 0
+        if delta > 0:
+            #适合做多
+            return  (sell_power_pct + buy_power_pct) / sell_power_pct
+        else:
+            return - (sell_power_pct + buy_power_pct) / buy_power_pct
+
+    """
+    多空双方的力量
+    """
+    def getPowerProbal(self, isSell:bool)->float:
+
+        if isSell:
+            encoder = self.getSellFloatEncoder()
+            sellMin, sellMax = encoder.parseEncode(self.sellRange[0].encode)
+            probal = 0.0
+            for fRange in self.sellRange:
+                _min, _max = encoder.parseEncode(fRange.encode)
+                if (_min >= sellMin):
+                    probal += fRange.probal
+            return probal
+        else:
+            encoder = self.getBuyFloatEncoder()
+            sellMin, sellMax = encoder.parseEncode(self.buyRange[0].encode)
+            probal = 0.0
+            for fRange in self.sellRange:
+                _min, _max = encoder.parseEncode(fRange.encode)
+                if (_max <= sellMax):
+                    probal += fRange.probal
+            return probal
+
+
     def parseSellFactor(self):
         encoder = self.getSellFloatEncoder()
         sellMin, sellMax = encoder.parseEncode(self.sellRange[0].encode)

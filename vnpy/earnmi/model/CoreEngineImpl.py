@@ -212,6 +212,8 @@ class CoreEngineImpl(CoreEngine):
     def __getCollectDirPath(self):
         return  f"{self.__file_dir}/colllect"
 
+    def __getQuantFilePath(self):
+        return f"{self.__file_dir}/quantData.bin"
 
     def __getCollectFilePath(self,dimen:Dimension):
         dirPath =  f"{self.__getCollectDirPath()}/{dimen.getKey()}"
@@ -224,17 +226,67 @@ class CoreEngineImpl(CoreEngine):
         self.printLog("load() start...",True)
         with open(self.__getDimenisonFilePath(), 'rb') as fp:
             self.mAllDimension  = pickle.load(fp)
-        quantMap = {}
-        totalCount = 0
-        for dimen in self.mAllDimension:
-            colectDatas = self.loadCollectData(dimen)
-            quantData = self.computeQuantData(colectDatas)
-            quantMap[dimen] = quantData
-            totalCount += quantData.count
-        self.mQuantDataMap = quantMap
-        self.printLog(f"load() finished,总共加载{len(self.mAllDimension)}个维度数据,共{totalCount}个数据",True)
+        with open(self.__getQuantFilePath(), 'rb') as fp:
+            self.mQuantDataMap = pickle.load(fp)
 
-        assert len(quantMap) == len(self.mAllDimension)
+        self.printLog(f"load() finished,总共加载{len(self.mAllDimension)}个维度数据",True)
+        assert len(self.mQuantDataMap) == len(self.mAllDimension)
+
+    def build(self, soruce: BarDataSource, strategy: CoreStrategy):
+        self.printLog("build() start...", True)
+        self.__strategy = strategy
+        # collector.onCreate()
+        bars, code = soruce.onNextBars()
+        dataSet = {}
+        totalCount = 0
+        while not bars is None:
+            finished, stop = CoreStrategy.collectBars(bars, code, strategy)
+            self.printLog(f"collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
+            totalCount += len(finished)
+            bars, code = soruce.onNextBars()
+            for data in finished:
+                ##收录
+                listData: [] = dataSet.get(data.dimen)
+                if listData is None:
+                    listData = []
+                    dataSet[data.dimen] = listData
+                listData.append(data)
+
+        dimes = dataSet.keys()
+        self.printLog(f"总共收集到{totalCount}数据，维度个数:{len(dimes)}")
+
+        self.printLog(f"开始保存数据")
+        MIN_SIZE = 300
+        saveDimens = []
+        saveCollectCount = 0
+        maxSize = 0
+        minSize = 9999999999
+        quantMap = {}
+        for dimen, listData in dataSet.items():
+            size = len(listData)
+            if size < MIN_SIZE:
+                continue
+            quantData = self.computeQuantData(listData)
+            quantMap[dimen] = quantData
+            maxSize = max(maxSize, size)
+            minSize = min(minSize, size)
+            saveDimens.append(dimen)
+            saveCollectCount += size
+            filePath = self.__getCollectFilePath(dimen)
+            with open(filePath, 'wb+') as fp:
+                pickle.dump(listData, fp, -1)
+
+
+        with open(self.__getDimenisonFilePath(), 'wb+') as fp:
+            pickle.dump(saveDimens, fp, -1)
+
+        with open(self.__getQuantFilePath(), 'wb+') as fp:
+            pickle.dump(quantMap, fp, -1)
+
+        self.printLog(
+            f"build() finished, 总共保存{len(saveDimens)}/{len(dataSet)}个维度数据(>={MIN_SIZE})，共{saveCollectCount}个数据，其中最多{maxSize},最小{minSize}",
+            True)
+        self.load(strategy)
 
     def loadCollectData(self, dimen: Dimension) -> Sequence['CollectData']:
         filePath = self.__getCollectFilePath(dimen)
@@ -343,51 +395,6 @@ class CoreEngineImpl(CoreEngine):
                          buyCenterPct=buy_center_pct,
                          sellSplits=sellEncoder.splits,buySplits=buyEncoder.splits)
 
-    def build(self, soruce:BarDataSource, strategy:CoreStrategy):
-        self.printLog("build() start...",True)
-        self.__strategy = strategy
-        #collector.onCreate()
-        bars,code = soruce.onNextBars()
-        dataSet = {}
-        totalCount = 0
-        while not bars is None:
-           finished,stop = CoreStrategy.collectBars(bars, code, strategy)
-           self.printLog(f"collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
-           totalCount += len(finished)
-           bars, code = soruce.onNextBars()
-           for data in finished:
-               ##收录
-               listData:[] = dataSet.get(data.dimen)
-               if listData is None:
-                   listData = []
-                   dataSet[data.dimen] = listData
-               listData.append(data)
-
-        dimes = dataSet.keys()
-        self.printLog(f"总共收集到{totalCount}数据，维度个数:{len(dimes)}")
-
-        self.printLog(f"开始保存数据")
-        MIN_SIZE = 300
-        saveDimens = []
-        saveCollectCount = 0
-        maxSize = 0
-        minSize = 9999999999
-        for dimen,listData in dataSet.items():
-            size = len(listData)
-            if size  < MIN_SIZE:
-                continue
-            maxSize = max(maxSize,size)
-            minSize = min(minSize,size)
-            saveDimens.append(dimen)
-            saveCollectCount += size
-            filePath = self.__getCollectFilePath(dimen)
-            with open(filePath, 'wb+') as fp:
-                pickle.dump(listData, fp, -1)
-
-        with open(self.__getDimenisonFilePath(), 'wb+') as fp:
-            pickle.dump(saveDimens, fp, -1)
-        self.printLog(f"build() finished, 总共保存{len(saveDimens)}个维度数据(>={MIN_SIZE})，共{saveCollectCount}个数据，其中最多{maxSize},最小{minSize}",True)
-        self.load(strategy)
 
     def collect(self, bars: ['BarData']) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
         collector = self.__strategy
@@ -415,31 +422,42 @@ class CoreEngineImpl(CoreEngine):
         except BaseException:
             return None
 
-    def printTopDimension(self,low_power_pct = 0.0):
-        quant_list = []
-        dimeValues = []
-        for dimen in dimens:
-            quant = engine.queryQuantData(dimen)
-            sell_pct1, buy_pct1, dist1, probal_1 = quant.parseSellFactor()
-            if buy_pct1 >= low_power_pct:
-                quant_list.append(quant)
-                dimeValues.append(dimen.value)
+    def printTopDimension(self,pow_rate_limit = 1.0):
+
 
         def com_quant(q1, q2):
-            sell_pct1, buy_pct1, dist1, probal_1 = q1.parseSellFactor()
-            sell_pct2, buy_pct2, dist2, probal_2 = q2.parseSellFactor()
-            return buy_pct1 - buy_pct2
+            return q1.getPowerRate() - q2.getPowerRate()
 
+        print(f"做多Top列表")
+        dimeValues = []
+        quant_list = []
+        for dimen in dimens:
+            quant = engine.queryQuantData(dimen)
+            if quant.getPowerRate() >= pow_rate_limit:
+                quant_list.append(quant)
+                dimeValues.append(dimen.value)
         quant_list = sorted(quant_list, key=cmp_to_key(com_quant), reverse=True)
+        for i in range(0,len(quant_list)):
+            quant = quant_list[i]
+            encoder = quant.getSellFloatEncoder()
+            _min,_max = encoder.parseEncode(quant.sellRange[0].encode)
+            print(f"[dime:{dimeValues[i]}]: count={quant.count},pow_rate=%.3f, probal=%.2f%%,centerPct=%.2f,sell:[{_min},{_max}]" % (quant.getPowerRate(), quant.getPowerProbal(True), quant.sellCenterPct))
+        print(f"top dimeValues: {dimeValues}")
 
-        for quant in quant_list:
-            print(
-                f"quant: count={quant.count},sellCenter={quant.sellCenterPct},buyCenter = {quant.buyCenterPct}")
-            print(f"     sell=>{FloatRange.toStr(quant.sellRange, quant.getSellFloatEncoder())}")
-            print(f"     buy=>{FloatRange.toStr(quant.buyRange, quant.getBuyFloatEncoder())}")
-            sell_pct1, buy_pct1, dist1, probal_1 = quant.parseSellFactor()
-            print(f"     buy_pct1:{buy_pct1},sell_pct1:{sell_pct1},dist1:{dist1},probal_1:{probal_1}")
-
+        print(f"做空Top列表")
+        dimeValues = []
+        quant_list = []
+        for dimen in dimens:
+            quant = engine.queryQuantData(dimen)
+            if quant.getPowerRate() <= -pow_rate_limit:
+                quant_list.append(quant)
+                dimeValues.append(dimen.value)
+        quant_list = sorted(quant_list, key=cmp_to_key(com_quant), reverse=False)
+        for i in range(0,len(quant_list)):
+            quant = quant_list[i]
+            encoder = quant.getBuyFloatEncoder()
+            _min, _max = encoder.parseEncode(quant.buyRange[0].encode)
+            print(f"[dime:{dimeValues[i]}]: count={quant.count},pow_rate=%.3f, probal=%.2f%%,centerPct=%.2f,buy:[{_min},{_max}]" % (quant.getPowerRate(), quant.getPowerProbal(False), quant.buyCenterPct))
         print(f"top dimeValues: {dimeValues}")
 
 
@@ -453,7 +471,7 @@ if __name__ == "__main__":
     start = datetime(2014, 5, 1)
     end = datetime(2018, 5, 17)
     engine = CoreEngineImpl("files/impltest")
-    engine.enableLog = True
+    #engine.enableLog = True
 
     #engine.build(SWDataSource(start,end),strategy)
     engine.load(strategy)
@@ -461,7 +479,7 @@ if __name__ == "__main__":
     print(f"dimension：{dimens}")
 
     dist_list = []
-    engine.printTopDimension(0.0)
+    engine.printTopDimension()
 
     ## 一个预测案例
     # dimen = dimens[4]
