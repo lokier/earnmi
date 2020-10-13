@@ -41,12 +41,6 @@ class CoreStrategy:
         pass
 
 
-    """
-    根据预测对象，生成预测操作单
-    """
-    @abstractmethod
-    def generatePredictOrder(self,predict:PredictData)->PredictOrder:
-        pass
 
     """
     是否可以预测
@@ -62,25 +56,6 @@ class CoreStrategy:
     def getSellBuyPctLabel(self, collectData:CollectData)->Tuple[int,int]:
         pass
 
-    """
-    返回预测值的最终sell，buy预测结果。
-    """
-    def getSellBuyPctPredict(self,predict:PredictData) ->Tuple[float,float]:
-        from earnmi.model.CoreEngine import PredictModel
-        min1, max1 = PredictModel.PctEncoder1.parseEncode(predict.sellRange1[0].encode)
-        min2, max2 = PredictModel.PctEncoder2.parseEncode(predict.sellRange2[0].encode)
-        total_probal = predict.sellRange2[0].probal + predict.sellRange1[0].probal
-        predict_sell_pct = (min1 + max1) / 2 * predict.sellRange1[0].probal / total_probal + (min2 + max2) / 2 * \
-                           predict.sellRange2[0].probal / total_probal
-
-        min1, max1 = PredictModel.PctEncoder1.parseEncode(predict.buyRange1[0].encode)
-        min2, max2 = PredictModel.PctEncoder2.parseEncode(predict.buyRange2[0].encode)
-        total_probal = predict.sellRange2[0].probal + predict.sellRange1[0].probal
-        predict_buy_pct = (min1 + max1) / 2 * predict.buyRange1[0].probal / total_probal + (min2 + max2) / 2 * \
-                          predict.buyRange2[0].probal / total_probal
-
-        return predict_sell_pct, predict_buy_pct
-
 
     """
       预处理样本数据，比如，拆减等。
@@ -94,6 +69,16 @@ class CoreStrategy:
     """
     @abstractmethod
     def generateFeature(self, engine, dataList: Sequence['CollectData']):
+        pass
+
+    """
+        根据预测对象，生成预测操作单
+        """
+    def generatePredictOrder(self, predict: PredictData) -> PredictOrder:
+        pass
+
+    @abstractmethod
+    def updatePredictOrder(self, order: PredictOrder,bar:BarData,isTodayLastBar:bool):
         pass
 
     def collectBars(barList: ['BarData'],symbol:str,collector) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:

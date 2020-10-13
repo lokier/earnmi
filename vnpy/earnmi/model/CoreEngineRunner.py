@@ -15,6 +15,7 @@ from earnmi.model.CoreEngine import CoreEngine, BarDataSource,PredictModel
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
 from earnmi.model.PredictData import PredictData
+from earnmi.model.PredictOrder import PredictOrderStatus
 from earnmi.model.QuantData import QuantData
 from earnmi.model.CoreStrategy import CoreStrategy
 from earnmi.uitl.utils import utils
@@ -100,6 +101,7 @@ class CoreEngineRunner():
 
             for predict in predictList:
                 cData = predict.collectData
+
                 predict_sell_pct, predict_buy_pct = engine.getCoreStrategy().getSellBuyPctPredict(predict)
 
                 occurBar: BarData = cData.occurBars[-2]
@@ -125,6 +127,7 @@ class CoreEngineRunner():
         print(f"total:{len(topList)}")
 
         pass
+
 
     def backtest(self, soruce: BarDataSource, strategy:CoreStrategy, limit=9999999):
         bars, code = soruce.onNextBars()
@@ -194,9 +197,14 @@ class CoreEngineRunner():
             dimenData.sell_core = sell_core
             dimenData.buy_core = buy_core
             for predict in predictList:
-                deal,success,pct = self.computePredict(predict)
+                order = self.coreEngine.getCoreStrategy().generatePredictOrder(predict)
+                for bar in predict.collectData.predictBars:
+                    self.coreEngine.getCoreStrategy().updatePredictOrder(order,bar,True)
+                deal = order.status == PredictOrderStatus.CROSS
                 totalOccurPredict += 1
                 if deal:
+                    success = order.suggestSellPrice == order.sellPrice
+                    pct = 100 * (order.sellPrice - order.buyPrice) / order.buyPrice
                     totalDeal += 1
                     dimenData.count +=1
                     if success:
@@ -239,51 +247,6 @@ class CoreEngineRunner():
 
         return None
 
-    def computePredict(self,predict:PredictData):
-        deal = False
-        success = False
-        earn_pct = 0.0
-
-        collectData = predict.collectData
-        sampleQunta:QuantData = predict.quantData
-        occurBar:BarData = collectData.occurBars[-2]
-        skipBar:BarData = collectData.occurBars[-1]
-
-
-
-        sell_pct,buy_pct = engine.getCoreStrategy().getSellBuyPctLabel(collectData)
-
-        predict_sell_pct, predict_buy_pct = engine.getCoreStrategy().getSellBuyPctPredict(predict)
-        buy_price = skipBar.close_price
-        buy_point_pct = (buy_price - occurBar.close_price) / occurBar.close_price  ##买入的价格
-
-        if predict_buy_pct > 0.2 and predict_sell_pct - buy_point_pct > 2:
-            print(f"\nsample->sell{self.__getFloatRangeInfo(sampleQunta.sellRange,sampleQunta.getSellFloatEncoder())}")
-            print(f"sample->buy{self.__getFloatRangeInfo(sampleQunta.buyRange, sampleQunta.getBuyFloatEncoder())}")
-            print(f"probal_sell_1: {self.__getFloatRangeInfo(predict.sellRange1, PredictModel.PctEncoder1)}")
-            print(f"probal_sell_2: {self.__getFloatRangeInfo(predict.sellRange2, PredictModel.PctEncoder2)}")
-            print(f"probal_buy_1: {self.__getFloatRangeInfo(predict.buyRange1, PredictModel.PctEncoder1)}")
-            print(f"probal_buy_2: {self.__getFloatRangeInfo(predict.buyRange2, PredictModel.PctEncoder2)}")
-            print(f"predict->  sell:{predict_sell_pct}, buy:{predict_buy_pct},buyPoint={buy_point_pct} ")
-            print(f"real   ->  sell:{sell_pct}, buy:{buy_pct} ")
-
-            deal = True
-            max_price = -99999999
-            min_price = 999999999
-            for bar in collectData.predictBars:
-                max_price = max(max_price,bar.high_price)
-                min_price = min(min_price,bar.low_price)
-            max_pct = 100 * (max_price - occurBar.close_price) /occurBar.close_price
-            #"是否预测成功"
-            success = predict_sell_pct <= max_pct
-
-            sell_price = collectData.predictBars[-1].close_price
-            if success:
-                sell_price = occurBar.close_price * (1+predict_sell_pct / 100)
-            earn_pct = 100 * (sell_price - buy_price) / buy_price
-
-        return deal,success,earn_pct
-
 
 
 if __name__ == "__main__":
@@ -304,6 +267,13 @@ if __name__ == "__main__":
     [884]: count:61,ok:46(75.41%),earn:45,earn_pct:0.65%,loss_pct:-0.84%, 模型能力:[sell_core: 99.59,buy_core:97.93]
     总共产生813个预测,交易61个，交易率:7.50%
     total:count:61,ok:46(75.41%),earn:45,earn_pct:0.65%,loss_pct:-0.84%, 模型能力:[sell_core: 0.00,buy_core:0.00]
+    """
+
+    """
+    [884]: count:33,ok:13(39.39%),earn:17,earn_pct:1.06%,loss_pct:-1.93%, 模型能力:[sell_core: 99.65,buy_core:97.62]
+总共产生813个预测,交易33个，交易率:4.06%
+total:count:33,ok:13(39.39%),earn:17,earn_pct:1.06%,loss_pct:-1.93%, 模型能力:[sell_core: 0.00,buy_core:0.00]
+    
     """
 
     pass

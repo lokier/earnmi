@@ -155,7 +155,13 @@ class SVMPredictModel(PredictModel):
         sellOk = 0
         buyOk = 0
         for predict in predictList:
-            sell_pct,buy_pct = self.engine.getCoreStrategy().getSellBuyPctPredict(predict)
+
+            order = self.engine.getCoreStrategy().generatePredictOrder(predict)
+            start_price = predict.collectData.occurBars[-2].close_price
+            sell_pct = 100 * (order.suggestSellPrice - start_price) / start_price
+            buy_pct = 100 *(order.suggetsBuyPrice - start_price) / start_price
+
+
             sell_ok = False
             buy_ok = False
             sell_encode = PredictModel.PctEncoder1.encode(sell_pct)

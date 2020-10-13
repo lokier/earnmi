@@ -1,3 +1,4 @@
+from earnmi.data.SWImpl import SWImpl
 from earnmi.model.CoreStrategy import CoreStrategy
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
@@ -10,6 +11,7 @@ from earnmi.model.CoreEngine import CoreEngine, BarDataSource,PredictModel
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
 from earnmi.model.PredictData import PredictData
+from earnmi.model.PredictOrder import PredictOrder, PredictOrderStatus
 from earnmi.model.QuantData import QuantData
 from earnmi.model.CoreStrategy import CoreStrategy
 from vnpy.trader.object import BarData
@@ -21,6 +23,7 @@ class Strategy2kAlgo1(CoreStrategy):
     def __init__(self):
         self.lasted3Bar = np.array([None ,None ,None])
         self.lasted3BarKdj = np.array([None ,None ,None])
+        self.sw = SWImpl()
 
     def onCollectStart(self, code: str) -> bool:
         from earnmi.chart.Indicator import Indicator
@@ -171,3 +174,57 @@ class Strategy2kAlgo1(CoreStrategy):
 
         engine.printLog(f"[SVMPredictModel]: generate feature end!!!")
         return x, y_1, y_2, y_3, y_4
+
+
+    def generatePredictOrder(self, predict: PredictData) -> PredictOrder:
+
+        code = predict.collectData.occurBars[-1].symbol
+        name = self.sw.getSw2Name(code)
+        order = PredictOrder(dimen=predict.dimen,code=code,name=name)
+
+        from earnmi.model.CoreEngine import PredictModel
+        min1, max1 = PredictModel.PctEncoder1.parseEncode(predict.sellRange1[0].encode)
+        min2, max2 = PredictModel.PctEncoder2.parseEncode(predict.sellRange2[0].encode)
+        total_probal = predict.sellRange2[0].probal + predict.sellRange1[0].probal
+        predict_sell_pct = (min1 + max1) / 2 * predict.sellRange1[0].probal / total_probal + (min2 + max2) / 2 * \
+                           predict.sellRange2[0].probal / total_probal
+
+        min1, max1 = PredictModel.PctEncoder1.parseEncode(predict.buyRange1[0].encode)
+        min2, max2 = PredictModel.PctEncoder2.parseEncode(predict.buyRange2[0].encode)
+        total_probal = predict.sellRange2[0].probal + predict.sellRange1[0].probal
+        predict_buy_pct = (min1 + max1) / 2 * predict.buyRange1[0].probal / total_probal + (min2 + max2) / 2 * \
+                          predict.buyRange2[0].probal / total_probal
+
+        start_price = predict.collectData.occurBars[-2].close_price
+        order.suggestSellPrice = start_price * (1 + predict_sell_pct / 100)
+        order.suggetsBuyPrice = start_price * (1 + predict_buy_pct / 100)
+
+
+        ###for backTest
+        occurBar: BarData = predict.collectData.occurBars[-2]
+        skipBar: BarData = predict.collectData.occurBars[-1]
+        buy_price = skipBar.close_price
+        predict_sell_pct = 100 * (order.suggestSellPrice - start_price)/start_price
+        predict_buy_pct = 100 *  (order.suggetsBuyPrice - start_price)/start_price
+        buy_point_pct = 100 * (buy_price - occurBar.close_price) / occurBar.close_price  ##买入的价格
+        if predict_buy_pct > 0.2 and predict_sell_pct - buy_point_pct > 1:
+            order.status = PredictOrderStatus.HOLD
+            order.buyPrice = buy_price
+        else:
+            order.status = PredictOrderStatus.STOP
+
+        return order
+
+    def updatePredictOrder(self, order: PredictOrder,bar:BarData,isTodayLastBar:bool):
+        pass
+        if(order.status == PredictOrderStatus.HOLD):
+            if bar.high_price >= order.suggestSellPrice:
+                order.sellPrice = order.suggestSellPrice
+                order.status = PredictOrderStatus.CROSS
+                return
+            order.holdDay +=1
+            if order.holdDay >=2:
+                order.sellPrice = bar.close_price
+                order.status = PredictOrderStatus.CROSS
+                return
+
