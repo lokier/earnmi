@@ -41,6 +41,33 @@ class QuantData(object):
     def __post_init__(self):
         pass
 
+    def parseSellFactor(self):
+        encoder = self.getSellFloatEncoder()
+        sellMin, sellMax = encoder.parseEncode(self.sellRange[0].encode)
+
+        probal = 0.0
+        for fRange in self.sellRange:
+            _min, _max = encoder.parseEncode(fRange.encode)
+            if (_min >= sellMin):
+                probal += fRange.probal
+
+        buyMin, buyMax = self.getBuyFloatEncoder().parseEncode(self.buyRange[0].encode)
+        buy_power_pct = (buyMax + buyMin) / 2  # 买方力量的主力值越高，说明看多情况更好（大于0是铁定赚钱）
+        sell_power_pct = (sellMax + sellMin) / 2  # 越高说明赚钱效益更好
+        dist = sell_power_pct - buy_power_pct  # 卖方力量与买方力量距离越靠近，说明力量越统一
+
+        return sell_power_pct,buy_power_pct,dist,probal
+    """
+    """
+    def factor(self, isSell, eran=0.4, probal=0.3) -> float:
+        #卖方力量与买方力量越靠近，说明力量越统一
+        #买方的最低值越高，说明看多情况更好
+        #卖方的概率值越大，赚钱效率更高
+
+
+        pass
+
+
     def getSellFloatEncoder(self) ->FloatEncoder:
         return FloatEncoder(self.sellSplits)
 

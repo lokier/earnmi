@@ -1,6 +1,7 @@
 import os
 import timeit
 from datetime import datetime
+from functools import cmp_to_key
 from typing import Tuple, Sequence, Union
 
 import sklearn
@@ -414,6 +415,33 @@ class CoreEngineImpl(CoreEngine):
         except BaseException:
             return None
 
+    def printTopDimension(self,low_power_pct = 0.0):
+        quant_list = []
+        dimeValues = []
+        for dimen in dimens:
+            quant = engine.queryQuantData(dimen)
+            sell_pct1, buy_pct1, dist1, probal_1 = quant.parseSellFactor()
+            if buy_pct1 >= low_power_pct:
+                quant_list.append(quant)
+                dimeValues.append(dimen.value)
+
+        def com_quant(q1, q2):
+            sell_pct1, buy_pct1, dist1, probal_1 = q1.parseSellFactor()
+            sell_pct2, buy_pct2, dist2, probal_2 = q2.parseSellFactor()
+            return buy_pct1 - buy_pct2
+
+        quant_list = sorted(quant_list, key=cmp_to_key(com_quant), reverse=True)
+
+        for quant in quant_list:
+            print(
+                f"quant: count={quant.count},sellCenter={quant.sellCenterPct},buyCenter = {quant.buyCenterPct}")
+            print(f"     sell=>{FloatRange.toStr(quant.sellRange, quant.getSellFloatEncoder())}")
+            print(f"     buy=>{FloatRange.toStr(quant.buyRange, quant.getBuyFloatEncoder())}")
+            sell_pct1, buy_pct1, dist1, probal_1 = quant.parseSellFactor()
+            print(f"     buy_pct1:{buy_pct1},sell_pct1:{sell_pct1},dist1:{dist1},probal_1:{probal_1}")
+
+        print(f"top dimeValues: {dimeValues}")
+
 
 
 if __name__ == "__main__":
@@ -432,11 +460,8 @@ if __name__ == "__main__":
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 
-    for dimen in dimens:
-        quant = engine.queryQuantData(dimen)
-        print(f"quant: count={quant.count}, dimen = {dimen},sellCenter={quant.sellCenterPct},buyCenter = {quant.buyCenterPct}")
-        print(f"     sell{FloatRange.toStr(quant.sellRange, quant.getSellFloatEncoder())}")
-        print(f"     buy{FloatRange.toStr(quant.buyRange, quant.getBuyFloatEncoder())}")
+    dist_list = []
+    engine.printTopDimension(0.0)
 
     ## 一个预测案例
     # dimen = dimens[4]

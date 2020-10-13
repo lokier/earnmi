@@ -87,6 +87,13 @@ class CoreEngine():
     def loadAllDimesion(self) -> Sequence['Dimension']:
         pass
 
+    """
+     评估盈利能力，并打印出来。
+    """
+    @abstractmethod
+    def printTopDimension(self,low_power_pct = 0.0):
+        pass
+
     @abstractmethod
     def computeQuantData(self,data:Sequence['CollectData']) ->QuantData:
         pass
