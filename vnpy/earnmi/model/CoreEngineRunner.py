@@ -257,14 +257,14 @@ class CoreEngineRunner():
         buy_price = skipBar.close_price
         buy_point_pct = (buy_price - occurBar.close_price) / occurBar.close_price  ##买入的价格
 
-        if predict_buy_pct > 0.2 and predict_sell_pct > buy_point_pct:
+        if predict_buy_pct > 0.2 and predict_sell_pct - buy_point_pct > 2:
             print(f"\nsample->sell{self.__getFloatRangeInfo(sampleQunta.sellRange,sampleQunta.getSellFloatEncoder())}")
             print(f"sample->buy{self.__getFloatRangeInfo(sampleQunta.buyRange, sampleQunta.getBuyFloatEncoder())}")
             print(f"probal_sell_1: {self.__getFloatRangeInfo(predict.sellRange1, PredictModel.PctEncoder1)}")
             print(f"probal_sell_2: {self.__getFloatRangeInfo(predict.sellRange2, PredictModel.PctEncoder2)}")
             print(f"probal_buy_1: {self.__getFloatRangeInfo(predict.buyRange1, PredictModel.PctEncoder1)}")
             print(f"probal_buy_2: {self.__getFloatRangeInfo(predict.buyRange2, PredictModel.PctEncoder2)}")
-            print(f"predict->  sell:{predict_sell_pct}, buy:{predict_buy_pct} ")
+            print(f"predict->  sell:{predict_sell_pct}, buy:{predict_buy_pct},buyPoint={buy_point_pct} ")
             print(f"real   ->  sell:{sell_pct}, buy:{buy_pct} ")
 
             deal = True
@@ -293,11 +293,17 @@ if __name__ == "__main__":
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))
     from earnmi.model.Strategy2kAlgo1 import Strategy2kAlgo1
     strategy = Strategy2kAlgo1()
-    engine = CoreEngine.create(dirName,strategy,trainDataSouce)
-    #engine = CoreEngine.load(dirName,strategy)
+    #engine = CoreEngine.create(dirName,strategy,trainDataSouce)
+    engine = CoreEngine.load(dirName,strategy)
     runner = CoreEngineRunner(engine)
 
-    runner.backtest(testDataSouce,strategy,limit=99999)
+    runner.backtest(testDataSouce,strategy,limit=1)
 
+
+    """
+    [884]: count:61,ok:46(75.41%),earn:45,earn_pct:0.65%,loss_pct:-0.84%, 模型能力:[sell_core: 99.59,buy_core:97.93]
+    总共产生813个预测,交易61个，交易率:7.50%
+    total:count:61,ok:46(75.41%),earn:45,earn_pct:0.65%,loss_pct:-0.84%, 模型能力:[sell_core: 0.00,buy_core:0.00]
+    """
 
     pass

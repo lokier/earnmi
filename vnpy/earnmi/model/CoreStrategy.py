@@ -12,6 +12,7 @@ from typing import Tuple, Sequence
 
 from earnmi.model.CollectData import CollectData
 from earnmi.model.PredictData import PredictData
+from earnmi.model.PredictOrder import PredictOrder
 from vnpy.trader.object import BarData
 
 
@@ -37,6 +38,14 @@ class CoreStrategy:
         pass
 
     def onCollectEnd(self, code: str):
+        pass
+
+
+    """
+    根据预测对象，生成预测操作单
+    """
+    @abstractmethod
+    def generatePredictOrder(self,predict:PredictData)->PredictOrder:
         pass
 
     """
