@@ -33,8 +33,15 @@ class PredictModel:
 
 
     @abstractmethod
-    def predict(self, data: Tuple[CollectData, Sequence['CollectData']]) -> Tuple[PredictData, Sequence['PredictData']]:
+    def predict(self, data: Union[CollectData, Sequence['CollectData']]) -> Union[PredictData, Sequence['PredictData']]:
         # 1、加载
+        pass
+
+    """
+    返回预测结果是否匹配: isSellOk，isBuyOk
+    """
+    @abstractmethod
+    def predictResult(self,data:PredictData) -> Union[bool, bool]:
         pass
 
     """

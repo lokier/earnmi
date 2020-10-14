@@ -114,7 +114,7 @@ class SVMPredictModel(PredictModel):
             fillList.append(floatRange)
         return fillList
 
-    def predict(self, data) -> Union[PredictData, Sequence['PredictData']]:
+    def predict(self, data: Union[CollectData, Sequence['CollectData']]) -> Union[PredictData, Sequence['PredictData']]:
         single = False
         engine = self.engine
         if type(data) is CollectData:
@@ -146,6 +146,31 @@ class SVMPredictModel(PredictModel):
                 return retList
         raise RuntimeError("unsupport data！！！")
 
+    def predictResult(self, predict: PredictData) -> Union[bool, bool]:
+        order = self.engine.getCoreStrategy().generatePredictOrder(predict)
+        start_price = predict.collectData.occurBars[-2].close_price
+        sell_pct = 100 * (order.suggestSellPrice - start_price) / start_price
+        buy_pct = 100 * (order.suggetsBuyPrice - start_price) / start_price
+
+        sell_ok = False
+        buy_ok = False
+        sell_encode = PredictModel.PctEncoder1.encode(sell_pct)
+        buy_encode = PredictModel.PctEncoder1.encode(buy_pct)
+        """
+        命中前两个编码值，看做是预测成功
+        """
+        Match_INDEX_SIZE = 1
+        for i in range(0, Match_INDEX_SIZE):
+            sell_ok = sell_ok or sell_encode == predict.sellRange1[i].encode
+            buy_ok = buy_ok or buy_encode == predict.buyRange1[i].encode
+
+        sell_encode = PredictModel.PctEncoder2.encode(sell_pct)
+        buy_encode = PredictModel.PctEncoder2.encode(buy_pct)
+        for i in range(0, Match_INDEX_SIZE):
+            sell_ok = sell_ok or sell_encode == predict.sellRange2[i].encode
+            buy_ok = buy_ok or buy_encode == predict.buyRange2[i].encode
+        return sell_ok,buy_ok
+
     def selfTest(self) -> Tuple[float, float]:
         self.engine.printLog("start PredictModel.selfTest()")
         predictList: Sequence['PredictData'] = self.predict(self.trainSampleDataList)
@@ -155,31 +180,7 @@ class SVMPredictModel(PredictModel):
         sellOk = 0
         buyOk = 0
         for predict in predictList:
-
-            order = self.engine.getCoreStrategy().generatePredictOrder(predict)
-            start_price = predict.collectData.occurBars[-2].close_price
-            sell_pct = 100 * (order.suggestSellPrice - start_price) / start_price
-            buy_pct = 100 *(order.suggetsBuyPrice - start_price) / start_price
-
-
-            sell_ok = False
-            buy_ok = False
-            sell_encode = PredictModel.PctEncoder1.encode(sell_pct)
-            buy_encode = PredictModel.PctEncoder1.encode(buy_pct)
-            """
-            命中前两个编码值，看做是预测成功
-            """
-            Match_INDEX_SIZE = 1
-            for i in range(0,Match_INDEX_SIZE):
-               sell_ok = sell_ok or sell_encode == predict.sellRange1[i].encode
-               buy_ok = buy_ok or buy_encode == predict.buyRange1[i].encode
-
-            sell_encode = PredictModel.PctEncoder2.encode(sell_pct)
-            buy_encode = PredictModel.PctEncoder2.encode(buy_pct)
-            for i in range(0, Match_INDEX_SIZE):
-                sell_ok = sell_ok or sell_encode == predict.sellRange2[i].encode
-                buy_ok = buy_ok or buy_encode == predict.buyRange2[i].encode
-
+            sell_ok, buy_ok = self.predictResult(predict)
             if sell_ok:
                 sellOk +=1
             if buy_ok:
@@ -487,10 +488,9 @@ if __name__ == "__main__":
     dist_list = []
     engine.printTopDimension()
 
-    ## 一个预测案例
-    # dimen = dimens[4]
-    # model = engine.loadPredictModel(dimen)
-    # model.selfTest()
+    dimen = dimens[4]
+    model = engine.loadPredictModel(dimen)
+    model.selfTest()
 
 
     pass

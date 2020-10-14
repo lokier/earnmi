@@ -153,17 +153,21 @@ class CoreEngineRunner():
         @dataclass
         class DimenData(object):
             dimen:Dimension
+            deal_count = 0
+            predict_suc = 0
             count = 0
-            countOk = 0
+            sell_ok = 0
+            buy_ok = 0
             earn_pct = 0.0
             loss_pct = 0.0
             eran_count = 0
-            sell_core = 0.0
-            buy_core =0.0
+
+            sell_core = 0.0  ##模型的分数
+            buy_core =0.0   ##模型的分数
 
             def getOkRate(self) ->float:
-                if self.count > 0:
-                   return self.countOk / self.count
+                if self.deal_count > 0:
+                   return self.predict_suc / self.deal_count
                 return 0
 
             def __str__(self) -> str:
@@ -171,13 +175,16 @@ class CoreEngineRunner():
                 lost_pct = 0.0
                 if self.eran_count > 0:
                     earn_pct = self.earn_pct / self.eran_count
-                if self.count - self.eran_count > 0:
-                    lost_pct = self.loss_pct / (self.count - self.eran_count)
+                if self.deal_count - self.eran_count > 0:
+                    lost_pct = self.loss_pct / (self.deal_count - self.eran_count)
                 ok_rate = self.getOkRate()
-                return f"count:{self.count},ok:{self.countOk}(%.2f%%),earn:{self.eran_count}" \
+                test_sell_score = 100*self.sell_ok / self.count
+                test_buy_score = 100*self.buy_ok / self.count
+
+                return f"count:{self.count},deal_count:{self.deal_count},ok_rate:%.2f%%,earn:{self.eran_count}" \
                        f",earn_pct:%.2f%%,loss_pct:%.2f%%, " \
-                       f"模型能力:[sell_core: %.2f,buy_core:%.2f]" % \
-                       (ok_rate*100,earn_pct, lost_pct,100*self.sell_core,100*self.buy_core)
+                       f"模型能力:[sell_core: %.2f,buy_core:%.2f,test_sell_score:%.2f,test_buy_score:%.2f]" % \
+                       (ok_rate*100,earn_pct, lost_pct,100*self.sell_core,100*self.buy_core,test_sell_score,test_buy_score)
 
         dimeDataList:['DimeData'] = []
         run_cnt = 0
@@ -200,20 +207,26 @@ class CoreEngineRunner():
                 order = self.coreEngine.getCoreStrategy().generatePredictOrder(predict)
                 for bar in predict.collectData.predictBars:
                     self.coreEngine.getCoreStrategy().updatePredictOrder(order,bar,True)
+                dimenData.count +=1
+                sell_ok,buy_ok = model.predictResult(predict)
+                if sell_ok:
+                    dimenData.sell_ok +=1
+                if buy_ok:
+                    dimenData.buy_ok +=1
                 deal = order.status == PredictOrderStatus.CROSS
-                totalOccurPredict += 1
                 if deal:
-                    success = order.suggestSellPrice == order.sellPrice
+                    success = order.sellPrice == order.suggestSellPrice
+                    if success:
+                        dimenData.predict_suc +=1
                     pct = 100 * (order.sellPrice - order.buyPrice) / order.buyPrice
                     totalDeal += 1
-                    dimenData.count +=1
-                    if success:
-                        dimenData.countOk +=1
+                    dimenData.deal_count +=1
                     if pct > 0.0:
                         dimenData.earn_pct += pct
                         dimenData.eran_count +=1
                     else:
                         dimenData.loss_pct += pct
+            totalOccurPredict += dimenData.count
             dimeDataList.append(dimenData)
 
         print("\n\n")
@@ -225,10 +238,14 @@ class CoreEngineRunner():
         dimeDataList = sorted(dimeDataList, key=cmp_to_key(diemdata_cmp), reverse=False)
         for d in dimeDataList:
             total.loss_pct += d.loss_pct
-            total.count += d.count
+            total.deal_count += d.deal_count
             total.eran_count += d.eran_count
-            total.countOk += d.countOk
+            total.count += d.count
             total.earn_pct += d.earn_pct
+            total.buy_ok +=d.buy_ok
+            total.sell_ok += d.sell_ok
+            total.predict_suc += d.predict_suc
+
             print(f"[{d.dimen.value}]: {d}")
 
         deal_rate = 0.0
