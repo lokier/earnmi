@@ -8,6 +8,7 @@ import sklearn
 from sklearn.ensemble import RandomForestClassifier
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
+from earnmi.model.PredictAbilityData import PredictAbilityData
 from earnmi.model.QuantData import QuantData
 from vnpy.trader.object import BarData
 
@@ -189,6 +190,33 @@ class SVMPredictModel(PredictModel):
         buy_core = buyOk / count
         self.engine.printLog("selfTest : sell_core=%.2f, buy_core=%.2f" % (sell_core * 100,buy_core * 100))
         return sell_core,buy_core
+
+    def computeAbility(self,listData:Sequence['CollectData'])->PredictAbilityData:
+        sell_core, buy_core = self.selfTest()
+        quant = self.engine.queryQuantData(self.dimen)
+        predictList: Sequence['PredictData'] = self.predict(listData)
+        abilityData = PredictAbilityData()
+        if not quant is None:
+            abilityData.count_train = quant.count
+        abilityData.sell_score_train = sell_core
+        abilityData.buy_score_train = buy_core
+        count = 0
+        sell_ok_count = 0
+        buy_ok_count =0
+        for predict in predictList:
+            count+=1
+            sell_ok, buy_ok = self.predictResult(predict)
+            if sell_ok:
+                sell_ok_count += 1
+            if buy_ok:
+                buy_ok_count += 1
+        abilityData.count_test = count
+        if count > 0:
+            abilityData.sell_score_test = sell_ok_count / count
+            abilityData.buy_score_test = buy_ok_count / count
+
+        return abilityData
+
 
 class CoreEngineImpl(CoreEngine):
 
@@ -429,6 +457,33 @@ class CoreEngineImpl(CoreEngine):
         except BaseException:
             return None
 
+    def buildAbilityData(self, testDataSource: BarDataSource):
+        self.printLog("buildAbilityData:",True)
+        bars, code = testDataSource.onNextBars()
+        dataSet = {}
+        totalCount = 0
+        while not bars is None:
+            finished, stop = CoreStrategy.collectBars(bars, code, strategy)
+            print(f"[backtest]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
+            totalCount += len(finished)
+            bars, code = testDataSource.onNextBars()
+            for data in finished:
+                ##收录
+                listData: [] = dataSet.get(data.dimen)
+                if listData is None:
+                    listData = []
+                    dataSet[data.dimen] = listData
+                listData.append(data)
+        ablityDataMap = {}
+        for dimen, listData in dataSet.items():
+            model = self.loadPredictModel(dimen)
+            if model is None:
+                print(f"不支持的维度:{dimen}")
+                continue
+            abilityData = model.computeAbility(listData);
+            ablityDataMap[dimen] = abilityData
+        return ablityDataMap
+
     def printTopDimension(self,pow_rate_limit = 1.0):
 
 
@@ -485,12 +540,19 @@ if __name__ == "__main__":
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 
-    dist_list = []
-    engine.printTopDimension()
+    testDateSource = SWDataSource(end,datetime(2019, 5, 17))
 
-    dimen = dimens[4]
-    model = engine.loadPredictModel(dimen)
-    model.selfTest()
+    ablityDataMap = engine.buildAbilityData(testDateSource)
+
+    print(f"\n ability list:")
+    for dimen, abilityData in ablityDataMap.items():
+        print(f"dimen:{dimen} => {abilityData}")
+    # dist_list = []
+    # engine.printTopDimension()
+    #
+    # dimen = dimens[4]
+    # model = engine.loadPredictModel(dimen)
+    # model.selfTest()
 
 
     pass

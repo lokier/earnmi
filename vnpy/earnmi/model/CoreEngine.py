@@ -10,6 +10,7 @@ from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.model.CollectData import CollectData
 from earnmi.model.CoreStrategy import CoreStrategy
 from earnmi.model.Dimension import Dimension
+from earnmi.model.PredictAbilityData import PredictAbilityData
 from earnmi.model.PredictData import PredictData
 from earnmi.model.QuantData import QuantData
 
@@ -51,6 +52,10 @@ class PredictModel:
     def selfTest(self) ->Tuple[float,float]:
         pass
 
+    @abstractmethod
+    def computeAbility(self,data:Sequence['CollectData'])->PredictAbilityData:
+        pass
+
 
 class CoreEngine():
 
@@ -71,6 +76,13 @@ class CoreEngine():
         engine = CoreEngineImpl(dirName)
         engine.load(strategy)
         return engine
+    """
+    建立引擎的能力数据
+    testDataSource数据源不能跟引擎的初始数据一样。
+    """
+    @abstractmethod
+    def buildAbilityData(self,testDataSource:BarDataSource):
+        pass
 
     @abstractmethod
     def loadPredictModel(self, dimen:Dimension) ->PredictModel:
