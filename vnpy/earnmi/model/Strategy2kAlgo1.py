@@ -197,7 +197,7 @@ class Strategy2kAlgo1(CoreStrategy):
 
         start_price = predict.collectData.occurBars[-2].close_price
         order.suggestSellPrice = start_price * (1 + predict_sell_pct / 100)
-        order.suggetsBuyPrice = start_price * (1 + predict_buy_pct / 100)
+        order.suggestBuyPrice = start_price * (1 + predict_buy_pct / 100)
 
 
         ###for backTest
@@ -205,7 +205,7 @@ class Strategy2kAlgo1(CoreStrategy):
         skipBar: BarData = predict.collectData.occurBars[-1]
         buy_price = skipBar.close_price
         predict_sell_pct = 100 * (order.suggestSellPrice - start_price)/start_price
-        predict_buy_pct = 100 *  (order.suggetsBuyPrice - start_price)/start_price
+        predict_buy_pct = 100 * (order.suggestBuyPrice - start_price) / start_price
         buy_point_pct = 100 * (buy_price - occurBar.close_price) / occurBar.close_price  ##买入的价格
         if predict_buy_pct > 0.2 and predict_sell_pct - buy_point_pct > 1:
             order.status = PredictOrderStatus.HOLD

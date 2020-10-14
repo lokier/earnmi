@@ -149,31 +149,19 @@ class SVMPredictModel(PredictModel):
 
     def predictResult(self, predict: PredictData) -> Union[bool, bool]:
         order = self.engine.getCoreStrategy().generatePredictOrder(predict)
-        start_price = predict.collectData.occurBars[-2].close_price
-        sell_pct = 100 * (order.suggestSellPrice - start_price) / start_price
-        buy_pct = 100 * (order.suggetsBuyPrice - start_price) / start_price
+        high_price = -99999999
+        low_price = -high_price
+        for bar in predict.collectData.predictBars:
+            high_price = max(high_price,bar.high_price)
+            low_price = min(low_price, bar.low_price)
 
-        sell_ok = False
-        buy_ok = False
-        sell_encode = PredictModel.PctEncoder1.encode(sell_pct)
-        buy_encode = PredictModel.PctEncoder1.encode(buy_pct)
-        """
-        命中前两个编码值，看做是预测成功
-        """
-        Match_INDEX_SIZE = 1
-        for i in range(0, Match_INDEX_SIZE):
-            sell_ok = sell_ok or sell_encode == predict.sellRange1[i].encode
-            buy_ok = buy_ok or buy_encode == predict.buyRange1[i].encode
-
-        sell_encode = PredictModel.PctEncoder2.encode(sell_pct)
-        buy_encode = PredictModel.PctEncoder2.encode(buy_pct)
-        for i in range(0, Match_INDEX_SIZE):
-            sell_ok = sell_ok or sell_encode == predict.sellRange2[i].encode
-            buy_ok = buy_ok or buy_encode == predict.buyRange2[i].encode
+        ## 预测价格有无到底最高价格
+        sell_ok = high_price>=order.suggestSellPrice
+        buy_ok = low_price <= order.suggestBuyPrice
         return sell_ok,buy_ok
 
     def selfTest(self) -> Tuple[float, float]:
-        self.engine.printLog("start PredictModel.selfTest()")
+        self.engine.printLog("start PredictModel.selfTest()",True)
         predictList: Sequence['PredictData'] = self.predict(self.trainSampleDataList)
         count = len(predictList);
         if count < 0:
@@ -188,7 +176,7 @@ class SVMPredictModel(PredictModel):
                 buyOk +=1
         sell_core = sellOk / count
         buy_core = buyOk / count
-        self.engine.printLog("selfTest : sell_core=%.2f, buy_core=%.2f" % (sell_core * 100,buy_core * 100))
+        self.engine.printLog("selfTest : sell_core=%.2f, buy_core=%.2f" % (sell_core * 100,buy_core * 100),True)
         return sell_core,buy_core
 
     def computeAbility(self,listData:Sequence['CollectData'])->PredictAbilityData:
@@ -547,6 +535,8 @@ if __name__ == "__main__":
     print(f"\n ability list:")
     for dimen, abilityData in ablityDataMap.items():
         print(f"dimen:{dimen} => {abilityData}")
+
+
     # dist_list = []
     # engine.printTopDimension()
     #

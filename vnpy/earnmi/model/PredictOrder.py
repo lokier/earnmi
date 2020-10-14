@@ -36,7 +36,7 @@ class PredictOrder(object):
     suggestSellPrice:float = 0.0
 
     #最佳买入价
-    suggetsBuyPrice:float = 0.0
+    suggestBuyPrice:float = 0.0
 
     """
     """
