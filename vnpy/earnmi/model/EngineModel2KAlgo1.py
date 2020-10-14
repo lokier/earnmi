@@ -1,5 +1,5 @@
 from earnmi.data.SWImpl import SWImpl
-from earnmi.model.CoreStrategy import CoreStrategy
+from earnmi.model.CoreEngineModel import CoreEngineModel
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
 from datetime import datetime
@@ -13,12 +13,12 @@ from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
 from earnmi.model.PredictData import PredictData
 from earnmi.model.PredictOrder import PredictOrder, PredictOrderStatus
 from earnmi.model.QuantData import QuantData
-from earnmi.model.CoreStrategy import CoreStrategy
+from earnmi.model.CoreEngineModel import CoreEngineModel
 from vnpy.trader.object import BarData
 import numpy as np
 import pandas as pd
 
-class Strategy2kAlgo1(CoreStrategy):
+class EngineModel2KAlgo1(CoreEngineModel):
 
     def __init__(self):
         self.lasted3Bar = np.array([None ,None ,None])

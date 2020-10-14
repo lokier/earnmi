@@ -26,8 +26,8 @@ if __name__ == "__main__":
 
 
     trainDataSouce = SWDataSource( start = datetime(2015, 7, 1),end = datetime(2020, 8, 20))
-    from earnmi.model.Strategy2kAlgo1 import Strategy2kAlgo1
-    strategy = Strategy2kAlgo1()
+    from earnmi.model.EngineModel2KAlgo1 import EngineModel2KAlgo1
+    strategy = EngineModel2KAlgo1()
     engine = CoreEngine.create(dirName,strategy,trainDataSouce)
     #engine = CoreEngine.load(dirName,strategy)
     runner = CoreEngineRunner(engine)

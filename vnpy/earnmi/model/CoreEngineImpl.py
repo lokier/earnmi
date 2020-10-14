@@ -19,7 +19,7 @@ from earnmi.model.Dimension import Dimension, TYPE_3KAGO1, TYPE_2KAGO1
 from earnmi.model.PredictData import PredictData
 import pickle
 import numpy as np
-from earnmi.model.CoreStrategy import CoreStrategy
+from earnmi.model.CoreEngineModel import CoreEngineModel
 
 
 
@@ -66,7 +66,7 @@ class SVMPredictModel(PredictModel):
         useSVM = True
         start = timeit.default_timer()
         self.quantData = engine.queryQuantData(self.dimen)
-        trainDataList = engine.getCoreStrategy().generateSampleData(engine, sampleData)
+        trainDataList = engine.getEngineModel().generateSampleData(engine, sampleData)
         size = len(trainDataList)
         engine.printLog(f"build PredictModel:dime={self.dimen}, sample size:{size} use SVM ={useSVM}",True)
         self.trainSampleDataList = trainDataList
@@ -74,7 +74,7 @@ class SVMPredictModel(PredictModel):
 
 
         ##建立特征值
-        x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getCoreStrategy().generateFeature(engine, trainDataList)
+        x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getEngineModel().generateFeature(engine, trainDataList)
         y_sell_1 = y_sell_1.astype(int)
         y_buy_1 = y_buy_1.astype(int)
         y_sell_2 = y_sell_2.astype(int)
@@ -122,7 +122,7 @@ class SVMPredictModel(PredictModel):
             data = [data]
             single = True
         if type(data) is list:
-            x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getCoreStrategy().generateFeature(engine, data)
+            x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getEngineModel().generateFeature(engine, data)
             retList = []
             buyRange1_probal_list = self.classifierBuy_1.predict_proba(x)
             buyRange2_probal_list = self.classifierBuy_2.predict_proba(x)
@@ -148,7 +148,7 @@ class SVMPredictModel(PredictModel):
         raise RuntimeError("unsupport data！！！")
 
     def predictResult(self, predict: PredictData) -> Union[bool, bool]:
-        order = self.engine.getCoreStrategy().generatePredictOrder(predict)
+        order = self.engine.getEngineModel().generatePredictOrder(predict)
         high_price = -99999999
         low_price = -high_price
         for bar in predict.collectData.predictBars:
@@ -244,8 +244,8 @@ class CoreEngineImpl(CoreEngine):
 
 
 
-    def load(self, strategy:CoreStrategy):
-        self.__strategy = strategy
+    def load(self, model:CoreEngineModel):
+        self.__strategy = model
         self.printLog("load() start...",True)
         with open(self.__getDimenisonFilePath(), 'rb') as fp:
             self.mAllDimension  = pickle.load(fp)
@@ -255,7 +255,7 @@ class CoreEngineImpl(CoreEngine):
         self.printLog(f"load() finished,总共加载{len(self.mAllDimension)}个维度数据",True)
         assert len(self.mQuantDataMap) == len(self.mAllDimension)
 
-    def build(self, soruce: BarDataSource, strategy: CoreStrategy):
+    def build(self, soruce: BarDataSource, strategy: CoreEngineModel):
         self.printLog("build() start...", True)
         self.__strategy = strategy
         # collector.onCreate()
@@ -263,7 +263,7 @@ class CoreEngineImpl(CoreEngine):
         dataSet = {}
         totalCount = 0
         while not bars is None:
-            finished, stop = CoreStrategy.collectBars(bars, code, strategy)
+            finished, stop = CoreEngineModel.collectBars(bars, code, strategy)
             self.printLog(f"collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(finished)
             bars, code = soruce.onNextBars()
@@ -318,7 +318,7 @@ class CoreEngineImpl(CoreEngine):
             collectData = pickle.load(fp)
         return collectData
 
-    def getCoreStrategy(self) ->CoreStrategy:
+    def getEngineModel(self) ->CoreEngineModel:
         return self.__strategy
 
     def computeQuantData(self, dataList: Sequence['CollectData']) -> QuantData:
@@ -405,7 +405,7 @@ class CoreEngineImpl(CoreEngine):
         for data in dataList:
             bars: ['BarData'] = data.predictBars
             assert len(bars) > 0
-            sell_pct, buy_pct = self.getCoreStrategy().getSellBuyPctLabel(data)
+            sell_pct, buy_pct = self.getEngineModel().getSellBuyPctLabel(data)
             sell_pct_list.append(sell_pct)
             buy_pct_list.append(buy_pct)
         sellEncoder,sellRangeFloat = self.__findBestFloatEncoder(sell_pct_list,sellEncoder)
@@ -423,7 +423,7 @@ class CoreEngineImpl(CoreEngine):
         collector = self.__strategy
         #collector.onCreate()
         code = bars[0].symbol
-        finished, stop = CoreStrategy.collectBars(bars, code, collector)
+        finished, stop = CoreEngineModel.collectBars(bars, code, collector)
         return finished,stop
 
     def loadAllDimesion(self) -> Sequence['Dimension']:
@@ -451,7 +451,7 @@ class CoreEngineImpl(CoreEngine):
         dataSet = {}
         totalCount = 0
         while not bars is None:
-            finished, stop = CoreStrategy.collectBars(bars, code, strategy)
+            finished, stop = CoreEngineModel.collectBars(bars, code, strategy)
             print(f"[backtest]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(finished)
             bars, code = testDataSource.onNextBars()
@@ -513,9 +513,9 @@ class CoreEngineImpl(CoreEngine):
 
 
 if __name__ == "__main__":
-    from earnmi.model.Strategy2kAlgo1 import Strategy2kAlgo1
+    from earnmi.model.EngineModel2KAlgo1 import EngineModel2KAlgo1
 
-    strategy = Strategy2kAlgo1()
+    strategy = EngineModel2KAlgo1()
 
 
     start = datetime(2014, 5, 1)
@@ -530,19 +530,19 @@ if __name__ == "__main__":
 
     testDateSource = SWDataSource(end,datetime(2019, 5, 17))
 
-    ablityDataMap = engine.buildAbilityData(testDateSource)
-
-    print(f"\n ability list:")
-    for dimen, abilityData in ablityDataMap.items():
-        print(f"dimen:{dimen} => {abilityData}")
-
-
-    # dist_list = []
-    # engine.printTopDimension()
+    # ablityDataMap = engine.buildAbilityData(testDateSource)
     #
-    # dimen = dimens[4]
-    # model = engine.loadPredictModel(dimen)
-    # model.selfTest()
+    # print(f"\n ability list:")
+    # for dimen, abilityData in ablityDataMap.items():
+    #     print(f"dimen:{dimen} => {abilityData}")
+
+
+    dist_list = []
+    #engine.printTopDimension()
+
+    dimen = dimens[4]
+    model = engine.loadPredictModel(dimen)
+    model.selfTest()
 
 
     pass

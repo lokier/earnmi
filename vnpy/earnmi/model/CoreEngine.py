@@ -8,7 +8,7 @@ from typing import Union, Tuple, Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.model.CollectData import CollectData
-from earnmi.model.CoreStrategy import CoreStrategy
+from earnmi.model.CoreEngineModel import CoreEngineModel
 from earnmi.model.Dimension import Dimension
 from earnmi.model.PredictAbilityData import PredictAbilityData
 from earnmi.model.PredictData import PredictData
@@ -62,19 +62,19 @@ class CoreEngine():
     """
     创建CoreEngine对象。
     """
-    def create(dirName:str, strategy:CoreStrategy, dataSource:BarDataSource):
+    def create(dirName:str, model:CoreEngineModel, dataSource:BarDataSource):
         from earnmi.model.CoreEngineImpl import CoreEngineImpl
         engine = CoreEngineImpl(dirName)
-        engine.build(dataSource, strategy)
+        engine.build(dataSource, model)
         return engine
 
     """
     加载已经存在的CoreEngine对象
     """
-    def load(dirName: str, strategy: CoreStrategy):
+    def load(dirName: str, model: CoreEngineModel):
         from earnmi.model.CoreEngineImpl import CoreEngineImpl
         engine = CoreEngineImpl(dirName)
-        engine.load(strategy)
+        engine.load(model)
         return engine
     """
     建立引擎的能力数据
@@ -89,7 +89,7 @@ class CoreEngine():
         pass
 
     @abstractmethod
-    def getCoreStrategy(self) ->CoreStrategy:
+    def getEngineModel(self) ->CoreEngineModel:
         pass
 
     """

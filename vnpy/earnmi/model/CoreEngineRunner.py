@@ -17,7 +17,7 @@ from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
 from earnmi.model.PredictData import PredictData
 from earnmi.model.PredictOrder import PredictOrderStatus
 from earnmi.model.QuantData import QuantData
-from earnmi.model.CoreStrategy import CoreStrategy
+from earnmi.model.CoreEngineModel import CoreEngineModel
 from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 import numpy as np
@@ -37,7 +37,7 @@ class CoreEngineRunner():
     """
     计算未来两天最有可能涨的股票SW指数。
     """
-    def computeSWLatestTop(self, strategy:CoreStrategy,dimenValues:[]= None):
+    def computeSWLatestTop(self, strategy:CoreEngineModel, dimenValues:[]= None):
         end = utils.to_end_date(datetime.now() - timedelta(days=1))  ##昨天数据集
         start = end - timedelta(days=60)
         soruce = SWDataSource(start, end)
@@ -47,7 +47,7 @@ class CoreEngineRunner():
         canPredicCount = 0
         bars, code = soruce.onNextBars()
         while not bars is None:
-            finished, stop = CoreStrategy.collectBars(bars, code, strategy)
+            finished, stop = CoreEngineModel.collectBars(bars, code, strategy)
             print(f"[computeSWLatestTop]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             bars, code = soruce.onNextBars()
             for data in stop:
@@ -102,7 +102,7 @@ class CoreEngineRunner():
             for predict in predictList:
                 cData = predict.collectData
 
-                predict_sell_pct, predict_buy_pct = engine.getCoreStrategy().getSellBuyPctPredict(predict)
+                predict_sell_pct, predict_buy_pct = engine.getEngineModel().getSellBuyPctPredict(predict)
 
                 occurBar: BarData = cData.occurBars[-2]
                 skipBar: BarData = cData.occurBars[-1]
@@ -129,12 +129,12 @@ class CoreEngineRunner():
         pass
 
 
-    def backtest(self, soruce: BarDataSource, strategy:CoreStrategy, limit=9999999):
+    def backtest(self, soruce: BarDataSource, strategy:CoreEngineModel, limit=9999999):
         bars, code = soruce.onNextBars()
         dataSet = {}
         totalCount = 0
         while not bars is None:
-            finished, stop = CoreStrategy.collectBars(bars, code, strategy)
+            finished, stop = CoreEngineModel.collectBars(bars, code, strategy)
             print(f"[backtest]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(finished)
             bars, code = soruce.onNextBars()
@@ -204,9 +204,9 @@ class CoreEngineRunner():
             dimenData.sell_core = sell_core
             dimenData.buy_core = buy_core
             for predict in predictList:
-                order = self.coreEngine.getCoreStrategy().generatePredictOrder(predict)
+                order = self.coreEngine.getEngineModel().generatePredictOrder(predict)
                 for bar in predict.collectData.predictBars:
-                    self.coreEngine.getCoreStrategy().updatePredictOrder(order,bar,True)
+                    self.coreEngine.getEngineModel().updatePredictOrder(order, bar, True)
                 dimenData.count +=1
                 sell_ok,buy_ok = model.predictResult(predict)
                 if sell_ok:
@@ -271,8 +271,8 @@ if __name__ == "__main__":
     dirName = "files/backtest"
     trainDataSouce = SWDataSource( start = datetime(2014, 2, 1),end = datetime(2019, 9, 1))
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))
-    from earnmi.model.Strategy2kAlgo1 import Strategy2kAlgo1
-    strategy = Strategy2kAlgo1()
+    from earnmi.model.EngineModel2KAlgo1 import EngineModel2KAlgo1
+    strategy = EngineModel2KAlgo1()
     #engine = CoreEngine.create(dirName,strategy,trainDataSouce)
     engine = CoreEngine.load(dirName,strategy)
     runner = CoreEngineRunner(engine)

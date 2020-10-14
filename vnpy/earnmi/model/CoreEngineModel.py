@@ -16,7 +16,7 @@ from earnmi.model.PredictOrder import PredictOrder
 from vnpy.trader.object import BarData
 
 
-class CoreStrategy:
+class CoreEngineModel:
 
     """
     开始新的股票遍历,如果需要忽略该code，返回false。
