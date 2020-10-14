@@ -12,3 +12,6 @@ class PredictAbilityData(object):
 
     sell_score_test:float = 0
     buy_score_test:float = 0
+
+    def __post_init__(self):
+        pass

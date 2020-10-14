@@ -52,9 +52,7 @@ class PredictModel:
     def selfTest(self) ->Tuple[float,float]:
         pass
 
-    @abstractmethod
-    def computeAbility(self,data:Sequence['CollectData'])->PredictAbilityData:
-        pass
+
 
 
 class CoreEngine():
@@ -129,6 +127,10 @@ class CoreEngine():
     """
     @abstractmethod
     def queryQuantData(self,dimen:Dimension) ->QuantData:
+        pass
+
+    @abstractmethod
+    def queryPredictAbilityData(self, dimen: Dimension) -> PredictAbilityData:
         pass
 
     """

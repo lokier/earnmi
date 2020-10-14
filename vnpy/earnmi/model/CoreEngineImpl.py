@@ -6,6 +6,7 @@ from typing import Tuple, Sequence, Union
 
 import sklearn
 from sklearn.ensemble import RandomForestClassifier
+import joblib
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
 from earnmi.model.PredictAbilityData import PredictAbilityData
@@ -56,20 +57,46 @@ class SVMPredictModel(PredictModel):
         self.labelListBuy1:[] = None  ##标签值列表
         self.labelListBuy2:[] = None  ##标签值列表
 
-        self.trainSampleDataList = None  ##训练样本数据。
 
+    def save(self,dirPath:str):
+        if not os.path.exists(dirPath):
+            os.makedirs(dirPath)
+        f = open(f"{dirPath}/classifierSell_1", 'wb+')
+        f.close()
+        f = open(f"{dirPath}/classifierSell_2", 'wb+')
+        f.close()
+        f = open(f"{dirPath}/classifierBuy_1", 'wb+')
+        f.close()
+        f = open(f"{dirPath}/classifierBuy_2", 'wb+')
+        f.close()
+
+        joblib.dump(self.classifierSell_1, f"{dirPath}/classifierSell_1")
+        joblib.dump(self.classifierSell_2, f"{dirPath}/classifierSell_2")
+        joblib.dump(self.classifierBuy_1, f"{dirPath}/classifierBuy_1")
+        joblib.dump(self.classifierBuy_2, f"{dirPath}/classifierBuy_2")
+        modelBin =[self.quantData, self.labelListSell1, self.labelListSell2,self.labelListBuy1,self.labelListBuy2]
+        with open(f"{dirPath}/modelBin", 'wb+') as fp:
+            pickle.dump(modelBin, fp, -1)
+
+
+    def load(self,dirPath:str):
+        self.classifierSell_1 = joblib.load(f"{dirPath}/classifierSell_1")
+        self.classifierSell_2 = joblib.load(f"{dirPath}/classifierSell_2")
+        self.classifierBuy_1 = joblib.load(f"{dirPath}/classifierBuy_1")
+        self.classifierBuy_2 = joblib.load(f"{dirPath}/classifierBuy_2")
+        with open(f"{dirPath}/modelBin", 'rb') as fp:
+            self.quantData, self.labelListSell1, self.labelListSell2,self.labelListBuy1,self.labelListBuy2 = pickle.load(fp)
 
     """
     建造模型
     """
-    def build(self,engine:CoreEngine, sampleData:Sequence['CollectData']):
+    def build(self,engine:CoreEngine, sampleData:Sequence['CollectData'], quantData:QuantData):
         useSVM = True
         start = timeit.default_timer()
-        self.quantData = engine.queryQuantData(self.dimen)
+        self.quantData = quantData
         trainDataList = engine.getEngineModel().generateSampleData(engine, sampleData)
         size = len(trainDataList)
         engine.printLog(f"build PredictModel:dime={self.dimen}, sample size:{size} use SVM ={useSVM}",True)
-        self.trainSampleDataList = trainDataList
         engine.printLog(f"   history quantdata: {self.quantData}")
 
 
@@ -160,9 +187,9 @@ class SVMPredictModel(PredictModel):
         buy_ok = low_price <= order.suggestBuyPrice
         return sell_ok,buy_ok
 
-    def selfTest(self) -> Tuple[float, float]:
+    def testScore(self,trainSampleDataList:[]) -> Tuple[float, float]:
         self.engine.printLog("start PredictModel.selfTest()",True)
-        predictList: Sequence['PredictData'] = self.predict(self.trainSampleDataList)
+        predictList: Sequence['PredictData'] = self.predict(trainSampleDataList)
         count = len(predictList);
         if count < 0:
             return
@@ -179,31 +206,7 @@ class SVMPredictModel(PredictModel):
         self.engine.printLog("selfTest : sell_core=%.2f, buy_core=%.2f" % (sell_core * 100,buy_core * 100),True)
         return sell_core,buy_core
 
-    def computeAbility(self,listData:Sequence['CollectData'])->PredictAbilityData:
-        sell_core, buy_core = self.selfTest()
-        quant = self.engine.queryQuantData(self.dimen)
-        predictList: Sequence['PredictData'] = self.predict(listData)
-        abilityData = PredictAbilityData()
-        if not quant is None:
-            abilityData.count_train = quant.count
-        abilityData.sell_score_train = sell_core
-        abilityData.buy_score_train = buy_core
-        count = 0
-        sell_ok_count = 0
-        buy_ok_count =0
-        for predict in predictList:
-            count+=1
-            sell_ok, buy_ok = self.predictResult(predict)
-            if sell_ok:
-                sell_ok_count += 1
-            if buy_ok:
-                buy_ok_count += 1
-        abilityData.count_test = count
-        if count > 0:
-            abilityData.sell_score_test = sell_ok_count / count
-            abilityData.buy_score_test = buy_ok_count / count
 
-        return abilityData
 
 
 class CoreEngineImpl(CoreEngine):
@@ -215,8 +218,9 @@ class CoreEngineImpl(CoreEngine):
     def __init__(self, dirPath: str):
         self.mAllDimension:['Dimension'] = None
         self.mQuantDataMap:{}= None
+        self.mAbilityMap:{} = None
         self.__file_dir = dirPath
-        self.__strategy = None
+        self.__model = None
         self.enableLog = False
 
         if not os.path.exists(dirPath):
@@ -224,6 +228,10 @@ class CoreEngineImpl(CoreEngine):
         collectDir = self.__getCollectDirPath()
         if not os.path.exists(collectDir):
             os.makedirs(collectDir)
+        modelDir = self.__getModelDirPath()
+        if not os.path.exists(modelDir):
+            os.makedirs(modelDir)
+
 
     def printLog(self,info:str,forcePrint = False):
         if self.enableLog or forcePrint:
@@ -235,35 +243,45 @@ class CoreEngineImpl(CoreEngine):
     def __getCollectDirPath(self):
         return  f"{self.__file_dir}/colllect"
 
+    def __getModelDirPath(self):
+        return  f"{self.__file_dir}/model"
+
     def __getQuantFilePath(self):
         return f"{self.__file_dir}/quantData.bin"
+
+    def __getAbilityFilePath(self):
+        return f"{self.__file_dir}/abilityData.bin"
 
     def __getCollectFilePath(self,dimen:Dimension):
         dirPath =  f"{self.__getCollectDirPath()}/{dimen.getKey()}"
         return dirPath
-
+    def __getModelFilePath(self,dimen:Dimension):
+        dirPath =  f"{self.__getModelDirPath()}/{dimen.getKey()}"
+        return dirPath
 
 
     def load(self, model:CoreEngineModel):
-        self.__strategy = model
+        self.__model = model
         self.printLog("load() start...",True)
         with open(self.__getDimenisonFilePath(), 'rb') as fp:
             self.mAllDimension  = pickle.load(fp)
         with open(self.__getQuantFilePath(), 'rb') as fp:
             self.mQuantDataMap = pickle.load(fp)
+        with open(self.__getAbilityFilePath(), 'rb') as fp:
+            self.mAbilityMap = pickle.load(fp)
 
         self.printLog(f"load() finished,总共加载{len(self.mAllDimension)}个维度数据",True)
         assert len(self.mQuantDataMap) == len(self.mAllDimension)
 
-    def build(self, soruce: BarDataSource, strategy: CoreEngineModel):
+    def build(self, soruce: BarDataSource, model: CoreEngineModel,split_rate = 0.7,limit_dimen_size = -1):
         self.printLog("build() start...", True)
-        self.__strategy = strategy
+        self.__model = model
         # collector.onCreate()
         bars, code = soruce.onNextBars()
         dataSet = {}
         totalCount = 0
         while not bars is None:
-            finished, stop = CoreEngineModel.collectBars(bars, code, strategy)
+            finished, stop = CoreEngineModel.collectBars(bars, code, model)
             self.printLog(f"collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(finished)
             bars, code = soruce.onNextBars()
@@ -276,10 +294,29 @@ class CoreEngineImpl(CoreEngine):
                 listData.append(data)
 
         dimes = dataSet.keys()
-        self.printLog(f"总共收集到{totalCount}数据，维度个数:{len(dimes)}")
+        self.printLog(f"总共收集到{totalCount}数据，维度个数:{len(dimes)}",True)
 
-        self.printLog(f"开始保存数据")
         MIN_SIZE = 300
+        fitlerDataSet = {}
+        __the_count = 0
+        for dimen, listData in dataSet.items():
+            if limit_dimen_size > 0 and limit_dimen_size <= __the_count:
+                ##限制个数
+                break
+            size = len(listData)
+            if size >= MIN_SIZE:
+                __the_count +=1
+                fitlerDataSet[dimen] = listData
+
+        dataSet = fitlerDataSet
+        self.__saveDimeenAndQuantData(dataSet)
+        self.__buildAndSaveModelData(split_rate)
+        self.printLog(f"创建模型完成",True)
+
+        self.load(model)
+
+    def __saveDimeenAndQuantData(self,dataSet:{}):
+        self.printLog(f"开始保存数据",True)
         saveDimens = []
         saveCollectCount = 0
         maxSize = 0
@@ -287,8 +324,6 @@ class CoreEngineImpl(CoreEngine):
         quantMap = {}
         for dimen, listData in dataSet.items():
             size = len(listData)
-            if size < MIN_SIZE:
-                continue
             quantData = self.computeQuantData(listData)
             quantMap[dimen] = quantData
             maxSize = max(maxSize, size)
@@ -299,7 +334,6 @@ class CoreEngineImpl(CoreEngine):
             with open(filePath, 'wb+') as fp:
                 pickle.dump(listData, fp, -1)
 
-
         with open(self.__getDimenisonFilePath(), 'wb+') as fp:
             pickle.dump(saveDimens, fp, -1)
 
@@ -307,9 +341,67 @@ class CoreEngineImpl(CoreEngine):
             pickle.dump(quantMap, fp, -1)
 
         self.printLog(
-            f"build() finished, 总共保存{len(saveDimens)}/{len(dataSet)}个维度数据(>={MIN_SIZE})，共{saveCollectCount}个数据，其中最多{maxSize},最小{minSize}",
+            f"build() finished, 总共保存{len(saveDimens)}/{len(dataSet)}个维度数据，共{saveCollectCount}个数据，其中最多{maxSize},最小{minSize}",
             True)
-        self.load(strategy)
+
+    def __buildAndSaveModelData(self,split_rate:float):
+
+        dimen_list:Sequence['Dimension'] = []
+        with open(self.__getDimenisonFilePath(), 'rb') as fp:
+            dimen_list = pickle.load(fp)
+
+        abilityDataMap = {}
+        count = len(dimen_list)
+        run_count = 0
+        for dimen in dimen_list:
+            run_count +=1
+            self.printLog(f"正在计算并保存模型数据：dime={dimen},progress={run_count}/{count}", True)
+            dataList = self.loadCollectData(dimen)
+            size = len(dataList)
+            trainSize = int( size* split_rate)
+            trainDataList:Sequence['CollectData'] = []
+            testDataList:Sequence['CollectData'] = []
+            split_date = None
+
+            #quant_list = sorted(quant_list, key=cmp_to_key(com_quant), reverse=True)
+
+            for i in range(0,size):
+                data = dataList[i]
+                if i < trainSize:
+                    trainDataList.append(data)
+                elif i == trainSize:
+                    testDataList.append(data)
+                    split_date = data.occurBars[-1].datetime
+                else:
+                    testDataList.append(data)
+                    ##确保切割的时间顺序
+                    #assert  data.occurBars[-1].datetime >= split_date
+            model,ablityData = self.__buildAndSavePredictModel(dimen,trainDataList,testDataList)
+            abilityDataMap[dimen] = ablityData
+            ##save模型
+            model.save(self.__getModelFilePath(dimen))
+
+        ##saveAbliitTy
+        with open(self.__getAbilityFilePath(), 'wb+') as fp:
+            pickle.dump(abilityDataMap, fp, -1)
+        pass
+    def __buildAndSavePredictModel(self, dimen:Dimension,trainDataList:Sequence['CollectData'],testDataList:Sequence['CollectData']):
+        self.printLog("buildAbilityData:", True)
+        trainQauntData = self.computeQuantData(trainDataList)
+        model = SVMPredictModel(self, dimen)
+        model.build(self, trainDataList,trainQauntData)
+        sell_score_train, buy_score_train=  model.testScore(trainDataList)  ##训练集验证分数
+        sell_score_test, buy_score_test=  model.testScore(testDataList)  ##训练集验证分数
+
+        abilityData = PredictAbilityData()
+        abilityData.count_train = len(trainDataList)
+        abilityData.sell_score_train = sell_score_train
+        abilityData.buy_score_train = buy_score_train
+        abilityData.count_test = len(testDataList)
+        abilityData.sell_score_test = sell_score_test
+        abilityData.buy_score_test = buy_score_test
+        return model,abilityData
+
 
     def loadCollectData(self, dimen: Dimension) -> Sequence['CollectData']:
         filePath = self.__getCollectFilePath(dimen)
@@ -319,7 +411,7 @@ class CoreEngineImpl(CoreEngine):
         return collectData
 
     def getEngineModel(self) ->CoreEngineModel:
-        return self.__strategy
+        return self.__model
 
     def computeQuantData(self, dataList: Sequence['CollectData']) -> QuantData:
         return self.__computeQuantData(CoreEngineImpl.quantFloatEncoder,CoreEngineImpl.quantFloatEncoder,dataList)
@@ -420,7 +512,7 @@ class CoreEngineImpl(CoreEngine):
 
 
     def collect(self, bars: ['BarData']) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
-        collector = self.__strategy
+        collector = self.__model
         #collector.onCreate()
         code = bars[0].symbol
         finished, stop = CoreEngineModel.collectBars(bars, code, collector)
@@ -432,45 +524,19 @@ class CoreEngineImpl(CoreEngine):
     def queryQuantData(self, dimen: Dimension) -> QuantData:
         return self.mQuantDataMap.get(dimen)
 
+    def queryPredictAbilityData(self, dimen: Dimension) -> PredictAbilityData:
+        return self.mAbilityMap.get(dimen)
+
     def loadPredictModel(self, dimen: Dimension) -> PredictModel:
         try:
-            collectDataList = self.loadCollectData(dimen)
-            if collectDataList is None:
-                return None
             model = SVMPredictModel(self,dimen)
-            model.build(self,collectDataList)
+            model.load(self.__getModelFilePath(dimen))
             return model
         except FileNotFoundError:
             return None
         except BaseException:
             return None
 
-    def buildAbilityData(self, testDataSource: BarDataSource):
-        self.printLog("buildAbilityData:",True)
-        bars, code = testDataSource.onNextBars()
-        dataSet = {}
-        totalCount = 0
-        while not bars is None:
-            finished, stop = CoreEngineModel.collectBars(bars, code, strategy)
-            print(f"[backtest]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
-            totalCount += len(finished)
-            bars, code = testDataSource.onNextBars()
-            for data in finished:
-                ##收录
-                listData: [] = dataSet.get(data.dimen)
-                if listData is None:
-                    listData = []
-                    dataSet[data.dimen] = listData
-                listData.append(data)
-        ablityDataMap = {}
-        for dimen, listData in dataSet.items():
-            model = self.loadPredictModel(dimen)
-            if model is None:
-                print(f"不支持的维度:{dimen}")
-                continue
-            abilityData = model.computeAbility(listData);
-            ablityDataMap[dimen] = abilityData
-        return ablityDataMap
 
     def printTopDimension(self,pow_rate_limit = 1.0):
 
@@ -515,7 +581,7 @@ class CoreEngineImpl(CoreEngine):
 if __name__ == "__main__":
     from earnmi.model.EngineModel2KAlgo1 import EngineModel2KAlgo1
 
-    strategy = EngineModel2KAlgo1()
+    engineModel = EngineModel2KAlgo1()
 
 
     start = datetime(2014, 5, 1)
@@ -523,8 +589,8 @@ if __name__ == "__main__":
     engine = CoreEngineImpl("files/impltest")
     #engine.enableLog = True
 
-    #engine.build(SWDataSource(start,end),strategy)
-    engine.load(strategy)
+    #engine.build(SWDataSource(start,end), engineModel)
+    engine.load(engineModel)
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 
@@ -532,17 +598,15 @@ if __name__ == "__main__":
 
     # ablityDataMap = engine.buildAbilityData(testDateSource)
     #
-    # print(f"\n ability list:")
-    # for dimen, abilityData in ablityDataMap.items():
-    #     print(f"dimen:{dimen} => {abilityData}")
+    print(f"\n ability list:")
+    for dimen in dimens:
+        abilityData = engine.queryPredictAbilityData(dimen)
+        print(f"dimen:{dimen} => {abilityData}")
 
 
     dist_list = []
     #engine.printTopDimension()
 
-    dimen = dimens[4]
-    model = engine.loadPredictModel(dimen)
-    model.selfTest()
 
 
     pass
