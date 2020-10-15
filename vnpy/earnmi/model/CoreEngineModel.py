@@ -63,18 +63,8 @@ class CoreEngineModel:
     def generateYLabel(self, engine, cData:CollectData)->[float,float,float]:
         pass
 
-    """
-    --------------------------------------------------------------------
-        根据预测对象，生成预测操作单
-        """
-    def generatePredictOrder(self, engine, predict: PredictData) -> PredictOrder:
-        pass
-
-    @abstractmethod
-    def updatePredictOrder(self, order: PredictOrder,bar:BarData,isTodayLastBar:bool):
-        pass
-
-    def collectBars(barList: ['BarData'],symbol:str,collector) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
+    def collectBars(self,barList: ['BarData'],symbol:str) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
+        collector = self
         collector.onCollectStart(symbol)
         traceItems = []
         finishedData = []

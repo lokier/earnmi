@@ -310,7 +310,7 @@ class CoreEngineImpl(CoreEngine):
         dataSet = {}
         totalCount = 0
         while not bars is None:
-            finished, stop = CoreEngineModel.collectBars(bars, code, model)
+            finished, stop = model.collectBars(bars, code)
             self.printLog(f"collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(finished)
             bars, code = soruce.onNextBars()
@@ -550,10 +550,10 @@ class CoreEngineImpl(CoreEngine):
 
 
     def collect(self, bars: ['BarData']) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
-        collector = self.__model
+        model = self.__model
         #collector.onCreate()
         code = bars[0].symbol
-        finished, stop = CoreEngineModel.collectBars(bars, code, collector)
+        finished, stop = model.collectBars(bars, code)
         return finished,stop
 
     def loadAllDimesion(self) -> Sequence['Dimension']:
@@ -627,7 +627,7 @@ if __name__ == "__main__":
     engine = CoreEngineImpl("files/impltest")
     engine.enableLog = True
 
-    #engine.build(SWDataSource(start,end), engineModel,limit_dimen_size = 2)
+    engine.build(SWDataSource(start,end), engineModel,limit_dimen_size = 2)
     engine.load(engineModel)
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
