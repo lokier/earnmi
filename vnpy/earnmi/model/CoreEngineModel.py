@@ -64,14 +64,23 @@ class CoreEngineModel:
         return collectList
 
     """
-    生成特征值。(有4个标签）
-    返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
+    生成X特征值。(有4个标签）
+    返回值为：[[x1,x2,x3....],[x1,x2,x3..]...]
     """
     @abstractmethod
-    def generateFeature(self, engine, dataList: Sequence['CollectData']):
+    def generateXFeature(self, engine, cData:CollectData)->[]:
         pass
 
     """
+    返回Y标签值。[basePrice,sellPrice,buyPrice]
+    通过三个值，可以计算得出买方力量和卖方里的涨跌幅度标签值。
+    """
+    @abstractmethod
+    def generateYLabel(self, engine, cData:CollectData)->[float,float,float]:
+        pass
+
+    """
+    --------------------------------------------------------------------
         根据预测对象，生成预测操作单
         """
     def generatePredictOrder(self, engine, predict: PredictData) -> PredictOrder:

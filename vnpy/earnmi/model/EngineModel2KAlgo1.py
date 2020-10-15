@@ -65,72 +65,88 @@ class EngineModel2KAlgo1(CoreEngineModel):
     def canPredict(self,collectData:CollectData)->bool:
         return len(collectData.occurBars)>= 3
 
-    def getSellBuyPctLabel(self, collectData: CollectData):
-        bars: ['BarData'] = collectData.predictBars
+    # def getSellBuyPctLabel(self, collectData: CollectData):
+    #     bars: ['BarData'] = collectData.predictBars
+    #     if len(bars) > 0:
+    #         occurBar = collectData.occurBars[-2]
+    #         startPrice = occurBar.close_price
+    #         sell_pct = -99999
+    #         buy_pct = 9999999
+    #         for bar in bars:
+    #             __sell_pct = 100 * ((bar.high_price + bar.close_price) / 2 - startPrice) / startPrice
+    #             __buy_pct = 100 * ((bar.low_price + bar.close_price) / 2 - startPrice) / startPrice
+    #             sell_pct = max(__sell_pct, sell_pct)
+    #             buy_pct = min(__buy_pct, buy_pct)
+    #         return sell_pct, buy_pct
+    #     return None, None
+
+    @abstractmethod
+    def generateYLabel(self, engine, cData:CollectData)->[float,float,float]:
+        bars: ['BarData'] = cData.predictBars
         if len(bars) > 0:
-            occurBar = collectData.occurBars[-2]
+            occurBar = cData.occurBars[-2]
             startPrice = occurBar.close_price
-            sell_pct = -99999
-            buy_pct = 9999999
+            sell_price = -9999999999
+            buy_price = - sell_price
             for bar in bars:
-                __sell_pct = 100 * ((bar.high_price + bar.close_price) / 2 - startPrice) / startPrice
-                __buy_pct = 100 * ((bar.low_price + bar.close_price) / 2 - startPrice) / startPrice
-                sell_pct = max(__sell_pct, sell_pct)
-                buy_pct = min(__buy_pct, buy_pct)
-            return sell_pct, buy_pct
-        return None, None
+                sell_price = max((bar.high_price + bar.close_price) / 2,sell_price)
+                buy_price = min((bar.low_price + bar.close_price) / 2,buy_price)
+            return startPrice, sell_price,buy_price
+        return None, None,None
 
-    def __genereatePd(self, dataList: Sequence['CollectData']):
-        trainDataSet = []
-        for traceData in dataList:
-            occurBar = traceData.occurBars[-2]
-            skipBar = traceData.occurBars[-1]
-            sell_pct = 100 * (
-                    (skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
-            buy_pct = 100 * (
-                    (skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
+    # def __genereatePd(self, dataList: Sequence['CollectData']):
+    #     trainDataSet = []
+    #     for traceData in dataList:
+    #         occurBar = traceData.occurBars[-2]
+    #         skipBar = traceData.occurBars[-1]
+    #         sell_pct = 100 * (
+    #                 (skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
+    #         buy_pct = 100 * (
+    #                 (skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
+    #
+    #         label_sell_1 = None
+    #         label_buy_1 = None
+    #         label_sell_2 = None
+    #         label_buy_2 = None
+    #         if len(traceData.predictBars) > 0:
+    #             real_sell_pct, real_buy_pct = self.getSellBuyPctLabel(traceData)
+    #             label_sell_1 = PredictModel.PctEncoder1.encode(real_sell_pct)
+    #             label_buy_1 = PredictModel.PctEncoder1.encode(real_buy_pct)
+    #             label_sell_2 = PredictModel.PctEncoder2.encode(real_sell_pct)
+    #             label_buy_2 = PredictModel.PctEncoder2.encode(real_buy_pct)
+    #
+    #         kdj = traceData.occurKdj[-1]
+    #
+    #         data = []
+    #         data.append(buy_pct)
+    #         data.append(sell_pct)
+    #         data.append(kdj[0])
+    #         data.append(kdj[2])
+    #         data.append(label_sell_1)
+    #         data.append(label_buy_1)
+    #         data.append(label_sell_2)
+    #         data.append(label_buy_2)
+    #         trainDataSet.append(data)
+    #     cloumns = ["buy_pct",
+    #                "sell_pct",
+    #                "k",
+    #                "j",
+    #                "label_sell_1",
+    #                "label_buy_1",
+    #                "label_sell_2",
+    #                "label_buy_2",
+    #                ]
+    #     orgin_pd = pd.DataFrame(trainDataSet, columns=cloumns)
+    #     return orgin_pd
 
-            label_sell_1 = None
-            label_buy_1 = None
-            label_sell_2 = None
-            label_buy_2 = None
-            if len(traceData.predictBars) > 0:
-                real_sell_pct, real_buy_pct = self.getSellBuyPctLabel(traceData)
-                label_sell_1 = PredictModel.PctEncoder1.encode(real_sell_pct)
-                label_buy_1 = PredictModel.PctEncoder1.encode(real_buy_pct)
-                label_sell_2 = PredictModel.PctEncoder2.encode(real_sell_pct)
-                label_buy_2 = PredictModel.PctEncoder2.encode(real_buy_pct)
-
-            kdj = traceData.occurKdj[-1]
-
-            data = []
-            data.append(buy_pct)
-            data.append(sell_pct)
-            data.append(kdj[0])
-            data.append(kdj[2])
-            data.append(label_sell_1)
-            data.append(label_buy_1)
-            data.append(label_sell_2)
-            data.append(label_buy_2)
-            trainDataSet.append(data)
-        cloumns = ["buy_pct",
-                   "sell_pct",
-                   "k",
-                   "j",
-                   "label_sell_1",
-                   "label_buy_1",
-                   "label_sell_2",
-                   "label_buy_2",
-                   ]
-        orgin_pd = pd.DataFrame(trainDataSet, columns=cloumns)
-        return orgin_pd
-
-    """
-    生成特征值。(有4个标签）
-    返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
-    """
-    def generateFeature(self, engine, dataList: Sequence['CollectData']):
-        engine.printLog(f"[SVMPredictModel]: generate feature")
+    def generateXFeature(self, engine, cData: CollectData) -> []:
+        occurBar = cData.occurBars[-2]
+        skipBar = cData.occurBars[-1]
+        kdj = cData.occurKdj[-1]
+        sell_pct = 100 * (
+                (skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
+        buy_pct = 100 * (
+                (skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
 
         def set_0_between_100(x):
             if x > 100:
@@ -142,38 +158,63 @@ class EngineModel2KAlgo1(CoreEngineModel):
         def percent_to_one(x):
             return int(x * 100) / 1000.0
 
-        def toInt(x):
-            v = int(x + 0.5)
-            if v > 10:
-                v = 10
-            if v < -10:
-                v = -10
-            return v
+        data = []
+        data.append(percent_to_one(buy_pct))
+        data.append(percent_to_one(sell_pct))
+        data.append(set_0_between_100(kdj[0])/100)
+        data.append(set_0_between_100(kdj[2])/100)
+        return data
 
-        d = self.__genereatePd(dataList)
-        engine.printLog(f"   origin:\n{d.head()}")
 
-        d['buy_pct'] = d.buy_pct.apply(percent_to_one)  # 归一化
-        d['sell_pct'] = d.sell_pct.apply(percent_to_one)  # 归一化
-        d.k = d.k.apply(set_0_between_100)
-        d.j = d.j.apply(set_0_between_100)
-        d.k = d.k / 100
-        d.j = d.j / 100
-        engine.printLog(f"   convert:\n{d.head()}")
-        data = d.values
-        x, y = np.split(data, indices_or_sections=(4,), axis=1)  # x为数据，y为标签
-        y_1 = y[:, 0:1].flatten()  # 取第一列
-        y_2 = y[:, 1:2].flatten()  # 取第一列
-        y_3 = y[:, 2:3].flatten()  # 取第一列
-        y_4 = y[:, 3:4].flatten()  # 取第一列
-
-        engine.printLog(f"   y_1:\n{y_1}")
-        engine.printLog(f"   y_2:\n{y_2}")
-        engine.printLog(f"   y_3:\n{y_3}")
-        engine.printLog(f"   y_4:\n{y_4}")
-
-        engine.printLog(f"[SVMPredictModel]: generate feature end!!!")
-        return x, y_1, y_2, y_3, y_4
+    """
+    生成特征值。(有4个标签）
+    返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
+    """
+    # def generateFeature(self, engine, dataList: Sequence['CollectData']):
+    #     engine.printLog(f"[SVMPredictModel]: generate feature")
+    #
+    #     def set_0_between_100(x):
+    #         if x > 100:
+    #             return 100
+    #         if x < 0:
+    #             return 0
+    #         return x
+    #
+    #     def percent_to_one(x):
+    #         return int(x * 100) / 1000.0
+    #
+    #     def toInt(x):
+    #         v = int(x + 0.5)
+    #         if v > 10:
+    #             v = 10
+    #         if v < -10:
+    #             v = -10
+    #         return v
+    #
+    #     d = self.__genereatePd(dataList)
+    #     engine.printLog(f"   origin:\n{d.head()}")
+    #
+    #     d['buy_pct'] = d.buy_pct.apply(percent_to_one)  # 归一化
+    #     d['sell_pct'] = d.sell_pct.apply(percent_to_one)  # 归一化
+    #     d.k = d.k.apply(set_0_between_100)
+    #     d.j = d.j.apply(set_0_between_100)
+    #     d.k = d.k / 100
+    #     d.j = d.j / 100
+    #     engine.printLog(f"   convert:\n{d.head()}")
+    #     data = d.values
+    #     x, y = np.split(data, indices_or_sections=(4,), axis=1)  # x为数据，y为标签
+    #     y_1 = y[:, 0:1].flatten()  # 取第一列
+    #     y_2 = y[:, 1:2].flatten()  # 取第一列
+    #     y_3 = y[:, 2:3].flatten()  # 取第一列
+    #     y_4 = y[:, 3:4].flatten()  # 取第一列
+    #
+    #     engine.printLog(f"   y_1:\n{y_1}")
+    #     engine.printLog(f"   y_2:\n{y_2}")
+    #     engine.printLog(f"   y_3:\n{y_3}")
+    #     engine.printLog(f"   y_4:\n{y_4}")
+    #
+    #     engine.printLog(f"[SVMPredictModel]: generate feature end!!!")
+    #     return x, y_1, y_2, y_3, y_4
 
 
     def generatePredictOrder(self,engine:CoreEngine, predict: PredictData) -> PredictOrder:

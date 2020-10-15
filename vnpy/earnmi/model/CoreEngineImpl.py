@@ -102,11 +102,7 @@ class SVMPredictModel(PredictModel):
 
 
         ##建立特征值
-        x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getEngineModel().generateFeature(engine, trainDataList)
-        y_sell_1 = y_sell_1.astype(int)
-        y_buy_1 = y_buy_1.astype(int)
-        y_sell_2 = y_sell_2.astype(int)
-        y_buy_2 = y_buy_2.astype(int)
+        x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.__generateFeature(trainDataList)
         self.labelListSell1 = np.sort(np.unique(y_sell_1))
         self.labelListSell2 = np.sort(np.unique(y_sell_2))
         self.labelListBuy1 = np.sort(np.unique(y_buy_1))
@@ -124,6 +120,34 @@ class SVMPredictModel(PredictModel):
         elapsed = (timeit.default_timer() - start)
         engine.printLog(f"build PredictModel finished! elapsed = %.3fs" % (elapsed),True)
         pass
+
+    """
+        生成特征值。(有4个标签）
+        返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
+        """
+    def __generateFeature(self, dataList: Sequence['CollectData']):
+        model = self.engine.getEngineModel()
+        x_features = []
+        y_sell_1 = []
+        y_buy_1 = []
+        y_sell_2 = []
+        y_buy_2 = []
+        for cData in dataList:
+            x = model.generateXFeature(self.engine,cData)
+            x_features.append(x)
+            basePrice, sellPrice, buyPrice = model.generateYLabel(self.engine, cData)
+            real_sell_pct = 100 * (sellPrice - basePrice) / basePrice
+            real_buy_pct = 100 * (buyPrice - basePrice) / basePrice
+            label_sell_1 = PredictModel.PctEncoder1.encode(real_sell_pct)
+            label_buy_1 = PredictModel.PctEncoder1.encode(real_buy_pct)
+            label_sell_2 = PredictModel.PctEncoder2.encode(real_sell_pct)
+            label_buy_2 = PredictModel.PctEncoder2.encode(real_buy_pct)
+            y_sell_1.append(label_sell_1)
+            y_buy_1.append(label_buy_1)
+            y_sell_2.append(label_sell_2)
+            y_buy_2.append(label_buy_2)
+
+        return np.array(x_features),np.array(y_sell_1),np.array(y_buy_1),np.array(y_sell_2),np.array(y_buy_2)
 
     def __createClassifier(self,x,y,useSVM=True):
         classifier = None
@@ -149,8 +173,12 @@ class SVMPredictModel(PredictModel):
         if type(data) is CollectData:
             data = [data]
             single = True
+        model = self.engine.getEngineModel()
+
         if type(data) is list:
-            x, y_sell_1,y_buy_1,y_sell_2,y_buy_2 = engine.getEngineModel().generateFeature(engine, data)
+            x = []
+            for cData in data:
+                x.append(model.generateXFeature(self.engine,cData))
             retList = []
             buyRange1_probal_list = self.classifierBuy_1.predict_proba(x)
             buyRange2_probal_list = self.classifierBuy_2.predict_proba(x)
@@ -493,6 +521,12 @@ class CoreEngineImpl(CoreEngine):
             return FloatRange.sort(rangeList)
         return rangeList
 
+    def __getSellBuyPctLabel(self,cData:CollectData):
+        basePrice, sellPrice, buyPrice = self.getEngineModel().generateYLabel(self, cData)
+        __sell_pct = 100 * (sellPrice - basePrice) / basePrice
+        __buy_pct = 100 * (buyPrice - basePrice) / basePrice
+        return __sell_pct,__buy_pct
+
     def __computeQuantData(self,sellEncoder:FloatEncoder,buyEncoder:FloatEncoder,dataList: Sequence['CollectData']):
 
         sell_pct_list = []
@@ -501,7 +535,7 @@ class CoreEngineImpl(CoreEngine):
         for data in dataList:
             bars: ['BarData'] = data.predictBars
             assert len(bars) > 0
-            sell_pct, buy_pct = self.getEngineModel().getSellBuyPctLabel(data)
+            sell_pct, buy_pct = self.__getSellBuyPctLabel(data)
             sell_pct_list.append(sell_pct)
             buy_pct_list.append(buy_pct)
         sellEncoder,sellRangeFloat = self.__findBestFloatEncoder(sell_pct_list,sellEncoder)
@@ -591,10 +625,10 @@ if __name__ == "__main__":
     start = datetime(2014, 5, 1)
     end = datetime(2018, 5, 17)
     engine = CoreEngineImpl("files/impltest")
-    #engine.enableLog = True
+    engine.enableLog = True
 
-    #engine.build(SWDataSource(start,end), engineModel)
-    engine.load(engineModel)
+    engine.build(SWDataSource(start,end), engineModel,limit_dimen_size = 2)
+    #engine.load(engineModel)
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 
@@ -607,10 +641,11 @@ if __name__ == "__main__":
         abilityData = engine.queryPredictAbilityData(dimen)
         print(f"dimen:{dimen} => {abilityData}")
 
-
     dist_list = []
     #engine.printTopDimension()
+"""
+ ability list:
+dimen:Dimension(type=1, value=709) => PredictAbilityData(count_train=2218, count_test=951, sell_score_train=0.6501352569882777, buy_score_train=0.7326420198376916, sell_score_test=0.6456361724500526, buy_score_test=0.7181913774973712)
+dimen:Dimension(type=1, value=886) => PredictAbilityData(count_train=2941, count_test=1261, sell_score_train=0.6756205372322339, buy_score_train=0.7521251275076505, sell_score_test=0.6502775574940524, buy_score_test=0.7565424266455194)
+"""
 
-
-
-    pass
