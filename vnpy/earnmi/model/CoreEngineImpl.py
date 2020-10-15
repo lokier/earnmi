@@ -565,15 +565,15 @@ class CoreEngineImpl(CoreEngine):
     def queryPredictAbilityData(self, dimen: Dimension) -> PredictAbilityData:
         return self.mAbilityMap.get(dimen)
 
+    def isSupport(self, dimen: Dimension) -> bool:
+        return not self.queryQuantData(dimen) is None
+
     def loadPredictModel(self, dimen: Dimension) -> PredictModel:
-        try:
+        if self.isSupport(dimen):
             model = SVMPredictModel(self,dimen)
             model.load(self.__getModelFilePath(dimen))
             return model
-        except FileNotFoundError:
-            return None
-        except BaseException:
-            return None
+        return None
 
 
     def printTopDimension(self,pow_rate_limit = 1.0):
@@ -627,8 +627,8 @@ if __name__ == "__main__":
     engine = CoreEngineImpl("files/impltest")
     engine.enableLog = True
 
-    engine.build(SWDataSource(start,end), engineModel,limit_dimen_size = 2)
-    #engine.load(engineModel)
+    #engine.build(SWDataSource(start,end), engineModel,limit_dimen_size = 2)
+    engine.load(engineModel)
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 

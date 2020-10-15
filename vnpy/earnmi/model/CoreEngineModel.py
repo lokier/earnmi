@@ -41,22 +41,6 @@ class CoreEngineModel:
         pass
 
 
-
-    """
-    是否可以预测
-    """
-    @abstractmethod
-    def canPredict(self,collectData:CollectData)->bool:
-        pass
-
-    """
-      返回收集对象的买与卖方的标签值。 是一个乘以100的百分比值。
-    """
-    @abstractmethod
-    def getSellBuyPctLabel(self, collectData:CollectData)->Tuple[int,int]:
-        pass
-
-
     """
       预处理样本数据，比如，拆减等。
     """

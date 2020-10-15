@@ -51,7 +51,9 @@ class CoreEngineRunner():
             print(f"[computeSWLatestTop]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             bars, code = soruce.onNextBars()
             for data in stop:
-                if not strategy.canPredict(data):
+                _basePrice,dd,xx = strategy.generateYLabel(self.coreEngine,data)
+                noPredict =   _basePrice is None
+                if  noPredict:
                     continue
                 allow_predict = True
                 if len(dimenValues) > 0:
@@ -274,8 +276,8 @@ if __name__ == "__main__":
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))
     from earnmi.model.EngineModel2KAlgo1 import EngineModel2KAlgo1
     strategy = EngineModel2KAlgo1()
-    #engine = CoreEngine.create(dirName,strategy,trainDataSouce)
-    engine = CoreEngine.load(dirName,strategy)
+    engine = CoreEngine.create(dirName,strategy,trainDataSouce)
+    #engine = CoreEngine.load(dirName,strategy)
     runner = CoreEngineRunner(engine)
 
     runner.backtest(testDataSouce,strategy,limit=1)

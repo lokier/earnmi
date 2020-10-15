@@ -61,10 +61,10 @@ class CoreEngine():
     """
     创建CoreEngine对象。
     """
-    def create(dirName:str, model:CoreEngineModel, dataSource:BarDataSource):
+    def create(dirName:str, model:CoreEngineModel, dataSource:BarDataSource,split_rate = 0.7,limit_dimen_size = -1):
         from earnmi.model.CoreEngineImpl import CoreEngineImpl
         engine = CoreEngineImpl(dirName)
-        engine.build(dataSource, model)
+        engine.build(dataSource, model,split_rate,limit_dimen_size)
         return engine
 
     """
@@ -91,7 +91,9 @@ class CoreEngine():
     def getEngineModel(self) ->CoreEngineModel:
         pass
 
-
+    @abstractmethod
+    def isSupport(self,dimen:Dimension) ->bool:
+        pass
     """
     加载所有的维度
     """
