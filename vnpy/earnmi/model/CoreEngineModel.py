@@ -49,7 +49,7 @@ class CoreEngineModel:
 
     """
     生成X特征值。(有4个标签）
-    返回值为：[[x1,x2,x3....],[x1,x2,x3..]...]
+    返回值为：[x1,x2,x3....]
     """
     @abstractmethod
     def generateXFeature(self, engine, cData:CollectData)->[]:

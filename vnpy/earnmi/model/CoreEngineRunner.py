@@ -276,11 +276,11 @@ if __name__ == "__main__":
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))
     from earnmi.model.EngineModel2KAlgo1 import EngineModel2KAlgo1
     strategy = EngineModel2KAlgo1()
-    engine = CoreEngine.create(dirName,strategy,trainDataSouce)
-    #engine = CoreEngine.load(dirName,strategy)
+    #engine = CoreEngine.create(dirName,strategy,trainDataSouce)
+    engine = CoreEngine.load(dirName,strategy)
     runner = CoreEngineRunner(engine)
 
-    runner.backtest(testDataSouce,strategy,limit=1)
+    runner.backtest(testDataSouce,strategy)
 
 
     """
