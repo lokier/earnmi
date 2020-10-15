@@ -74,7 +74,7 @@ class CoreEngineModel:
     """
         根据预测对象，生成预测操作单
         """
-    def generatePredictOrder(self, predict: PredictData) -> PredictOrder:
+    def generatePredictOrder(self, engine, predict: PredictData) -> PredictOrder:
         pass
 
     @abstractmethod

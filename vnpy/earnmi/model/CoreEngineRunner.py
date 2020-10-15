@@ -198,13 +198,14 @@ class CoreEngineRunner():
                 continue
             run_cnt +=1
             print(f"开始回测维度:{dimen},进度:[{run_cnt}/{limit_size}]")
-            sell_core,buy_core = model.selfTest()
             predictList: Sequence['PredictData'] = model.predict(listData)
             dimenData = DimenData(dimen=dimen)
-            dimenData.sell_core = sell_core
-            dimenData.buy_core = buy_core
+            abilityData = engine.queryPredictAbilityData(dimen)
+            dimenData.sell_core = abilityData.sell_score_train
+            dimenData.buy_core = abilityData.buy_score_train
             for predict in predictList:
-                order = self.coreEngine.getEngineModel().generatePredictOrder(predict)
+                order = self.coreEngine.getEngineModel().generatePredictOrder(self.coreEngine,predict)
+
                 for bar in predict.collectData.predictBars:
                     self.coreEngine.getEngineModel().updatePredictOrder(order, bar, True)
                 dimenData.count +=1

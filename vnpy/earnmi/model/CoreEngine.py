@@ -12,6 +12,7 @@ from earnmi.model.CoreEngineModel import CoreEngineModel
 from earnmi.model.Dimension import Dimension
 from earnmi.model.PredictAbilityData import PredictAbilityData
 from earnmi.model.PredictData import PredictData
+from earnmi.model.PredictOrder import PredictOrder
 from earnmi.model.QuantData import QuantData
 
 from vnpy.trader.object import BarData
@@ -90,12 +91,6 @@ class CoreEngine():
     def getEngineModel(self) ->CoreEngineModel:
         pass
 
-    """
-    收集ColletorData数据，返回已经完成的CollectData, 未完成的CollectData
-    """
-    @abstractmethod
-    def collect(self,bars:['BarData']) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
-        pass
 
     """
     加载所有的维度

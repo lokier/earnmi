@@ -38,6 +38,8 @@ class PredictOrder(object):
     #最佳买入价
     suggestBuyPrice:float = 0.0
 
+    max_hold_day = 0
+
     """
     """
     buyPrice:float = None

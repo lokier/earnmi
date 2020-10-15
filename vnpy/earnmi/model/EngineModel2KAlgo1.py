@@ -176,7 +176,7 @@ class EngineModel2KAlgo1(CoreEngineModel):
         return x, y_1, y_2, y_3, y_4
 
 
-    def generatePredictOrder(self, predict: PredictData) -> PredictOrder:
+    def generatePredictOrder(self,engine:CoreEngine, predict: PredictData) -> PredictOrder:
 
         code = predict.collectData.occurBars[-1].symbol
         name = self.sw.getSw2Name(code)
@@ -199,8 +199,7 @@ class EngineModel2KAlgo1(CoreEngineModel):
         order.suggestSellPrice = start_price * (1 + predict_sell_pct / 100)
         order.suggestBuyPrice = start_price * (1 + predict_buy_pct / 100)
 
-
-        ###for backTest
+        ##for backTest
         occurBar: BarData = predict.collectData.occurBars[-2]
         skipBar: BarData = predict.collectData.occurBars[-1]
         buy_price = skipBar.close_price
@@ -214,6 +213,8 @@ class EngineModel2KAlgo1(CoreEngineModel):
             order.status = PredictOrderStatus.STOP
 
         return order
+
+
 
     def updatePredictOrder(self, order: PredictOrder,bar:BarData,isTodayLastBar:bool):
         pass

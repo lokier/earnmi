@@ -10,6 +10,7 @@ import joblib
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
 from earnmi.model.PredictAbilityData import PredictAbilityData
+from earnmi.model.PredictOrder import PredictOrder
 from earnmi.model.QuantData import QuantData
 from vnpy.trader.object import BarData
 
@@ -175,7 +176,7 @@ class SVMPredictModel(PredictModel):
         raise RuntimeError("unsupport data！！！")
 
     def predictResult(self, predict: PredictData) -> Union[bool, bool]:
-        order = self.engine.getEngineModel().generatePredictOrder(predict)
+        order = self.engine.getEngineModel().generatePredictOrder(self.engine,predict)
         high_price = -99999999
         low_price = -high_price
         for bar in predict.collectData.predictBars:
