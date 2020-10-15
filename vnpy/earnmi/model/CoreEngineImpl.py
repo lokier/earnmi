@@ -339,7 +339,8 @@ class CoreEngineImpl(CoreEngine):
 
         with open(self.__getQuantFilePath(), 'wb+') as fp:
             pickle.dump(quantMap, fp, -1)
-
+        self.mAllDimension = saveDimens
+        self.mQuantDataMap = quantMap
         self.printLog(
             f"build() finished, 总共保存{len(saveDimens)}/{len(dataSet)}个维度数据，共{saveCollectCount}个数据，其中最多{maxSize},最小{minSize}",
             True)
@@ -376,16 +377,18 @@ class CoreEngineImpl(CoreEngine):
                     testDataList.append(data)
                     ##确保切割的时间顺序
                     #assert  data.occurBars[-1].datetime >= split_date
-            model,ablityData = self.__buildAndSavePredictModel(dimen,trainDataList,testDataList)
+            ablityData = self.__buildModelAbility(dimen, trainDataList, testDataList)
             abilityDataMap[dimen] = ablityData
-            ##save模型
+            ##保存模型
+            model = SVMPredictModel(self, dimen)
+            model.build(self, dataList, self.mQuantDataMap[dimen])
             model.save(self.__getModelFilePath(dimen))
 
         ##saveAbliitTy
         with open(self.__getAbilityFilePath(), 'wb+') as fp:
             pickle.dump(abilityDataMap, fp, -1)
         pass
-    def __buildAndSavePredictModel(self, dimen:Dimension,trainDataList:Sequence['CollectData'],testDataList:Sequence['CollectData']):
+    def __buildModelAbility(self, dimen:Dimension, trainDataList:Sequence['CollectData'], testDataList:Sequence['CollectData']):
         self.printLog("buildAbilityData:", True)
         trainQauntData = self.computeQuantData(trainDataList)
         model = SVMPredictModel(self, dimen)
@@ -400,7 +403,7 @@ class CoreEngineImpl(CoreEngine):
         abilityData.count_test = len(testDataList)
         abilityData.sell_score_test = sell_score_test
         abilityData.buy_score_test = buy_score_test
-        return model,abilityData
+        return abilityData
 
 
     def loadCollectData(self, dimen: Dimension) -> Sequence['CollectData']:
