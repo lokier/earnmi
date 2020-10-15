@@ -16,6 +16,7 @@ from earnmi.model.CoreEngine import CoreEngine, BarDataSource,PredictModel
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.CoreEngineStrategy import CoreEngineStrategy
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
+from earnmi.model.PredictAbilityData import PredictAbilityData
 from earnmi.model.PredictData import PredictData
 from earnmi.model.PredictOrder import PredictOrderStatus, PredictOrder
 from earnmi.model.QuantData import QuantData
@@ -169,15 +170,18 @@ class CoreEngineRunner():
             loss_pct = 0.0
             eran_count = 0
             power_rate = 0.0
-
-            sell_core = 0.0  ##模型的分数
-            buy_core =0.0   ##模型的分数
+            quant:QuantData = None
+            abilityData:PredictAbilityData = None
 
             def getOkRate(self) ->float:
                 if self.deal_count > 0:
                    return self.predict_suc / self.deal_count
                 return 0
 
+            def getSellScore(self):
+                return  100*self.sell_ok / self.count
+            def getBuyScore(self):
+                return 100*self.buy_ok / self.count
 
             def __str__(self) -> str:
                 earn_pct = 0.0
@@ -187,13 +191,11 @@ class CoreEngineRunner():
                 if self.deal_count - self.eran_count > 0:
                     lost_pct = self.loss_pct / (self.deal_count - self.eran_count)
                 ok_rate = self.getOkRate()
-                test_sell_score = 100*self.sell_ok / self.count
-                test_buy_score = 100*self.buy_ok / self.count
 
-                return f"count:{self.count},deal_count:{self.deal_count},ok_rate:%.2f%%,earn:{self.eran_count}" \
+                return f"count:{self.count}(test_sell_score:%.2f,test_buy_score:%.2f),deal_count:{self.deal_count},ok_rate:%.2f%%,earn:{self.eran_count}" \
                        f",earn_pct:%.2f%%,loss_pct:%.2f%%, " \
-                       f"模型能力:[pow:%.2f,sell_core: %.2f,buy_core:%.2f,test_sell_score:%.2f,test_buy_score:%.2f]" % \
-                       (ok_rate*100,earn_pct, lost_pct,self.power_rate,100*self.sell_core,100*self.buy_core,test_sell_score,test_buy_score)
+                       f"模型能力:[pow:%.2f]" % \
+                       (self.getSellScore(),self.getBuyScore(),ok_rate*100,earn_pct, lost_pct,self.power_rate)
 
         dimeDataList:['DimeData'] = []
         run_cnt = 0
@@ -210,8 +212,9 @@ class CoreEngineRunner():
             predictList: Sequence['PredictData'] = model.predict(listData)
             dimenData = DimenData(dimen=dimen)
             abilityData = engine.queryPredictAbilityData(dimen)
-            dimenData.sell_core = abilityData.sell_score_train
-            dimenData.buy_core = abilityData.buy_score_train
+            dimenData.abilityData = abilityData
+            dimenData.quant = engine.queryQuantData(dimen)
+
             for predict in predictList:
                 order = strategy.generatePredictOrder(self.coreEngine,predict)
 
@@ -244,10 +247,35 @@ class CoreEngineRunner():
         total = DimenData(dimen=None)
 
         def diemdata_cmp(v1,v2):
-            return v1.power_rate - v2.power_rate
+            return v1.getOkRate() - v2.getOkRate()
 
         dimeDataList = sorted(dimeDataList, key=cmp_to_key(diemdata_cmp), reverse=False)
+        columns = ["dimen","count","dealCount","okRate","eranCnt","earnPct","lossPct","sellScore","buyScore",
+                   "量化数据:","power","count","预测能力:","countTrain","sellScoreTrain","buyScoreTrain","countTest","SellScoreTest","buyScoreTest"]
+        values = []
         for d in dimeDataList:
+            item = []
+            item.append(d.dimen.value)
+            item.append(d.count)
+            item.append(d.deal_count)
+            item.append(d.getOkRate())
+            item.append(d.eran_count)
+            item.append(d.earn_pct)
+            item.append(d.loss_pct)
+            item.append(d.getSellScore())
+            item.append(d.getBuyScore())
+            item.append("")
+            item.append(d.power_rate)
+            item.append(d.quant.count)
+            item.append("")
+            item.append(d.abilityData.count_train)
+            item.append(d.abilityData.sell_score_train)
+            item.append(d.abilityData.buy_score_train)
+            item.append(d.abilityData.count_test)
+            item.append(d.abilityData.sell_score_test)
+            item.append(d.abilityData.buy_score_test)
+            values.append(item)
+
             total.loss_pct += d.loss_pct
             total.deal_count += d.deal_count
             total.eran_count += d.eran_count
@@ -265,6 +293,8 @@ class CoreEngineRunner():
 
         print(f"总共产生{totalOccurPredict}个预测,交易{totalDeal}个，交易率:%.2f%%" % (100 *deal_rate))
         print(f"total:{total}")
+
+        return pd.DataFrame(values, columns=columns)
 
     def __getFloatRangeInfo(self,ranges:['FloatRange'],encoder:FloatEncoder):
         return FloatRange.toStr(ranges,encoder)
@@ -334,13 +364,16 @@ if __name__ == "__main__":
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))
     from earnmi.model.EngineModel2KAlgo1 import EngineModel2KAlgo1
     model = EngineModel2KAlgo1()
-    #engine = CoreEngine.create(dirName,strategy,trainDataSouce)
+    #engine = CoreEngine.create(dirName,model,trainDataSouce)
     engine = CoreEngine.load(dirName,model)
     runner = CoreEngineRunner(engine)
     strategy = MyStrategy()
-    runner.backtest(testDataSouce,strategy)
+    pdData = runner.backtest(testDataSouce,strategy)
 
-
+    writer = pd.ExcelWriter('files\CoreEngineRunner.xlsx')
+    pdData.to_excel(writer, sheet_name="data", index=False)
+    writer.save()
+    writer.close()
     """
     [884]: count:61,ok:46(75.41%),earn:45,earn_pct:0.65%,loss_pct:-0.84%, 模型能力:[sell_core: 99.59,buy_core:97.93]
     总共产生813个预测,交易61个，交易率:7.50%
