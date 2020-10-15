@@ -168,6 +168,7 @@ class CoreEngineRunner():
             earn_pct = 0.0
             loss_pct = 0.0
             eran_count = 0
+            power_rate = 0.0
 
             sell_core = 0.0  ##模型的分数
             buy_core =0.0   ##模型的分数
@@ -176,6 +177,7 @@ class CoreEngineRunner():
                 if self.deal_count > 0:
                    return self.predict_suc / self.deal_count
                 return 0
+
 
             def __str__(self) -> str:
                 earn_pct = 0.0
@@ -190,8 +192,8 @@ class CoreEngineRunner():
 
                 return f"count:{self.count},deal_count:{self.deal_count},ok_rate:%.2f%%,earn:{self.eran_count}" \
                        f",earn_pct:%.2f%%,loss_pct:%.2f%%, " \
-                       f"模型能力:[sell_core: %.2f,buy_core:%.2f,test_sell_score:%.2f,test_buy_score:%.2f]" % \
-                       (ok_rate*100,earn_pct, lost_pct,100*self.sell_core,100*self.buy_core,test_sell_score,test_buy_score)
+                       f"模型能力:[pow:%.2f,sell_core: %.2f,buy_core:%.2f,test_sell_score:%.2f,test_buy_score:%.2f]" % \
+                       (ok_rate*100,earn_pct, lost_pct,self.power_rate,100*self.sell_core,100*self.buy_core,test_sell_score,test_buy_score)
 
         dimeDataList:['DimeData'] = []
         run_cnt = 0
@@ -229,6 +231,7 @@ class CoreEngineRunner():
                     pct = 100 * (order.sellPrice - order.buyPrice) / order.buyPrice
                     totalDeal += 1
                     dimenData.deal_count +=1
+                    dimenData.power_rate = order.power_rate
                     if pct > 0.0:
                         dimenData.earn_pct += pct
                         dimenData.eran_count +=1
@@ -241,7 +244,7 @@ class CoreEngineRunner():
         total = DimenData(dimen=None)
 
         def diemdata_cmp(v1,v2):
-            return v1.getOkRate() - v2.getOkRate()
+            return v1.power_rate - v2.power_rate
 
         dimeDataList = sorted(dimeDataList, key=cmp_to_key(diemdata_cmp), reverse=False)
         for d in dimeDataList:
@@ -298,6 +301,7 @@ if __name__ == "__main__":
             start_price = predict.collectData.occurBars[-2].close_price
             order.suggestSellPrice = start_price * (1 + predict_sell_pct / 100)
             order.suggestBuyPrice = start_price * (1 + predict_buy_pct / 100)
+            order.power_rate = engine.queryQuantData(predict.dimen).getPowerRate()
 
             ##for backTest
             occurBar: BarData = predict.collectData.occurBars[-2]

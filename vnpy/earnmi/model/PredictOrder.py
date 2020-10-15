@@ -30,7 +30,7 @@ class PredictOrder(object):
     """
     多空力量比例
     """
-    pow_rate:float = 0.0
+    power_rate:float = 0.0
 
     #最佳卖出价
     suggestSellPrice:float = 0.0
