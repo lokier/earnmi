@@ -239,7 +239,7 @@ class EngineModel2KAlgo1(CoreEngineModel):
         predict_sell_pct = 100 * (order.suggestSellPrice - start_price)/start_price
         predict_buy_pct = 100 * (order.suggestBuyPrice - start_price) / start_price
         buy_point_pct = 100 * (buy_price - occurBar.close_price) / occurBar.close_price  ##买入的价格
-        if predict_buy_pct > 0.2 and predict_sell_pct - buy_point_pct > 1:
+        if predict_buy_pct > 0.2 and predict_sell_pct - buy_point_pct > 1 and predict.getPowerRate() > 0.5:
             order.status = PredictOrderStatus.HOLD
             order.buyPrice = buy_price
         else:

@@ -135,7 +135,7 @@ class CoreEngineRunner():
         pass
 
 
-    def backtest(self, soruce: BarDataSource, strategy:CoreEngineStrategy, limit=9999999):
+    def backtest(self, soruce: BarDataSource, strategy:CoreEngineStrategy, min_deal_count = -1):
         bars, code = soruce.onNextBars()
         dataSet = {}
         totalCount = 0
@@ -201,7 +201,7 @@ class CoreEngineRunner():
 
         dimeDataList:['DimeData'] = []
         run_cnt = 0
-        limit_size = min(limit,len(dataSet))
+        limit_size = len(dataSet)
         for dimen, listData in dataSet.items():
             if run_cnt >= limit_size:
                 break
@@ -260,9 +260,8 @@ class CoreEngineRunner():
                    "量化数据:","power","count","sCPct","bCPct","预测能力:","countTrain","sScoreTrain","bScoreTrain","countTest","sScoreTest","bScoreTest"]
         values = []
         for d in dimeDataList:
-
-            if d.deal_count < 15:
-                continue
+            if d.deal_count < min_deal_count:
+                 continue
 
             item = []
             item.append(d.dimen.value)
@@ -380,7 +379,7 @@ if __name__ == "__main__":
     engine = CoreEngine.load(dirName,model)
     runner = CoreEngineRunner(engine)
     strategy = MyStrategy()
-    pdData = runner.backtest(testDataSouce,strategy)
+    pdData = runner.backtest(testDataSouce,strategy,min_deal_count = 15)
 
     writer = pd.ExcelWriter('files\CoreEngineRunner.xlsx')
     pdData.to_excel(writer, sheet_name="data", index=False)

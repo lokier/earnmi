@@ -197,7 +197,7 @@ class SVMPredictModel(PredictModel):
                 pData.buyRange2 = FloatRange.sort(floatBuyRangeList2)
                 pData.sellRange1 = FloatRange.sort(floatSellRangeList1)
                 pData.sellRange2 = FloatRange.sort(floatSellRangeList2)
-
+                #print(f"===> predict powerate: {pData.getPowerRate()}"  )
                 retList.append(pData)
             if single:
                 return retList[-1]
