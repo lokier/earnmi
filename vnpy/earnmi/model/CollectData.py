@@ -1,9 +1,14 @@
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 
 from earnmi.model.Dimension import Dimension
 from vnpy.trader.object import BarData
 
+class DataStatus(Enum):
+    UNKONW = "unkonw"  # 正在追踪交易
+    COLLECT_OK = "collect_ok"  # 收集完成
+    PREDICT_OK = "predict_ok"
 
 @dataclass
 class CollectData(object):

@@ -81,7 +81,7 @@ class EngineModel2KAlgo1(CoreEngineModel):
     #     return None, None
 
     @abstractmethod
-    def generateYLabel(self, engine, cData:CollectData)->[float,float,float]:
+    def generateYLabel(self, cData:CollectData)->[float,float,float]:
         bars: ['BarData'] = cData.predictBars
         if len(bars) > 0:
             occurBar = cData.occurBars[-2]
@@ -139,7 +139,10 @@ class EngineModel2KAlgo1(CoreEngineModel):
     #     orgin_pd = pd.DataFrame(trainDataSet, columns=cloumns)
     #     return orgin_pd
 
-    def generateXFeature(self, engine, cData: CollectData) -> []:
+    def generateXFeature(self, cData: CollectData) -> []:
+        #保证len小于三，要不然就不能作为生成特征值。
+        if(len(cData.occurBars) < 3):
+            return None
         occurBar = cData.occurBars[-2]
         skipBar = cData.occurBars[-1]
         kdj = cData.occurKdj[-1]

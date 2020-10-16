@@ -48,11 +48,11 @@ class CoreEngineModel:
         return collectList
 
     """
-    生成X特征值。(有4个标签）
+    生成X特征值。
     返回值为：[x1,x2,x3....]
     """
     @abstractmethod
-    def generateXFeature(self, engine, cData:CollectData)->[]:
+    def generateXFeature(self, cData:CollectData)->[]:
         pass
 
     """
@@ -60,7 +60,7 @@ class CoreEngineModel:
     通过三个值，可以计算得出买方力量和卖方里的涨跌幅度标签值。
     """
     @abstractmethod
-    def generateYLabel(self, engine, cData:CollectData)->[float,float,float]:
+    def generateYLabel(self, cData:CollectData)->[float,float,float]:
         pass
 
     def collectBars(self,barList: ['BarData'],symbol:str) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
@@ -85,6 +85,8 @@ class CoreEngineModel:
 
         ###将要结束，未追踪完的traceData
         for traceObject in traceItems:
-            stopData.append(traceObject)
+            xFeature = self.generateXFeature(traceObject)
+            if not xFeature is None:
+                stopData.append(traceObject)
         collector.onCollectEnd(symbol)
         return finishedData,stopData

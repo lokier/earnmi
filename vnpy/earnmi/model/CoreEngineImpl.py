@@ -133,9 +133,9 @@ class SVMPredictModel(PredictModel):
         y_sell_2 = []
         y_buy_2 = []
         for cData in dataList:
-            x = model.generateXFeature(self.engine,cData)
+            x = model.generateXFeature(cData)
             x_features.append(x)
-            basePrice, sellPrice, buyPrice = model.generateYLabel(self.engine, cData)
+            basePrice, sellPrice, buyPrice = model.generateYLabel(cData)
             real_sell_pct = 100 * (sellPrice - basePrice) / basePrice
             real_buy_pct = 100 * (buyPrice - basePrice) / basePrice
             label_sell_1 = PredictModel.PctEncoder1.encode(real_sell_pct)
@@ -178,7 +178,7 @@ class SVMPredictModel(PredictModel):
         if type(data) is list:
             x = []
             for cData in data:
-                x.append(model.generateXFeature(self.engine,cData))
+                x.append(model.generateXFeature(cData))
             retList = []
             buyRange1_probal_list = self.classifierBuy_1.predict_proba(x)
             buyRange2_probal_list = self.classifierBuy_2.predict_proba(x)
@@ -376,6 +376,15 @@ class CoreEngineImpl(CoreEngine):
 
     def __buildAndSaveModelData(self,split_rate:float):
 
+        def cmp_collectdata_time(c1:CollectData,c2:CollectData):
+            d1 = c1.occurBars[-1].datetime
+            d2 = c2.occurBars[-1].datetime
+            if d1 < d2:
+                return -1
+            if d1 == d2:
+                return 0
+            return 1
+
         dimen_list:Sequence['Dimension'] = []
         with open(self.__getDimenisonFilePath(), 'rb') as fp:
             dimen_list = pickle.load(fp)
@@ -391,10 +400,9 @@ class CoreEngineImpl(CoreEngine):
             trainSize = int( size* split_rate)
             trainDataList:Sequence['CollectData'] = []
             testDataList:Sequence['CollectData'] = []
+
+            dataList = sorted(dataList, key=cmp_to_key(cmp_collectdata_time), reverse=False)
             split_date = None
-
-            #quant_list = sorted(quant_list, key=cmp_to_key(com_quant), reverse=True)
-
             for i in range(0,size):
                 data = dataList[i]
                 if i < trainSize:
@@ -405,7 +413,8 @@ class CoreEngineImpl(CoreEngine):
                 else:
                     testDataList.append(data)
                     ##确保切割的时间顺序
-                    #assert  data.occurBars[-1].datetime >= split_date
+                    assert  data.occurBars[-1].datetime >= split_date
+
             ablityData = self.__buildModelAbility(dimen, trainDataList, testDataList)
             abilityDataMap[dimen] = ablityData
             ##保存模型
@@ -522,7 +531,7 @@ class CoreEngineImpl(CoreEngine):
         return rangeList
 
     def __getSellBuyPctLabel(self,cData:CollectData):
-        basePrice, sellPrice, buyPrice = self.getEngineModel().generateYLabel(self, cData)
+        basePrice, sellPrice, buyPrice = self.getEngineModel().generateYLabel( cData)
         __sell_pct = 100 * (sellPrice - basePrice) / basePrice
         __buy_pct = 100 * (buyPrice - basePrice) / basePrice
         return __sell_pct,__buy_pct
