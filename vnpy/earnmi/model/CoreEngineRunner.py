@@ -213,9 +213,9 @@ class CoreEngineRunner():
             print(f"开始回测维度:{dimen},进度:[{run_cnt}/{limit_size}]")
             predictList: Sequence['PredictData'] = model.predict(listData)
             dimenData = DimenData(dimen=dimen)
-            abilityData = engine.queryPredictAbilityData(dimen)
+            abilityData = self.coreEngine.queryPredictAbilityData(dimen)
             dimenData.abilityData = abilityData
-            dimenData.quant = engine.queryQuantData(dimen)
+            dimenData.quant = self.coreEngine.queryQuantData(dimen)
             dimenData.power_predict = 0
 
             for predict in predictList:
@@ -329,17 +329,9 @@ if __name__ == "__main__":
             name = self.sw.getSw2Name(code)
             order = PredictOrder(dimen=predict.dimen, code=code, name=name)
             from earnmi.model.CoreEngine import PredictModel
-            min1, max1 = PredictModel.PctEncoder1.parseEncode(predict.sellRange1[0].encode)
-            min2, max2 = PredictModel.PctEncoder2.parseEncode(predict.sellRange2[0].encode)
-            total_probal = predict.sellRange2[0].probal + predict.sellRange1[0].probal
-            predict_sell_pct = (min1 + max1) / 2 * predict.sellRange1[0].probal / total_probal + (min2 + max2) / 2 * \
-                               predict.sellRange2[0].probal / total_probal
-            min1, max1 = PredictModel.PctEncoder1.parseEncode(predict.buyRange1[0].encode)
-            min2, max2 = PredictModel.PctEncoder2.parseEncode(predict.buyRange2[0].encode)
-            total_probal = predict.sellRange2[0].probal + predict.sellRange1[0].probal
-            predict_buy_pct = (min1 + max1) / 2 * predict.buyRange1[0].probal / total_probal + (min2 + max2) / 2 * \
-                              predict.buyRange2[0].probal / total_probal
-            start_price = predict.collectData.occurBars[-2].close_price
+            predict_sell_pct = predict.getPredictSellPct()
+            predict_buy_pct = predict.getPredictSellPct()
+            start_price = engine.getEngineModel().getYBasePrice(predict.collectData)
             order.suggestSellPrice = start_price * (1 + predict_sell_pct / 100)
             order.suggestBuyPrice = start_price * (1 + predict_buy_pct / 100)
             order.power_rate = engine.queryQuantData(predict.dimen).getPowerRate()
@@ -351,6 +343,19 @@ if __name__ == "__main__":
             predict_sell_pct = 100 * (order.suggestSellPrice - start_price) / start_price
             predict_buy_pct = 100 * (order.suggestBuyPrice - start_price) / start_price
             buy_point_pct = 100 * (buy_price - occurBar.close_price) / occurBar.close_price  ##买入的价格
+
+            abilityData = engine.queryPredictAbilityData(predict.dimen)
+            quantData = engine.queryQuantData(predict.dimen)
+            delta = abs(quantData.sellCenterPct) - abs(quantData.buyCenterPct)
+            if abs(delta) < 0.05:
+                # 多空力量差不多
+                power = 0
+            if delta > 0:
+                # 适合做多
+                power= (quantData.sellCenterPct + quantData.buyCenterPct) / quantData.sellCenterPct
+            else:
+                power = - (quantData.sellCenterPct + quantData.buyCenterPct) / quantData.buyCenterPct
+
             if predict_buy_pct > 0.2 and predict_sell_pct - buy_point_pct > 1:
                 order.status = PredictOrderStatus.HOLD
                 order.buyPrice = buy_price
@@ -375,8 +380,8 @@ if __name__ == "__main__":
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))
     from earnmi.model.EngineModel2KAlgo1 import EngineModel2KAlgo1
     model = EngineModel2KAlgo1()
-    engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=1)
-    #engine = CoreEngine.load(dirName,model)
+    #engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=9999999999)
+    engine = CoreEngine.load(dirName,model)
     runner = CoreEngineRunner(engine)
     strategy = MyStrategy()
     pdData = runner.backtest(testDataSouce,strategy,min_deal_count = 15)
@@ -385,17 +390,6 @@ if __name__ == "__main__":
     pdData.to_excel(writer, sheet_name="data", index=False)
     writer.save()
     writer.close()
-    """
-    [884]: count:61,ok:46(75.41%),earn:45,earn_pct:0.65%,loss_pct:-0.84%, 模型能力:[sell_core: 99.59,buy_core:97.93]
-    总共产生813个预测,交易61个，交易率:7.50%
-    total:count:61,ok:46(75.41%),earn:45,earn_pct:0.65%,loss_pct:-0.84%, 模型能力:[sell_core: 0.00,buy_core:0.00]
-    """
 
-    """
-    [884]: count:33,ok:13(39.39%),earn:17,earn_pct:1.06%,loss_pct:-1.93%, 模型能力:[sell_core: 99.65,buy_core:97.62]
-总共产生813个预测,交易33个，交易率:4.06%
-total:count:33,ok:13(39.39%),earn:17,earn_pct:1.06%,loss_pct:-1.93%, 模型能力:[sell_core: 0.00,buy_core:0.00]
-    
-    """
 
     pass

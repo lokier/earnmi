@@ -25,12 +25,12 @@ class QuantData(object):
     buyCenterPct:float
 
     """
-    卖方力量分布
+    卖方力量分布，没有排好序
     """
     sellRange:['FloatRange']
 
     """
-    买方力量分布
+    买方力量分布，没有排好序
     """
     buyRange:['FloatRange']
 
@@ -65,7 +65,7 @@ class QuantData(object):
             return - (sell_power_pct + buy_power_pct) / buy_power_pct
 
     """
-    多空双方的力量
+    多空双方的力量概率
     """
     def getPowerProbal(self, isSell:bool)->float:
 
@@ -105,15 +105,12 @@ class QuantData(object):
         dist = sell_power_pct - buy_power_pct  # 卖方力量与买方力量距离越靠近，说明力量越统一
 
         return sell_power_pct,buy_power_pct,dist,probal
-    """
-    """
-    def factor(self, isSell, eran=0.4, probal=0.3) -> float:
-        #卖方力量与买方力量越靠近，说明力量越统一
-        #买方的最低值越高，说明看多情况更好
-        #卖方的概率值越大，赚钱效率更高
 
-
-        pass
+    def check(self):
+        for i in range(1, len(self.sellRange)):
+            assert self.sellRange[i].probal <=self.sellRange[i - 1].probal
+        for i in range(1, len(self.buyRange)):
+            assert self.buyRange[i].probal <= self.buyRange[i - 1].probal
 
 
     def getSellFloatEncoder(self) ->FloatEncoder:

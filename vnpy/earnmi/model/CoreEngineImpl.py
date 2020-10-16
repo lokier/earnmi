@@ -210,6 +210,10 @@ class SVMPredictModel(PredictModel):
 
     def predictResult(self, predict: PredictData) -> Union[bool, bool]:
 
+        predict.check();
+
+
+
         high_price = -99999999
         low_price = -high_price
         for bar in predict.collectData.predictBars:
@@ -362,6 +366,7 @@ class CoreEngineImpl(CoreEngine):
         for dimen, listData in dataSet.items():
             size = len(listData)
             quantData = self.computeQuantData(listData)
+            quantData.check()
             quantMap[dimen] = quantData
             maxSize = max(maxSize, size)
             minSize = min(minSize, size)

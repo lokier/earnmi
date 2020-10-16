@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from earnmi.chart.FloatEncoder import FloatRange
 from earnmi.model.CollectData import CollectData
 from earnmi.model.Dimension import Dimension
 from earnmi.model.QuantData import QuantData
@@ -90,7 +91,11 @@ class PredictData(object):
         else:
             return - (sell_power_pct + buy_power_pct) / buy_power_pct
 
-
+    def check(self):
+        for i in range(1, len(self.sellRange1)):
+            assert self.sellRange1[i].probal <= self.sellRange1[i - 1].probal
+        for i in range(1, len(self.buyRange1)):
+            assert self.buyRange1[i].probal <= self.buyRange1[i - 1].probal
 
     def __post_init__(self):
         pass
