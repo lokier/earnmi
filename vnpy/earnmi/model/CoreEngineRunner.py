@@ -55,8 +55,8 @@ class CoreEngineRunner():
             print(f"[computeSWLatestTop]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             bars, code = soruce.onNextBars()
             for data in stop:
-                _basePrice,dd,xx = model.generateYLabel(data)
-                noPredict =   _basePrice is None
+                dd,xx = model.getYLabelPrice(data)
+                noPredict =  dd is None
                 if  noPredict:
                     continue
                 allow_predict = True
@@ -169,7 +169,9 @@ class CoreEngineRunner():
             earn_pct = 0.0
             loss_pct = 0.0
             eran_count = 0
-            power_rate = 0.0
+            power_quant = 0.0
+            power_predict = 0.0
+
             quant:QuantData = None
             abilityData:PredictAbilityData = None
 
@@ -195,7 +197,7 @@ class CoreEngineRunner():
                 return f"count:{self.count}(test_sell_score:%.2f,test_buy_score:%.2f),deal_count:{self.deal_count},ok_rate:%.2f%%,earn:{self.eran_count}" \
                        f",earn_pct:%.2f%%,loss_pct:%.2f%%, " \
                        f"模型能力:[pow:%.2f]" % \
-                       (self.getSellScore(),self.getBuyScore(),ok_rate*100,earn_pct, lost_pct,self.power_rate)
+                       (self.getSellScore(),self.getBuyScore(),ok_rate*100,earn_pct, lost_pct,self.power_quant)
 
         dimeDataList:['DimeData'] = []
         run_cnt = 0
@@ -214,6 +216,7 @@ class CoreEngineRunner():
             abilityData = engine.queryPredictAbilityData(dimen)
             dimenData.abilityData = abilityData
             dimenData.quant = engine.queryQuantData(dimen)
+            dimenData.power_predict = 0
 
             for predict in predictList:
                 order = strategy.generatePredictOrder(self.coreEngine,predict)
@@ -234,12 +237,15 @@ class CoreEngineRunner():
                     pct = 100 * (order.sellPrice - order.buyPrice) / order.buyPrice
                     totalDeal += 1
                     dimenData.deal_count +=1
-                    dimenData.power_rate = order.power_rate
+                    dimenData.power_predict += predict.getPowerRate()
+                    dimenData.power_quant = order.power_rate
                     if pct > 0.0:
                         dimenData.earn_pct += pct
                         dimenData.eran_count +=1
                     else:
                         dimenData.loss_pct += pct
+            if dimenData.deal_count > 0:
+                dimenData.power_predict = dimenData.power_predict / dimenData.deal_count
             totalOccurPredict += dimenData.count
             dimeDataList.append(dimenData)
 
@@ -250,7 +256,7 @@ class CoreEngineRunner():
             return v1.getEarnRate() - v2.getEarnRate()
 
         dimeDataList = sorted(dimeDataList, key=cmp_to_key(diemdata_cmp), reverse=False)
-        columns = ["dimen","count","dealCount","earnRate","earnPct","lossPct","sScore","bScore",
+        columns = ["dimen","count","dealCount","earnRate","earnPct","lossPct","sScore","bScore","avg_power",
                    "量化数据:","power","count","sCPct","bCPct","预测能力:","countTrain","sScoreTrain","bScoreTrain","countTest","sScoreTest","bScoreTest"]
         values = []
         for d in dimeDataList:
@@ -267,8 +273,9 @@ class CoreEngineRunner():
             item.append(d.loss_pct)
             item.append(d.getSellScore())
             item.append(d.getBuyScore())
+            item.append(d.power_predict)
             item.append("")
-            item.append(d.power_rate)
+            item.append(d.power_quant)
             item.append(d.quant.count)
             item.append(d.quant.sellCenterPct)
             item.append(d.quant.buyCenterPct)
@@ -369,7 +376,7 @@ if __name__ == "__main__":
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))
     from earnmi.model.EngineModel2KAlgo1 import EngineModel2KAlgo1
     model = EngineModel2KAlgo1()
-    #engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=999999999)
+    #engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=99999999)
     engine = CoreEngine.load(dirName,model)
     runner = CoreEngineRunner(engine)
     strategy = MyStrategy()

@@ -135,7 +135,8 @@ class SVMPredictModel(PredictModel):
         for cData in dataList:
             x = model.generateXFeature(cData)
             x_features.append(x)
-            basePrice, sellPrice, buyPrice = model.generateYLabel(cData)
+            sellPrice, buyPrice = self.engine.getEngineModel().getYLabelPrice(cData)
+            basePrice = self.engine.getEngineModel().getYBasePrice(cData)
             real_sell_pct = 100 * (sellPrice - basePrice) / basePrice
             real_buy_pct = 100 * (buyPrice - basePrice) / basePrice
             label_sell_1 = PredictModel.PctEncoder1.encode(real_sell_pct)
@@ -196,6 +197,7 @@ class SVMPredictModel(PredictModel):
                 pData.buyRange2 = FloatRange.sort(floatBuyRangeList2)
                 pData.sellRange1 = FloatRange.sort(floatSellRangeList1)
                 pData.sellRange2 = FloatRange.sort(floatSellRangeList2)
+
                 retList.append(pData)
             if single:
                 return retList[-1]
@@ -203,17 +205,23 @@ class SVMPredictModel(PredictModel):
                 return retList
         raise RuntimeError("unsupport data！！！")
 
+
+
+
     def predictResult(self, predict: PredictData) -> Union[bool, bool]:
-        order = self.engine.getEngineModel().generatePredictOrder(self.engine,predict)
+
         high_price = -99999999
         low_price = -high_price
         for bar in predict.collectData.predictBars:
             high_price = max(high_price,bar.high_price)
             low_price = min(low_price, bar.low_price)
+        basePrice = self.engine.getEngineModel().getYBasePrice(predict.collectData)
+        sell_price = basePrice * (1 + predict.getPredictSellPct() / 100)
+        buy_price = basePrice * (1 + predict.getPredictBuyPct() / 100)
 
         ## 预测价格有无到底最高价格
-        sell_ok = high_price>=order.suggestSellPrice
-        buy_ok = low_price <= order.suggestBuyPrice
+        sell_ok = high_price>= sell_price
+        buy_ok = low_price <= buy_price
         return sell_ok,buy_ok
 
     def testScore(self,trainSampleDataList:[]) -> Tuple[float, float]:
@@ -531,7 +539,8 @@ class CoreEngineImpl(CoreEngine):
         return rangeList
 
     def __getSellBuyPctLabel(self,cData:CollectData):
-        basePrice, sellPrice, buyPrice = self.getEngineModel().generateYLabel( cData)
+        sellPrice, buyPrice = self.getEngineModel().getYLabelPrice(cData)
+        basePrice = self.getEngineModel().getYBasePrice(cData)
         __sell_pct = 100 * (sellPrice - basePrice) / basePrice
         __buy_pct = 100 * (buyPrice - basePrice) / basePrice
         return __sell_pct,__buy_pct
@@ -637,7 +646,7 @@ if __name__ == "__main__":
     engine.enableLog = True
 
     engine.build(SWDataSource(start,end), engineModel,limit_dimen_size = 2)
-    engine.load(engineModel)
+    #engine.load(engineModel)
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")
 
@@ -649,6 +658,8 @@ if __name__ == "__main__":
     for dimen in dimens:
         abilityData = engine.queryPredictAbilityData(dimen)
         print(f"dimen:{dimen} => {abilityData}")
+        print(f"   quantdata: => {engine.queryQuantData(dimen)}")
+
 
     dist_list = []
     #engine.printTopDimension()

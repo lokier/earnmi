@@ -56,11 +56,15 @@ class CoreEngineModel:
         pass
 
     """
-    返回Y标签值。[basePrice,sellPrice,buyPrice]
-    通过三个值，可以计算得出买方力量和卖方里的涨跌幅度标签值。
+    返回Y标签价格值值。[sellPrice,buyPrice]
+    通过getYBasePrice()，可以计算得出买方力量和卖方里的涨跌幅度标签值。
     """
     @abstractmethod
-    def generateYLabel(self, cData:CollectData)->[float,float,float]:
+    def getYLabelPrice(self, cData:CollectData)->[float, float]:
+        pass
+
+    @abstractmethod
+    def getYBasePrice(self, cData:CollectData)->float:
         pass
 
     def collectBars(self,barList: ['BarData'],symbol:str) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:

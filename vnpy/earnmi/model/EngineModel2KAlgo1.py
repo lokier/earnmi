@@ -81,18 +81,19 @@ class EngineModel2KAlgo1(CoreEngineModel):
     #     return None, None
 
     @abstractmethod
-    def generateYLabel(self, cData:CollectData)->[float,float,float]:
+    def getYLabelPrice(self, cData:CollectData)->[float, float, float]:
         bars: ['BarData'] = cData.predictBars
         if len(bars) > 0:
-            occurBar = cData.occurBars[-2]
-            startPrice = occurBar.close_price
             sell_price = -9999999999
             buy_price = - sell_price
             for bar in bars:
                 sell_price = max((bar.high_price + bar.close_price) / 2,sell_price)
                 buy_price = min((bar.low_price + bar.close_price) / 2,buy_price)
-            return startPrice, sell_price,buy_price
-        return None, None,None
+            return sell_price,buy_price
+        return None,None
+
+    def getYBasePrice(self, cData:CollectData)->float:
+        return cData.occurBars[-2].close_price
 
     # def __genereatePd(self, dataList: Sequence['CollectData']):
     #     trainDataSet = []
@@ -225,21 +226,9 @@ class EngineModel2KAlgo1(CoreEngineModel):
         code = predict.collectData.occurBars[-1].symbol
         name = self.sw.getSw2Name(code)
         order = PredictOrder(dimen=predict.dimen,code=code,name=name)
-
-        from earnmi.model.CoreEngine import PredictModel
-        min1, max1 = PredictModel.PctEncoder1.parseEncode(predict.sellRange1[0].encode)
-        min2, max2 = PredictModel.PctEncoder2.parseEncode(predict.sellRange2[0].encode)
-        total_probal = predict.sellRange2[0].probal + predict.sellRange1[0].probal
-        predict_sell_pct = (min1 + max1) / 2 * predict.sellRange1[0].probal / total_probal + (min2 + max2) / 2 * \
-                           predict.sellRange2[0].probal / total_probal
-
-        min1, max1 = PredictModel.PctEncoder1.parseEncode(predict.buyRange1[0].encode)
-        min2, max2 = PredictModel.PctEncoder2.parseEncode(predict.buyRange2[0].encode)
-        total_probal = predict.sellRange2[0].probal + predict.sellRange1[0].probal
-        predict_buy_pct = (min1 + max1) / 2 * predict.buyRange1[0].probal / total_probal + (min2 + max2) / 2 * \
-                          predict.buyRange2[0].probal / total_probal
-
-        start_price = predict.collectData.occurBars[-2].close_price
+        predict_sell_pct = predict.getPredictSellPct()
+        predict_buy_pct = predict.getPredictBuyPct()
+        start_price = self.getYBasePrice(predict.collectData)
         order.suggestSellPrice = start_price * (1 + predict_sell_pct / 100)
         order.suggestBuyPrice = start_price * (1 + predict_buy_pct / 100)
 
