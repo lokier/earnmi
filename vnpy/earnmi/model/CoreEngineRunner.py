@@ -173,7 +173,7 @@ class CoreEngineRunner():
             quant:QuantData = None
             abilityData:PredictAbilityData = None
 
-            def getOkRate(self) ->float:
+            def getEarnRate(self) ->float:
                 if self.deal_count > 0:
                    return self.predict_suc / self.deal_count
                 return 0
@@ -190,7 +190,7 @@ class CoreEngineRunner():
                     earn_pct = self.earn_pct / self.eran_count
                 if self.deal_count - self.eran_count > 0:
                     lost_pct = self.loss_pct / (self.deal_count - self.eran_count)
-                ok_rate = self.getOkRate()
+                ok_rate = self.getEarnRate()
 
                 return f"count:{self.count}(test_sell_score:%.2f,test_buy_score:%.2f),deal_count:{self.deal_count},ok_rate:%.2f%%,earn:{self.eran_count}" \
                        f",earn_pct:%.2f%%,loss_pct:%.2f%%, " \
@@ -247,19 +247,22 @@ class CoreEngineRunner():
         total = DimenData(dimen=None)
 
         def diemdata_cmp(v1,v2):
-            return v1.getOkRate() - v2.getOkRate()
+            return v1.getEarnRate() - v2.getEarnRate()
 
         dimeDataList = sorted(dimeDataList, key=cmp_to_key(diemdata_cmp), reverse=False)
-        columns = ["dimen","count","dealCount","okRate","eranCnt","earnPct","lossPct","sellScore","buyScore",
-                   "量化数据:","power","count","预测能力:","countTrain","sellScoreTrain","buyScoreTrain","countTest","SellScoreTest","buyScoreTest"]
+        columns = ["dimen","count","dealCount","earnRate","earnPct","lossPct","sScore","bScore",
+                   "量化数据:","power","count","sCPct","bCPct","预测能力:","countTrain","sScoreTrain","bScoreTrain","countTest","sScoreTest","bScoreTest"]
         values = []
         for d in dimeDataList:
+
+            if d.deal_count < 15:
+                continue
+
             item = []
             item.append(d.dimen.value)
             item.append(d.count)
             item.append(d.deal_count)
-            item.append(d.getOkRate())
-            item.append(d.eran_count)
+            item.append(d.getEarnRate())
             item.append(d.earn_pct)
             item.append(d.loss_pct)
             item.append(d.getSellScore())
@@ -267,6 +270,8 @@ class CoreEngineRunner():
             item.append("")
             item.append(d.power_rate)
             item.append(d.quant.count)
+            item.append(d.quant.sellCenterPct)
+            item.append(d.quant.buyCenterPct)
             item.append("")
             item.append(d.abilityData.count_train)
             item.append(d.abilityData.sell_score_train)
@@ -364,7 +369,7 @@ if __name__ == "__main__":
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))
     from earnmi.model.EngineModel2KAlgo1 import EngineModel2KAlgo1
     model = EngineModel2KAlgo1()
-    engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=1)
+    #engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=999999999)
     engine = CoreEngine.load(dirName,model)
     runner = CoreEngineRunner(engine)
     strategy = MyStrategy()
