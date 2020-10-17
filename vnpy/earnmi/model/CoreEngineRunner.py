@@ -3,28 +3,24 @@
 
 核心引擎
 """
-from abc import abstractmethod, ABC
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import cmp_to_key
-from typing import Union, Tuple, Sequence
+from typing import Sequence
+
+import pandas as pd
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
 from earnmi.data.SWImpl import SWImpl
-from earnmi.model.CollectData import CollectData
-from earnmi.model.CoreEngine import CoreEngine, BarDataSource,PredictModel
+from earnmi.model.CoreEngine import CoreEngine, BarDataSource
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.CoreEngineStrategy import CoreEngineStrategy
-from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
+from earnmi.model.Dimension import Dimension
 from earnmi.model.PredictAbilityData import PredictAbilityData
 from earnmi.model.PredictData import PredictData
 from earnmi.model.PredictOrder import PredictOrderStatus, PredictOrder
 from earnmi.model.QuantData import QuantData
-from earnmi.model.CoreEngineModel import CoreEngineModel
-from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
-import numpy as np
-import pandas as pd
 
 """
 收集Collector数据。
@@ -34,23 +30,22 @@ import pandas as pd
 @dataclass
 class BackTestData(object):
     dimen: Dimension
-    deal_count = 0
-    predict_suc = 0
     count = 0
     sell_ok = 0
     buy_ok = 0
+
+    deal_count = 0   ##
+    dec_suc_count = 0  ##处理并成功预测的个数
     earn_pct = 0.0
     loss_pct = 0.0
     eran_count = 0
-    power_quant = 0.0
-    power_predict = 0.0
 
     quant: QuantData = None
     abilityData: PredictAbilityData = None
 
     def getEarnRate(self) -> float:
         if self.deal_count > 0:
-            return self.predict_suc / self.deal_count
+            return self.dec_suc_count / self.deal_count
         return 0
 
     def getSellScore(self):
@@ -69,9 +64,8 @@ class BackTestData(object):
         ok_rate = self.getEarnRate()
 
         return f"count:{self.count}(test_sell_score:%.2f,test_buy_score:%.2f),deal_count:{self.deal_count},ok_rate:%.2f%%,earn:{self.eran_count}" \
-               f",earn_pct:%.2f%%,loss_pct:%.2f%%, " \
-               f"模型能力:[pow:%.2f]" % \
-               (self.getSellScore(), self.getBuyScore(), ok_rate * 100, earn_pct, lost_pct, self.power_quant)
+               f",earn_pct:%.2f%%,loss_pct:%.2f%%, " % \
+               (self.getSellScore(), self.getBuyScore(), ok_rate * 100, earn_pct, lost_pct)
 
 
 class CoreEngineRunner():
@@ -81,7 +75,7 @@ class CoreEngineRunner():
     """
     计算未来两天最有可能涨的股票SW指数。
     """
-    def debugBestParam(self,  soruce: BarDataSource, strategy:CoreEngineStrategy, params:{},min_deal_count = -1, max_run_count = 999999999):
+    def debugBestParam(self,  soruce: BarDataSource, strategy:CoreEngineStrategy, params:{},min_deal_count = -1, max_run_count = 999999999,printDetail = False):
         bars, code = soruce.onNextBars()
         dataSet = {}
         totalCount = 0
@@ -103,8 +97,18 @@ class CoreEngineRunner():
         max_run_count = min(max_run_count,len(dataSet))
         run_cnt = 0
 
+        __dataDetailSet = {}
+        __dataTotalSet = {}
         for paramName, paramsList in params.items():
             # 计算paramName的 value 值。
+            _paramNameSet = {}
+            __dataDetailSet[paramName] = _paramNameSet
+
+            _paramTotalSet = {}
+            __dataTotalSet[paramName] = _paramTotalSet
+            for paramValue in paramsList:
+                _paramTotalSet[paramValue] = []
+
             for dimen, listData in dataSet.items():
                 if run_cnt >= max_run_count:
                     break
@@ -114,11 +118,50 @@ class CoreEngineRunner():
                     continue
                 run_cnt += 1
                 print(f"开始回测维度:{dimen},进度:[{run_cnt}/{max_run_count}]")
-                predictList: Sequence['PredictData'] = model.predict(listData)
-                for predict in predictList:
-                    order = strategy.generatePredictOrder(self.coreEngine, predict)
-                    for bar in predict.collectData.predictBars:
-                        strategy.updatePredictOrder(order, bar, True)
+
+                ##开始计算dimen，在paramName各个参数值的情况。
+                dimenSet = _paramNameSet.get(dimen)
+                if dimenSet is None:
+                    dimenSet = {}
+                    _paramNameSet[dimen] = dimenSet
+                for paramValue in paramsList:
+                    __dataList = []
+                    _testData = BackTestData(dimen=dimen)
+                    _testData.abilityData = self.coreEngine.queryPredictAbilityData(dimen)
+                    _testData.quant = self.coreEngine.queryQuantData(dimen)
+                    __the_param = {paramName:paramValue}
+
+                    predictList: Sequence['PredictData'] = model.predict(listData)
+                    for predict in predictList:
+                        order = strategy.generatePredictOrder(self.coreEngine, predict,__the_param)
+                        for bar in predict.collectData.predictBars:
+                            strategy.updatePredictOrder(order, bar, True)
+                        self.putToStatistics(_testData, order, predict)
+                    __dataList.append(_testData)
+                    totalData = self.__combine(__dataList,min_deal_count)
+                    dimenSet[paramValue] = totalData
+                    _paramTotalSet[paramValue].append(totalData)
+
+        for paramName, paramsList in params.items():
+            _paramNameSet = __dataDetailSet[paramName]
+            if len(_paramNameSet) < 1:
+                print(f"参数值{paramName}为空数据!!!!")
+            print(f"参数值{paramName}的总体数据情况:")
+            _paramTotalSet = __dataTotalSet[paramName]
+            for paramValue in paramsList:
+                 __dataList = _paramTotalSet.get(paramValue)
+                 totalData = self.__combine(__dataList, min_deal_count)
+                 print(f"    [{paramValue}]: {totalData}")
+            if printDetail:
+                print(f"参数值{paramName}的具体每个维度的情况:")
+                ##每个dimen的维度情况。
+                for dimen,dimenSet in _paramNameSet.items():
+                    print(f"   dimen = {dimen}:")
+                    paramValues = dimenSet.keys()
+                    for paramValue in paramValues:
+                        totalData:BackTestData = dimenSet.get(paramValue)
+                        print(f"          [{paramValue}]: {totalData}")
+
 
 
     def backtest(self, soruce: BarDataSource, strategy:CoreEngineStrategy, min_deal_count = -1):
@@ -154,10 +197,8 @@ class CoreEngineRunner():
             print(f"开始回测维度:{dimen},进度:[{run_cnt}/{run_limit_size}]")
             predictList: Sequence['PredictData'] = model.predict(listData)
             _testData = BackTestData(dimen=dimen)
-            abilityData = self.coreEngine.queryPredictAbilityData(dimen)
-            _testData.abilityData = abilityData
+            _testData.abilityData = self.coreEngine.queryPredictAbilityData(dimen)
             _testData.quant = self.coreEngine.queryQuantData(dimen)
-            _testData.power_predict = 0
 
             for predict in predictList:
                 order = strategy.generatePredictOrder(self.coreEngine,predict)
@@ -165,31 +206,49 @@ class CoreEngineRunner():
                     strategy.updatePredictOrder(order, bar, True)
                 self.putToStatistics(_testData,order,predict)
 
-            if _testData.deal_count > 0:
-                _testData.power_predict = _testData.power_predict / _testData.deal_count
             __dataList.append(_testData)
 
-        return self.__genrateAndPrintPdData(__dataList,min_deal_count)
+        pdData =  self.__genrateAndPrintPdData(__dataList,min_deal_count)
+        print(f"{pdData.head(20)}")
+        return pdData
 
-    def __genrateAndPrintPdData(self,__dataList:['BackTestData'],min_deal_count:int):
-
-
+    def __combine(self,__dataList:['BackTestData'],min_deal_count):
         total = BackTestData(dimen=None)
+        for d in __dataList:
+            if d.deal_count < min_deal_count:
+                continue
+            total.loss_pct += d.loss_pct
+            total.deal_count += d.deal_count
+            total.eran_count += d.eran_count
+            total.dec_suc_count += d.dec_suc_count
+            total.count += d.count
+            total.earn_pct += d.earn_pct
+            total.buy_ok += d.buy_ok
+            total.sell_ok += d.sell_ok
+        deal_rate = 0.0
+        if total.count > 0:
+            deal_rate = total.deal_count / total.count
+
+        return total
+
+    def __genrateAndPrintPdData(self,__dataList:['BackTestData'],min_deal_count:int,debugy_param:[] = None):
+
 
         def diemdata_cmp(v1, v2):
             return v1.getEarnRate() - v2.getEarnRate()
-
-        __dataList = sorted(__dataList, key=cmp_to_key(diemdata_cmp), reverse=False)
-        columns = ["dimen", "count", "dealCount", "earnRate", "earnPct", "lossPct", "sScore", "bScore", "avg_power",
+        __dataList = sorted(__dataList, key=cmp_to_key(diemdata_cmp), reverse=True)
+        columns = ["dimen", "总数", "操作数", "盈利率", "总盈利", "总亏损", "分数|卖", "分数|买",
                    "量化数据:", "power", "count", "sCPct", "bCPct", "预测能力:", "countTrain", "sScoreTrain", "bScoreTrain",
                    "countTest", "sScoreTest", "bScoreTest"]
         values = []
-        print("\n\n")
         for d in __dataList:
             if d.deal_count < min_deal_count:
                 continue
             item = []
-            item.append(d.dimen.value)
+            if(d.dimen is None):
+                item.append(-1)
+            else:
+                item.append(d.dimen.value)
             item.append(d.count)
             item.append(d.deal_count)
             item.append(d.getEarnRate())
@@ -197,9 +256,8 @@ class CoreEngineRunner():
             item.append(d.loss_pct)
             item.append(d.getSellScore())
             item.append(d.getBuyScore())
-            item.append(d.power_predict)
             item.append("")
-            item.append(d.power_quant)
+            item.append(d.quant.getPowerRate())
             item.append(d.quant.count)
             item.append(d.quant.sellCenterPct)
             item.append(d.quant.buyCenterPct)
@@ -211,24 +269,6 @@ class CoreEngineRunner():
             item.append(d.abilityData.sell_score_test)
             item.append(d.abilityData.buy_score_test)
             values.append(item)
-
-            total.loss_pct += d.loss_pct
-            total.deal_count += d.deal_count
-            total.eran_count += d.eran_count
-            total.count += d.count
-            total.earn_pct += d.earn_pct
-            total.buy_ok += d.buy_ok
-            total.sell_ok += d.sell_ok
-            total.predict_suc += d.predict_suc
-
-            print(f"[{d.dimen.value}]: {d}")
-
-        deal_rate = 0.0
-        if total.count > 0:
-            deal_rate = total.deal_count / total.count
-
-        print(f"总共产生{total.count}个预测,交易{total.deal_count}个，交易率:%.2f%%" % (100 * deal_rate))
-        print(f"total:{total}")
 
         return pd.DataFrame(values, columns=columns)
 
@@ -256,11 +296,9 @@ class CoreEngineRunner():
         if deal:
             success = order.sellPrice == order.suggestSellPrice
             if success:
-                data.predict_suc += 1
+                data.dec_suc_count += 1
             pct = 100 * (order.sellPrice - order.buyPrice) / order.buyPrice
             data.deal_count += 1
-            data.power_predict += predict.getPowerRate()
-            data.power_quant = order.power_rate
             if pct > 0.0:
                 data.earn_pct += pct
                 data.eran_count += 1
@@ -286,11 +324,14 @@ if __name__ == "__main__":
         def __init__(self):
             self.sw = SWImpl()
 
-        def generatePredictOrder(self, engine: CoreEngine, predict: PredictData) -> PredictOrder:
+        def generatePredictOrder(self, engine: CoreEngine, predict: PredictData,debugPrams:{}=None) -> PredictOrder:
+
+            if debugPrams is None:
+                debugPrams = {}
+
             code = predict.collectData.occurBars[-1].symbol
             name = self.sw.getSw2Name(code)
             order = PredictOrder(dimen=predict.dimen, code=code, name=name)
-            from earnmi.model.CoreEngine import PredictModel
             predict_sell_pct = predict.getPredictSellPct()
             predict_buy_pct = predict.getPredictSellPct()
             start_price = engine.getEngineModel().getYBasePrice(predict.collectData)
@@ -318,7 +359,16 @@ if __name__ == "__main__":
             else:
                 power = - (quantData.sellCenterPct + quantData.buyCenterPct) / quantData.buyCenterPct
 
-            if predict_buy_pct > 0.2 and predict_sell_pct - buy_point_pct > 1:
+            extraCondition = True
+            quant_power = debugPrams.get("quant_power")
+            if not quant_power is None:
+                extraCondition = extraCondition and predict.quantData.getPowerRate() >= quant_power
+
+            predict_buy_pct_param = debugPrams.get("predict_buy_pct")
+            if not predict_buy_pct_param is None:
+                extraCondition = extraCondition and predict_buy_pct >= predict_buy_pct_param
+
+            if extraCondition and predict_sell_pct - buy_point_pct > 1:
                 order.status = PredictOrderStatus.HOLD
                 order.buyPrice = buy_price
             else:
@@ -342,16 +392,23 @@ if __name__ == "__main__":
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))
     from earnmi.model.EngineModel2KAlgo1 import EngineModel2KAlgo1
     model = EngineModel2KAlgo1()
-    #engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=1)
+    #engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=9999999999)
     engine = CoreEngine.load(dirName,model)
     runner = CoreEngineRunner(engine)
     strategy = MyStrategy()
-    pdData = runner.backtest(testDataSouce,strategy,min_deal_count = 15)
 
-    writer = pd.ExcelWriter('files\CoreEngineRunner.xlsx')
-    pdData.to_excel(writer, sheet_name="data", index=False)
-    writer.save()
-    writer.close()
+
+    parasMap = {
+        #"quant_power":[0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+        "predict_buy_pct":[-1.5,-1,-0.5,0, 0.5, 1],
+    }
+    runner.debugBestParam(testDataSouce,strategy,parasMap,max_run_count=999999,printDetail = False);
+
+    # pdData = runner.backtest(testDataSouce,strategy,min_deal_count = 15)
+    # writer = pd.ExcelWriter('files\CoreEngineRunner.xlsx')
+    # pdData.to_excel(writer, sheet_name="data", index=False)
+    # writer.save()
+    # writer.close()
 
 
     pass

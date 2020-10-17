@@ -13,7 +13,7 @@ class CoreEngineStrategy:
     --------------------------------------------------------------------
         根据预测对象，生成预测操作单
         """
-    def generatePredictOrder(self, engine, predict: PredictData) -> PredictOrder:
+    def generatePredictOrder(self, engine, predict: PredictData,debugParams:{}=None) -> PredictOrder:
         pass
 
     @abstractmethod
