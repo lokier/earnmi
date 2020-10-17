@@ -368,7 +368,8 @@ if __name__ == "__main__":
             if not predict_buy_pct_param is None:
                 extraCondition = extraCondition and predict_buy_pct >= predict_buy_pct_param
 
-            if extraCondition and predict_sell_pct - buy_point_pct > 1:
+            if extraCondition and predict_sell_pct - buy_point_pct > 1 \
+                and abilityData.trainData.biasSellLoss < 10:
                 order.status = PredictOrderStatus.HOLD
                 order.buyPrice = buy_price
             else:
@@ -392,8 +393,8 @@ if __name__ == "__main__":
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))
     from earnmi.model.EngineModel2KAlgo1 import EngineModel2KAlgo1
     model = EngineModel2KAlgo1()
-    engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=9999999)
-    #engine = CoreEngine.load(dirName,model)
+    #engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=9999999)
+    engine = CoreEngine.load(dirName,model)
     runner = CoreEngineRunner(engine)
     strategy = MyStrategy()
 
@@ -402,7 +403,7 @@ if __name__ == "__main__":
         #"quant_power":[0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
         "predict_buy_pct":[-1.5,-1,-0.5,0, 0.5, 1],
     }
-    runner.debugBestParam(testDataSouce,strategy,parasMap,max_run_count=999999,printDetail = False);
+    runner.debugBestParam(testDataSouce,strategy,parasMap,max_run_count=4,printDetail = True);
 
     # pdData = runner.backtest(testDataSouce,strategy,min_deal_count = 15)
     # writer = pd.ExcelWriter('files\CoreEngineRunner.xlsx')

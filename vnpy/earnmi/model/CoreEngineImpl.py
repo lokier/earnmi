@@ -241,6 +241,7 @@ class SVMPredictModel(PredictModel):
                 sellOk +=1
                 dist_pct = 100 * (predict_sell_price - high_price) / basePrice
                 bias_win_sum_sell += (dist_pct * dist_pct)
+
             else:
                 ##所有值用pct，好统一比较。
                 dist_pct = 100 * (predict_sell_price - high_price) / basePrice
@@ -332,7 +333,7 @@ class CoreEngineImpl(CoreEngine):
         self.printLog(f"load() finished,总共加载{len(self.mAllDimension)}个维度数据",True)
         assert len(self.mQuantDataMap) == len(self.mAllDimension)
 
-    def build(self, soruce: BarDataSource, model: CoreEngineModel,split_rate = 0.7,limit_dimen_size = -1):
+    def build(self, soruce: BarDataSource, model: CoreEngineModel,split_rate = 0.7,limit_dimen_size = -1, onlyDimens:[] =None):
         self.printLog("build() start...", True)
         self.__model = model
         # collector.onCreate()
@@ -340,7 +341,7 @@ class CoreEngineImpl(CoreEngine):
         dataSet = {}
         totalCount = 0
         while not bars is None:
-            finished, stop = model.collectBars(bars, code)
+            finished, stop = model.collectBars(bars, code,onlyDimens)
             self.printLog(f"collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(finished)
             bars, code = soruce.onNextBars()
@@ -695,7 +696,7 @@ if __name__ == "__main__":
     engine = CoreEngineImpl("files/impltest")
     engine.enableLog = True
 
-    engine.build(SWDataSource(start,end), engineModel,limit_dimen_size = 2)
+    engine.build(SWDataSource(start,end), engineModel,limit_dimen_size = 9999999999)
     #engine.load(engineModel)
     dimens = engine.loadAllDimesion()
     print(f"dimension：{dimens}")

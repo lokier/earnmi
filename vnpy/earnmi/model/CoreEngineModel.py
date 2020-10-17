@@ -67,12 +67,18 @@ class CoreEngineModel:
     def getYBasePrice(self, cData:CollectData)->float:
         pass
 
-    def collectBars(self,barList: ['BarData'],symbol:str) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
+    def collectBars(self,barList: ['BarData'],symbol:str,dimensValue:[] = None) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
         collector = self
         collector.onCollectStart(symbol)
         traceItems = []
         finishedData = []
         stopData = []
+        dimenValueMap = None
+        if not dimensValue is None and len(dimensValue) > 0:
+            dimenValueMap = {}
+            for _v in dimensValue:
+                dimenValueMap[_v] = True
+
         for bar in barList:
             toDeleteList = []
             newObject = collector.onCollectTrace(bar)
@@ -83,7 +89,11 @@ class CoreEngineModel:
                     finishedData.append(collectData)
             for collectData in toDeleteList:
                 traceItems.remove(collectData)
+
+
             if newObject is None:
+                continue
+            if not dimenValueMap is None and dimenValueMap.get(newObject.dimen.value) != True:
                 continue
             traceItems.append(newObject)
 

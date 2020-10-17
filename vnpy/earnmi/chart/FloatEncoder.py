@@ -15,12 +15,11 @@ import numpy as np
 """
 class FloatEncoder:
 
-    MAX_VALUE = 9999999
-    MIN_VALUE = -MAX_VALUE
-
-    def __init__(self,splits:['float']):
+    def __init__(self,splits:['float'],minValue = None,maxValue = None):
         self.splits = splits
         self.n = len(splits)
+        self.maxValue = maxValue
+        self.minValue = minValue
         pass
 
     def shift(self,shift:float):
@@ -53,10 +52,10 @@ class FloatEncoder:
         if encode < 0 or encode > self.n:
             raise RuntimeError("out of range encode")
         if encode == 0:
-            return FloatEncoder.MIN_VALUE,self.splits[encode]
+            return self.minValue,self.splits[encode]
         if encode < self.n:
             return self.splits[encode-1],self.splits[encode]
-        return self.splits[self.n - 1],FloatEncoder.MAX_VALUE
+        return self.splits[self.n - 1],self.maxValue
 
     def descriptEncdoe(self,encode:int):
         left,right = self.parseEncode(encode)
