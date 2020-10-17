@@ -268,9 +268,9 @@ class CoreEngineRunner():
             item.append(ability.getScoreBuy())
 
             item.append(ability.getBiasSell(True))
-            item.append(ability.getScoreBuy(True))
+            item.append(ability.getBiasBuy(True))
             item.append(ability.getBiasSell(False))
-            item.append(ability.getScoreBuy(False))
+            item.append(ability.getBiasBuy(False))
 
             values.append(item)
 
