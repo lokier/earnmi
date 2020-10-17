@@ -22,7 +22,7 @@ from earnmi.model.PredictData import PredictData
 import pickle
 import numpy as np
 from earnmi.model.CoreEngineModel import CoreEngineModel
-
+import pandas as pd
 
 
 
@@ -353,8 +353,35 @@ class CoreEngineImpl(CoreEngine):
         self.__saveDimeenAndQuantData(dataSet)
         self.__buildAndSaveModelData(split_rate)
         self.printLog(f"创建模型完成",True)
-
         self.load(model)
+        self.__ouptBuildDataToFiles();
+
+    def __ouptBuildDataToFiles(self):
+        _outputfileName = f"{self.__file_dir}/build.xlsx"
+        writer = pd.ExcelWriter(_outputfileName)
+
+        def quant_data_to_list(dimen:Dimension,q:QuantData)->[]:
+            return [dimen.value,q.count,q.sellCenterPct,q.buyCenterPct,q.getPowerRate()]
+        _quant_columns = ['dimen',"count","sCenterPct","bCenterPct","power"]
+        _quant_values = []
+        for dimen in self.mAllDimension:
+            _quantData = self.queryQuantData(dimen)
+            _quant_values.append(quant_data_to_list(_quantData))
+        pd.DataFrame(_quant_values, columns=_quant_columns) \
+            .to_excel(writer, sheet_name="quantData")
+
+        def ability_data_to_list(dimen:Dimension,q:PredictAbilityData)->[]:
+            return [dimen.value,q.count_train,q.sell_score_train,q.buy_score_train,q.count_test,q.sell_score_test,q.buy_score_test]
+        _ability_columns = ['dimen',"count|训", "sScore|训", "bScore|训", "count|测", "sScore|测", "bScore|测"]
+        _ability_values = []
+        for dimen in self.mAllDimension:
+            _abilityData = self.queryPredictAbilityData(dimen)
+            _ability_values.append(ability_data_to_list(_abilityData))
+        pd.DataFrame(_ability_values, columns=_ability_columns) \
+            .to_excel(writer, sheet_name="abilityData")
+
+        writer.save()
+        writer.close()
 
     def __saveDimeenAndQuantData(self,dataSet:{}):
         self.printLog(f"开始保存数据",True)
