@@ -392,8 +392,8 @@ if __name__ == "__main__":
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))
     from earnmi.model.EngineModel2KAlgo1 import EngineModel2KAlgo1
     model = EngineModel2KAlgo1()
-    #engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=9999999999)
-    engine = CoreEngine.load(dirName,model)
+    engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=9999999)
+    #engine = CoreEngine.load(dirName,model)
     runner = CoreEngineRunner(engine)
     strategy = MyStrategy()
 

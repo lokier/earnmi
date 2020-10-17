@@ -9,7 +9,7 @@ from sklearn.ensemble import RandomForestClassifier
 import joblib
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
-from earnmi.model.PredictAbilityData import PredictAbilityData
+from earnmi.model.PredictAbilityData import PredictAbilityData, ModelAbilityData
 from earnmi.model.PredictOrder import PredictOrder
 from earnmi.model.QuantData import QuantData
 from vnpy.trader.object import BarData
@@ -206,47 +206,65 @@ class SVMPredictModel(PredictModel):
         raise RuntimeError("unsupport data！！！")
 
 
-
-
-    def predictResult(self, predict: PredictData) -> Union[bool, bool]:
-
-        predict.check();
-
-
-
-        high_price = -99999999
-        low_price = -high_price
-        for bar in predict.collectData.predictBars:
-            high_price = max(high_price,bar.high_price)
-            low_price = min(low_price, bar.low_price)
-        basePrice = self.engine.getEngineModel().getYBasePrice(predict.collectData)
-        sell_price = basePrice * (1 + predict.getPredictSellPct() / 100)
-        buy_price = basePrice * (1 + predict.getPredictBuyPct() / 100)
-
-        ## 预测价格有无到底最高价格
-        sell_ok = high_price>= sell_price
-        buy_ok = low_price <= buy_price
-        return sell_ok,buy_ok
-
-    def testScore(self,trainSampleDataList:[]) -> Tuple[float, float]:
+    """
+    分数,正偏差，负偏差
+    """
+    def testScore(self,trainSampleDataList:[]) -> ModelAbilityData:
         self.engine.printLog("start PredictModel.selfTest()",True)
         predictList: Sequence['PredictData'] = self.predict(trainSampleDataList)
         count = len(predictList);
-        if count < 0:
-            return
+
+        abilityData = ModelAbilityData()
+        if count < 1:
+            return abilityData
         sellOk = 0
         buyOk = 0
+        bias_loss_sum_sell = 0.0
+        bias_loss_sum_buy = 0.0
+        bias_win_sum_sell = 0.0
+        bias_win_sum_buy = 0.0
         for predict in predictList:
-            sell_ok, buy_ok = self.predictResult(predict)
+            predict.check();
+
+            high_price = -99999999
+            low_price = -high_price
+            for bar in predict.collectData.predictBars:
+                high_price = max(high_price, bar.high_price)
+                low_price = min(low_price, bar.low_price)
+            basePrice = self.engine.getEngineModel().getYBasePrice(predict.collectData)
+            predict_sell_price = basePrice * (1 + predict.getPredictSellPct() / 100)
+            predict_buy_price = basePrice * (1 + predict.getPredictBuyPct() / 100)
+            ## 预测价格有无到底最高价格
+            sell_ok = high_price >= predict_sell_price
+            buy_ok = low_price <= predict_buy_price
             if sell_ok:
                 sellOk +=1
+                dist_pct = 100 * (predict_sell_price - high_price) / basePrice
+                bias_win_sum_sell += (dist_pct * dist_pct)
+            else:
+                ##所有值用pct，好统一比较。
+                dist_pct = 100 * (predict_sell_price - high_price) / basePrice
+                bias_loss_sum_sell += (dist_pct * dist_pct)
+
             if buy_ok:
                 buyOk +=1
-        sell_core = sellOk / count
-        buy_core = buyOk / count
-        self.engine.printLog("selfTest : sell_core=%.2f, buy_core=%.2f" % (sell_core * 100,buy_core * 100),True)
-        return sell_core,buy_core
+                dist_pct = 100 * (low_price - predict_buy_price) / basePrice
+                bias_win_sum_buy += (dist_pct * dist_pct)
+            else:
+                dist_pct = 100 * (low_price - predict_buy_price) / basePrice
+                bias_loss_sum_buy += (dist_pct * dist_pct)
 
+        def keep_3_float(value)->float:
+            return int(value * 1000) / 1000
+
+        abilityData.scoreSell = sellOk / count
+        abilityData.scoreBuy = buyOk / count
+        abilityData.biasSellWin = keep_3_float(bias_win_sum_sell / count)
+        abilityData.biasSellLoss = keep_3_float(bias_loss_sum_sell / count)
+        abilityData.biasBuyWin = keep_3_float(bias_win_sum_buy / count)
+        abilityData.biasBuyLoss = keep_3_float(bias_loss_sum_buy / count)
+        abilityData.count = count
+        return abilityData;
 
 
 
@@ -366,17 +384,21 @@ class CoreEngineImpl(CoreEngine):
         _quant_values = []
         for dimen in self.mAllDimension:
             _quantData = self.queryQuantData(dimen)
-            _quant_values.append(quant_data_to_list(_quantData))
+            _quant_values.append(quant_data_to_list(dimen,_quantData))
         pd.DataFrame(_quant_values, columns=_quant_columns) \
             .to_excel(writer, sheet_name="quantData")
 
         def ability_data_to_list(dimen:Dimension,q:PredictAbilityData)->[]:
-            return [dimen.value,q.count_train,q.sell_score_train,q.buy_score_train,q.count_test,q.sell_score_test,q.buy_score_test]
-        _ability_columns = ['dimen',"count|训", "sScore|训", "bScore|训", "count|测", "sScore|测", "bScore|测"]
+            return [dimen.value,
+                    q.trainData.count,q.trainData.scoreSell,q.trainData.scoreBuy,q.trainData.biasSellWin,q.trainData.biasBuyWin,q.trainData.biasSellLoss,q.trainData.biasBuyLoss,
+                    q.testData.count,q.testData.scoreSell,q.testData.scoreBuy,q.testData.biasSellWin,q.testData.biasBuyWin,q.testData.biasSellLoss,q.testData.biasBuyLoss]
+        _ability_columns = ['dimen',
+                            "count|训", "sScore|训", "bScore|训","s正方差|训", "b正方差|训","s负方差|训", "b负方差|训",
+                            "count|测", "sScore|测", "bScore|测","s正方差|测", "b正方差|测","s负方差|测", "b负方差|测"]
         _ability_values = []
         for dimen in self.mAllDimension:
             _abilityData = self.queryPredictAbilityData(dimen)
-            _ability_values.append(ability_data_to_list(_abilityData))
+            _ability_values.append(ability_data_to_list(dimen,_abilityData))
         pd.DataFrame(_ability_values, columns=_ability_columns) \
             .to_excel(writer, sheet_name="abilityData")
 
@@ -471,16 +493,12 @@ class CoreEngineImpl(CoreEngine):
         trainQauntData = self.computeQuantData(trainDataList)
         model = SVMPredictModel(self, dimen)
         model.build(self, trainDataList,trainQauntData)
-        sell_score_train, buy_score_train=  model.testScore(trainDataList)  ##训练集验证分数
-        sell_score_test, buy_score_test=  model.testScore(testDataList)  ##训练集验证分数
+        _trainData =  model.testScore(trainDataList)  ##训练集验证分数
+        _testData =  model.testScore(testDataList)  ##测试集验证分数
 
         abilityData = PredictAbilityData()
-        abilityData.count_train = len(trainDataList)
-        abilityData.sell_score_train = sell_score_train
-        abilityData.buy_score_train = buy_score_train
-        abilityData.count_test = len(testDataList)
-        abilityData.sell_score_test = sell_score_test
-        abilityData.buy_score_test = buy_score_test
+        abilityData.trainData = _trainData
+        abilityData.testData = _testData
         return abilityData
 
 
