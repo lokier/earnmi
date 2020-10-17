@@ -101,6 +101,9 @@ class utils:
             return False
         return True
 
+    def keep_3_float(value:float) -> float:
+        return int(value * 1000) / 1000
+
     def to_start_date(d: datetime) -> datetime:
         return datetime(year=d.year, month=d.month, day=d.day, hour=00, minute=00, second=1)
 

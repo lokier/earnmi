@@ -238,8 +238,8 @@ class CoreEngineRunner():
             return v1.getEarnRate() - v2.getEarnRate()
         __dataList = sorted(__dataList, key=cmp_to_key(diemdata_cmp), reverse=True)
         columns = ["dimen", "总数", "操作数", "盈利率", "总盈利", "总亏损", "分数|卖", "分数|买",
-                   "量化数据:", "power", "count", "sCPct", "bCPct", "预测能力:", "countTrain", "sScoreTrain", "bScoreTrain",
-                   "countTest", "sScoreTest", "bScoreTest"]
+                   "量化数据:", "power", "count", "sCPct", "bCPct", "预测能力:",
+                   "count", "sScore", "bScore","sBiasWin", "bBiasWin", "sBiasLoss","bBiasLoss"]
         values = []
         for d in __dataList:
             if d.deal_count < min_deal_count:
@@ -262,12 +262,16 @@ class CoreEngineRunner():
             item.append(d.quant.sellCenterPct)
             item.append(d.quant.buyCenterPct)
             item.append("")
-            item.append(d.abilityData.count_train)
-            item.append(d.abilityData.sell_score_train)
-            item.append(d.abilityData.buy_score_train)
-            item.append(d.abilityData.count_test)
-            item.append(d.abilityData.sell_score_test)
-            item.append(d.abilityData.buy_score_test)
+            ability:PredictAbilityData = d.abilityData
+            item.append(ability.getCount())
+            item.append(ability.getScoreSell())
+            item.append(ability.getScoreBuy())
+
+            item.append(ability.getBiasSell(True))
+            item.append(ability.getScoreBuy(True))
+            item.append(ability.getBiasSell(False))
+            item.append(ability.getScoreBuy(False))
+
             values.append(item)
 
         return pd.DataFrame(values, columns=columns)
@@ -399,17 +403,17 @@ if __name__ == "__main__":
     strategy = MyStrategy()
 
 
-    parasMap = {
-        #"quant_power":[0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
-        "predict_buy_pct":[-1.5,-1,-0.5,0, 0.5, 1],
-    }
-    runner.debugBestParam(testDataSouce,strategy,parasMap,max_run_count=4,printDetail = True);
+    # parasMap = {
+    #     #"quant_power":[0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+    #     "predict_buy_pct":[-1.5,-1,-0.5,0, 0.5, 1],
+    # }
+    # runner.debugBestParam(testDataSouce,strategy,parasMap,max_run_count=1,min_deal_count = 15,printDetail = True);
 
-    # pdData = runner.backtest(testDataSouce,strategy,min_deal_count = 15)
-    # writer = pd.ExcelWriter('files\CoreEngineRunner.xlsx')
-    # pdData.to_excel(writer, sheet_name="data", index=False)
-    # writer.save()
-    # writer.close()
+    pdData = runner.backtest(testDataSouce,strategy,min_deal_count = 15)
+    writer = pd.ExcelWriter('files\CoreEngineRunner.xlsx')
+    pdData.to_excel(writer, sheet_name="data", index=False)
+    writer.save()
+    writer.close()
 
 
     pass
