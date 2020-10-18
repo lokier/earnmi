@@ -17,6 +17,6 @@ class CoreEngineStrategy:
         pass
 
     @abstractmethod
-    def updatePredictOrder(self, order: PredictOrder,bar:BarData,isTodayLastBar:bool):
+    def updatePredictOrder(self, order: PredictOrder,bar:BarData,isTodayLastBar:bool,debugParams:{}=None):
         pass
 

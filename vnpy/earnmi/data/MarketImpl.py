@@ -8,7 +8,6 @@ from vnpy.trader.object import BarData, TickData
 
 
 class RealTimeImpl(Market.RealTime):
-    market: Market = None
 
     def __init__(self, market: Market):
         self.market = market
@@ -102,7 +101,6 @@ class RealTimeImpl(Market.RealTime):
 
 
 class HistoryImpl(Market.History):
-    market:Market = None
 
     def __init__(self, market:Market):
         self.market = market
@@ -137,9 +135,6 @@ class HistoryImpl(Market.History):
 
 
 class MarketImpl(Market):
-
-    history:HistoryImpl =None
-    realtime:RealTimeImpl = None
 
     def __init__(self):
         self.history = HistoryImpl(self)

@@ -1,4 +1,6 @@
+import math
 from datetime import datetime, timedelta
+from math import nan
 from typing import Tuple, Sequence
 
 from vnpy.trader.constant import Exchange, Interval
@@ -26,16 +28,14 @@ import numpy as np
 
 class FetcherDailyBar:
 
-    __code :str = None
-    __code_jq :str = None
-    __exchange:Exchange = None
-    __database_manager: "BaseDatabaseManager" = None
-    __update_batch_size = 900
-    __newest_bar_data:"BarData" = None
-    __oldest_bar_data:"BarData" = None
-
 
     def __init__(self, code: str,batch_size = 900):
+        self.__database_manager: "BaseDatabaseManager" = None
+        self.__update_batch_size = 900
+        self.__oldest_bar_datetime: datetime = None
+        self.__newest_bar_datetime: datetime = None
+
+
         self.__code = code
         self.__update_batch_size = batch_size
         self.__code_jq = utils.to_jq_symbol(code)
@@ -58,13 +58,13 @@ class FetcherDailyBar:
 
         database_manager = self.__database_manager
 
-        if self.__oldest_bar_data is None:
+        if self.__oldest_bar_datetime is None:
             self.__update_bar_data_from_jqdata(start, end)
         else:
             start = utils.to_start_date(start)
             end = utils.to_end_date(end)
-            data_start = utils.to_start_date(self.__oldest_bar_data.datetime)
-            data_end = utils.to_end_date(self.__newest_bar_data.datetime)
+            data_start = utils.to_start_date(self.__oldest_bar_datetime)
+            data_end = utils.to_end_date(self.__newest_bar_datetime)
             now = utils.to_end_date(datetime.now())
             if end > now:
                 end = now
@@ -136,7 +136,10 @@ class FetcherDailyBar:
                 wd = prices.index[rowIndex]
                 date = datetime(year=wd.year, month=wd.month, day=wd.day, hour=wd.hour, minute=wd.minute,
                                 second=wd.second);
-
+                volume = row['volume']
+                if math.isnan(volume):
+                    ##该天没有值
+                    continue
                 bar = BarData(
                     symbol=self.__code,
                     exchange=self.__exchange,
@@ -156,16 +159,31 @@ class FetcherDailyBar:
             database_manager.save_bar_data(bars)
             batch_start = batch_end  # + timedelta(days = 1)
 
+        ##更新缓存时间段:
+        codeTime = f"Time_{self.__code}"
+        database_manager.clean(codeTime)
+        starDateBar = BarData(symbol=codeTime, exchange=self.__exchange, datetime=start_date,interval=Interval.DAILY,volume=1, open_price=1,
+                      high_price=1,low_price=1, close_price=1, open_interest=0,gateway_name="DB" )
+        endDateBar = BarData(symbol=codeTime, exchange=self.__exchange, datetime=end_date, interval=Interval.DAILY,
+                              volume=1, open_price=1,
+                              high_price=1, low_price=1, close_price=1, open_interest=0, gateway_name="DB")
+        database_manager.save_bar_data([starDateBar,endDateBar])
+
         self.__updateBar();
-        assert self.__newest_bar_data.datetime >= start_date
-        assert self.__oldest_bar_data.datetime <= end_date
+        assert self.__newest_bar_datetime >= start_date
+        assert self.__oldest_bar_datetime <= end_date
         return saveCount
 
     def __updateBar(self):
-        self.__newest_bar_data = self.__database_manager.get_newest_bar_data(self.__code, self.__exchange,
+        codeTime = f"Time_{self.__code}"
+        __newest_bar_data = self.__database_manager.get_newest_bar_data(codeTime, self.__exchange,
                                                                              Interval.DAILY)
-        self.__oldest_bar_data = self.__database_manager.get_oldest_bar_data(self.__code, self.__exchange,
+        __oldest_bar_data = self.__database_manager.get_oldest_bar_data(codeTime, self.__exchange,
                                                                              Interval.DAILY)
+        if not __newest_bar_data is None:
+            self.__newest_bar_datetime = __newest_bar_data.datetime
+            self.__oldest_bar_datetime = __oldest_bar_data.datetime
+
 
 
 if __name__ == "__main__":

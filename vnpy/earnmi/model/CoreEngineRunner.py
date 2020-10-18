@@ -135,7 +135,7 @@ class CoreEngineRunner():
                     for predict in predictList:
                         order = strategy.generatePredictOrder(self.coreEngine, predict,__the_param)
                         for bar in predict.collectData.predictBars:
-                            strategy.updatePredictOrder(order, bar, True)
+                            strategy.updatePredictOrder(order, bar, True,__the_param)
                         self.putToStatistics(_testData, order, predict)
                     __dataList.append(_testData)
                     totalData = self.__combine(__dataList,min_deal_count)
@@ -203,7 +203,7 @@ class CoreEngineRunner():
             for predict in predictList:
                 order = strategy.generatePredictOrder(self.coreEngine,predict)
                 for bar in predict.collectData.predictBars:
-                    strategy.updatePredictOrder(order, bar, True)
+                    strategy.updatePredictOrder(order, bar, True,None)
                 self.putToStatistics(_testData,order,predict)
 
             __dataList.append(_testData)
@@ -392,6 +392,53 @@ if __name__ == "__main__":
                     order.status = PredictOrderStatus.CROSS
                     return
 
+    class QuantStrategy(CoreEngineStrategy):
+        def __init__(self):
+            self.sw = SWImpl()
+
+        def generatePredictOrder(self, engine: CoreEngine, predict: PredictData,debugPrams:{}=None) -> PredictOrder:
+
+            if debugPrams is None:
+                debugPrams = {}
+            quantData = engine.queryQuantData(predict.dimen)
+            code = predict.collectData.occurBars[-1].symbol
+            name = self.sw.getSw2Name(code)
+            order = PredictOrder(dimen=predict.dimen, code=code, name=name)
+            start_price = engine.getEngineModel().getYBasePrice(predict.collectData)
+
+            _min, _max = quantData.getSellFloatEncoder().parseEncode(quantData.sellRange[0].encode)
+            order.suggestSellPrice = start_price * (1 + (_min +  _max) / 2 / 100)
+            _min, _max = quantData.getBuyFloatEncoder().parseEncode(quantData.buyRange[0].encode)
+            order.suggestBuyPrice = start_price * (1 + (_min +  _max) / 2 / 100)
+
+            order.power_rate = quantData.getPowerRate();
+
+            ##for backTest
+            self.checkIfBuyPrice(order,predict.collectData.occurBars[-1].close_price,debugPrams)
+            return order
+
+        def checkIfBuyPrice(self,order: PredictOrder,targetPrice:float,debugPrams:{}=None):
+            if order.status != PredictOrderStatus.TRACE:
+                return
+            quantData = engine.queryQuantData(order.dimen)
+
+            if quantData.getPowerRate() > 0.9 and order.suggestBuyPrice >= targetPrice:
+                order.status = PredictOrderStatus.HOLD
+                order.buyPrice = targetPrice
+
+        def updatePredictOrder(self, order: PredictOrder, bar: BarData, isTodayLastBar: bool,debugPrams:{}):
+            if (order.status == PredictOrderStatus.HOLD):
+                if bar.high_price >= order.suggestSellPrice:
+                    order.sellPrice = order.suggestSellPrice
+                    order.status = PredictOrderStatus.CROSS
+                    return
+                if order.holdDay >= 1:
+                    order.sellPrice = bar.close_price
+                    order.status = PredictOrderStatus.CROSS
+                    return
+            order.holdDay += 1
+            self.checkIfBuyPrice(order,bar.low_price,debugPrams)
+
     dirName = "files/backtest"
     trainDataSouce = SWDataSource( start = datetime(2014, 2, 1),end = datetime(2019, 9, 1))
     testDataSouce = SWDataSource(datetime(2019, 9, 1),datetime(2020, 9, 1))
@@ -400,7 +447,8 @@ if __name__ == "__main__":
     #engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=9999999)
     engine = CoreEngine.load(dirName,model)
     runner = CoreEngineRunner(engine)
-    strategy = MyStrategy()
+    #strategy = MyStrategy()
+    strategy = QuantStrategy()
 
 
     # parasMap = {
@@ -410,7 +458,7 @@ if __name__ == "__main__":
     # runner.debugBestParam(testDataSouce,strategy,parasMap,max_run_count=1,min_deal_count = 15,printDetail = True);
 
     pdData = runner.backtest(testDataSouce,strategy,min_deal_count = 15)
-    writer = pd.ExcelWriter('files\CoreEngineRunner.xlsx')
+    writer = pd.ExcelWriter('files/CoreEngineRunner.xlsx')
     pdData.to_excel(writer, sheet_name="data", index=False)
     writer.save()
     writer.close()

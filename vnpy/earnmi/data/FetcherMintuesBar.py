@@ -23,13 +23,8 @@ import numpy as np
 
 class FetcherMintuesBar:
 
-    __code :str = None
-    __code_jq :str = None
-    __exchange:Exchange = None
-    __database_manager: "BaseDatabaseManager" = None
-
-
     def __init__(self, code: str,batch_size = 900):
+        self.__database_manager: "BaseDatabaseManager" = None
         self.__code = code
         self.__update_batch_size = batch_size
         self.__code_jq = utils.to_jq_symbol(code)
