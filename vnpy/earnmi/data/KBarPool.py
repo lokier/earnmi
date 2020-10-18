@@ -18,49 +18,23 @@ from earnmi.data.import_data_from_jqdata import save_bar_data_from_jqdata
 
 class KBarPool:
 
-    __min_pool_size = 200
-    __max_poll_size = 1000
-    __code:str = None
-    __start_time:datetime = None
-    __end_time:datetime = None
-    __pool_data:Sequence["BarData"] = None
-    __BATCH_SIZE = 300
-    __data_fetch:FetcherDailyBar = None
-
     def __init__(self, code: str):
      self.__code = code
      self.__data_fetch = FetcherDailyBar(code)
+     self.__pool_data:Sequence["BarData"] = None
 
      """
      不包含end 日期的k线
      """
     def getData(self, end:datetime,count: int)-> Sequence["BarData"]:
-
         #是否满足从缓存里面取
-        in_poll = False
-        if (not self.__pool_data is None):
-            the_count = 0
-            last_data = self.__pool_data[-1];
-            if last_data.datetime >= end or utils.is_same_day(last_data.datetime,end):
-                for data in self.__pool_data:
-                    if data.datetime < end and not utils.is_same_day(data.datetime,end):
-                        the_count = the_count + 1
-                        if the_count >= count:
-                            in_poll = True
-                            break
-
-
-        if (not in_poll):
-            # make_poll_size
-            self.setPoolAt(end,count)
-            pass
-
+        __pool_data = self.setPoolAt(end,count)
         ret = []
         addingCount = 0
-        pool_size = len(self.__pool_data)
+        pool_size = len(__pool_data)
         for i in range(pool_size):
             index = pool_size - i -1
-            data = self.__pool_data[index]
+            data = __pool_data[index]
             if addingCount == 0:
                 if data.datetime < end and not utils.is_same_day(data.datetime,end):
                     ret.insert(0,data)
@@ -76,61 +50,9 @@ class KBarPool:
     不包含end 日期的k线
     """
     def getDataFrom(self, start: datetime,end:datetime)-> Sequence["BarData"]:
-        if end.year - start.year >= 3 :
-            raise RuntimeError("只查询支持3年之间的k线图")
-
         #//是否满足从缓存里面取
-        in_poll = False
-        if(not self.__pool_data is None):
-            in_poll = start >= self.__start_time and end <= self.__end_time
-
-        if( not in_poll):
-            #make_poll_size
-            self.setPoolAtTimeSpan(start,end)
-            pass
-
-        ret = []
-        isAdding = False
-        for data in self.__pool_data:
-            if not isAdding:
-                if(data.datetime>= start):
-                    isAdding = True
-                    ret.append(data)
-            else:
-                if( utils.is_same_day(data.datetime,end) or data.datetime>=end):
-                    break;
-                else:
-                    ret.append(data)
-        return ret
-
-    def setPoolAtTimeSpan(self,start:datetime,end:datetime):
-
-        theStart = start
-        theEnd = end
-
-        ##是否要分批加载
-        if (theEnd - theStart).days > 365:
-            theEnd  = theStart + timedelta(days=365)
-
-        pool_start, pool_end, poll_data = self.__makePollSize(theStart, theEnd)
-
-        while theEnd < end :
-            theStart = self._buidl_start_date(theEnd + timedelta(days=1))
-            theEnd = self._buidl_end_date(theStart + timedelta(days=365))
-            if theStart >= end:
-                break
-            if theEnd > end:
-                theEnd = end
-            start1,end1,dataList = self.__makePollSize(theStart, theEnd)
-            pool_end = end1
-            theEnd = end1
-            if len(dataList) > 0:
-                poll_data.extend(dataList)
-
-
-        self.__pool_data = poll_data
-        self.__start_time = self._buidl_start_date(pool_start)
-        self.__end_time = self._buidl_end_date(pool_end)
+        __pool_data = self.__data_fetch.fetch(start,end)
+        return __pool_data
 
     def setPoolAt(self,end:datetime,count:int):
 
@@ -163,10 +85,8 @@ class KBarPool:
                 if len(dataList2) > 0:
                     poll_data.extend(dataList2)
                     pool_end = end2
+        return poll_data
 
-        self.__pool_data = poll_data
-        self.__start_time = self._buidl_start_date(pool_start)
-        self.__end_time = self._buidl_end_date(pool_end)
 
     def _buidl_start_date(self,d:datetime) ->datetime:
             return datetime(year=d.year,month=d.month,day=d.day,hour=00,minute=00,second=1)

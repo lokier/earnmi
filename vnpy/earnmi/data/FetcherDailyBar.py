@@ -29,7 +29,7 @@ import numpy as np
 class FetcherDailyBar:
 
 
-    def __init__(self, code: str,batch_size = 900):
+    def __init__(self, code: str,batch_size = 900,file_preffix="daily_bar_"):
         self.__database_manager: "BaseDatabaseManager" = None
         self.__update_batch_size = 900
         self.__oldest_bar_datetime: datetime = None
@@ -40,19 +40,21 @@ class FetcherDailyBar:
         self.__update_batch_size = batch_size
         self.__code_jq = utils.to_jq_symbol(code)
         self.__exchange = utils.getExchange(self.__code)
-        self.__initDataManager()
+        self.__initDataManager(file_preffix)
 
-    def __initDataManager(self):
+    def __initDataManager(self,file_preffix):
 
-        database = f"daily_bar_{self.__code}_{self.__exchange.value.__str__()}.db"
+        database = f"{file_preffix}{self.__code}_{self.__exchange.value.__str__()}.db"
         path = str(get_file_path(database))
         db = SqliteDatabase(path)
         self.__database_manager = init_by_sql_databease(db)
-        self.__updateBar()
+        self.__updateNewestTime()
 
     def clearAll(self):
+        codeTime = f"Time_{self.__code}"
+        self.__database_manager.clean(codeTime)
         self.__database_manager.clean(self.__code)
-        self.__updateBar()
+        self.__updateNewestTime()
 
     def fetch(self, start: datetime, end: datetime) -> Sequence["BarData"]:
 
@@ -161,20 +163,25 @@ class FetcherDailyBar:
 
         ##更新缓存时间段:
         codeTime = f"Time_{self.__code}"
+        min_start_date = start_date
+        max_end_date = end_date
+        if not self.__newest_bar_datetime is None:
+            min_start_date = min(self.__oldest_bar_datetime,min_start_date)
+            max_end_date = max(self.__newest_bar_datetime,max_end_date)
         database_manager.clean(codeTime)
-        starDateBar = BarData(symbol=codeTime, exchange=self.__exchange, datetime=start_date,interval=Interval.DAILY,volume=1, open_price=1,
+        starDateBar = BarData(symbol=codeTime, exchange=self.__exchange, datetime=min_start_date,interval=Interval.DAILY,volume=1, open_price=1,
                       high_price=1,low_price=1, close_price=1, open_interest=0,gateway_name="DB" )
-        endDateBar = BarData(symbol=codeTime, exchange=self.__exchange, datetime=end_date, interval=Interval.DAILY,
+        endDateBar = BarData(symbol=codeTime, exchange=self.__exchange, datetime=max_end_date, interval=Interval.DAILY,
                               volume=1, open_price=1,
                               high_price=1, low_price=1, close_price=1, open_interest=0, gateway_name="DB")
         database_manager.save_bar_data([starDateBar,endDateBar])
 
-        self.__updateBar();
+        self.__updateNewestTime();
         assert self.__newest_bar_datetime >= start_date
         assert self.__oldest_bar_datetime <= end_date
         return saveCount
 
-    def __updateBar(self):
+    def __updateNewestTime(self):
         codeTime = f"Time_{self.__code}"
         __newest_bar_data = self.__database_manager.get_newest_bar_data(codeTime, self.__exchange,
                                                                              Interval.DAILY)
@@ -183,17 +190,24 @@ class FetcherDailyBar:
         if not __newest_bar_data is None:
             self.__newest_bar_datetime = __newest_bar_data.datetime
             self.__oldest_bar_datetime = __oldest_bar_data.datetime
-
+        else:
+            self.__newest_bar_datetime = None
+            self.__oldest_bar_datetime = None
 
 
 if __name__ == "__main__":
     code = "300004"
-    start = datetime.now() - timedelta(days=330)
+    start = datetime.now() - timedelta(days=7000)
     end = datetime.now()
+
+    start_1 = datetime.now() -timedelta(days=1000)
+    end_1 = datetime.now() -timedelta(days=500)
 
     fetcher = FetcherDailyBar(code)
     #fetcher.clearAll()
+    bars = fetcher.fetch(start_1,end_1)
     bars = fetcher.fetch(start,end)
+
     print(f"len:{len(bars)}")
 
 

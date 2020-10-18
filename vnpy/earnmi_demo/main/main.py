@@ -26,7 +26,7 @@ for code in stockslist:
     market.addNotice(code)
     print(f"getBars:{code}")
     bars = market.getHistory().getKbars(code,300 * 3);
-    time.sleep(2)
+    #time.sleep(2)
 
     print(f"getBars size:{len(bars)}")
 
