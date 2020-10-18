@@ -30,6 +30,16 @@ class CollectData(object):
     """
     predictBars:['BarData'] = None
 
+    """
+    额外数据1
+    """
+    occurExtra = {}
+
+    """
+    额外数据2
+    """
+    predictExtra = {}
+
     def __post_init__(self):
         self.occurBars = []
         self.predictBars = []

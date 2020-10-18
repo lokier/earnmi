@@ -290,6 +290,7 @@ class Chart:
     code: 指数代码
     """
     def showCompare(self,bars:[],code:str):
+        from earnmi.data.MarketImpl import MarketImpl
         market = MarketImpl()
         market.addNotice(code)
         today:datetime = bars[-1].datetime

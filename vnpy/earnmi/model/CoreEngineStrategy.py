@@ -2,9 +2,12 @@
 
 from abc import abstractmethod
 from typing import Tuple, Sequence
+
+from earnmi.data.SWImpl import SWImpl
 from earnmi.model.CollectData import CollectData
+from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.PredictData import PredictData
-from earnmi.model.PredictOrder import PredictOrder
+from earnmi.model.PredictOrder import PredictOrder, PredictOrderStatus
 from vnpy.trader.object import BarData
 
 
@@ -19,4 +22,6 @@ class CoreEngineStrategy:
     @abstractmethod
     def updatePredictOrder(self, order: PredictOrder,bar:BarData,isTodayLastBar:bool,debugParams:{}=None):
         pass
+
+
 

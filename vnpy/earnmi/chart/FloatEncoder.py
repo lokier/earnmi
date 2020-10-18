@@ -62,6 +62,18 @@ class FloatEncoder:
 
         return f"[{left},{right}]"
 
+    """
+    答应分布
+    """
+    # @staticmethod
+    # def printDistribute(intList:[],splits:[],minValue=None,maxValue = None):
+    #     pctEncoder = FloatEncoder(splits,minValue,maxValue)
+    #
+    #     for v in intList:
+    #         pctEncoder.en
+    #
+    #     return
+
 def FloatRangeCompare(d1, d2):
     return d1.probal - d2.probal
 

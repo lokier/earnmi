@@ -4,7 +4,7 @@
 核心引擎
 """
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime,timedelta
 from functools import cmp_to_key
 from typing import Sequence
 
@@ -162,7 +162,46 @@ class CoreEngineRunner():
                         totalData:BackTestData = dimenSet.get(paramValue)
                         print(f"          [{paramValue}]: {totalData}")
 
+    """
+    获取申万当前的操作单
+    """
+    def getSWCurrentPredictOrder(self,strategy:CoreEngineStrategy):
+        end = datetime.now()
+        start = end - timedelta(days=100)
+        soruce = SWDataSource(start, end)
+        bars, code = soruce.onNextBars()
+        dataSet = {}
+        totalCount = 0
+        model = self.coreEngine.getEngineModel()
+        orderList: Sequence['PredictOrder'] = []
+        while not bars is None:
+            # self.coreEngine.getEngineModel().collectBars(bars,code)
+            finished, stop = model.collectBars(bars, code)
+            print(f"[backtest]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
+            totalCount += len(stop)
+            bars, code = soruce.onNextBars()
+            for data in stop:
+                ##收录
+                listData: [] = dataSet.get(data.dimen)
+                if listData is None:
+                    listData = []
+                    dataSet[data.dimen] = listData
+                listData.append(data)
 
+        for dimen, listData in dataSet.items():
+            model = self.coreEngine.loadPredictModel(dimen)
+            if model is None:
+                print(f"不支持的维度:{dimen}")
+                continue
+            predictList: Sequence['PredictData'] = model.predict(listData)
+            for predict in predictList:
+                order = strategy.generatePredictOrder(self.coreEngine, predict)
+                for bar in predict.collectData.predictBars:
+                    strategy.updatePredictOrder(order, bar, True, None)
+                if order.status == PredictOrderStatus.HOLD or \
+                    order.status == PredictOrderStatus.CROSS:
+                    orderList.append(order)
+        return orderList
 
     def backtest(self, soruce: BarDataSource, strategy:CoreEngineStrategy, min_deal_count = -1):
         bars, code = soruce.onNextBars()

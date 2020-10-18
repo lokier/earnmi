@@ -490,7 +490,7 @@ class Indicator(object):
 
     def aroon(
         self,
-        n: int,
+        n: int = 14,
         array: bool = False
     ) -> Union[
         Tuple[np.ndarray, np.ndarray],
