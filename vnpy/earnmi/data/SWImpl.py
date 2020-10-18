@@ -703,7 +703,7 @@ if __name__ == "__main__":
         import requests
         # 字符串格式
         dt = start.strftime('%Y%m%d')
-        url = f"http://106.15.58.126/sw_k.action?username=raodongming&password=58edde63081e2ce001cf5800f68df36f&id={code}&num={count}&datetime={dt}&period=d&srcIndex=1"
+        url = f"http://139.196.211.109/sw_k.action?username=raodongming&password=58edde63081e2ce001cf5800f68df36f&id={code}&num={count}&datetime={dt}&period=d&srcIndex=1"
         print(f"url:{url}")
         res = requests.get(url=url)
         text = res.text
@@ -723,12 +723,17 @@ if __name__ == "__main__":
             if (tokens is None or len(tokens) < 3):
                 continue
             dt = datetime.strptime(tokens[0], "%Y%m%d"),
-            dt = dt[0]
+            dt = dt[0] + timedelta(hours=1)
+            if dt < start:
+                ###日期不对。
+                continue
+
             volume = float(tokens[5])
             open_price = float(tokens[1])
             high_price = float(tokens[2])
             low_price = float(tokens[3])
             close_price = float(tokens[4])
+
 
             bar = BarData(
                 symbol=code,
@@ -752,9 +757,9 @@ if __name__ == "__main__":
             bar = db.get_newest_bar_data(code,Exchange.SZSE,Interval.DAILY)
             if not bar is None:
                 start = bar.datetime + timedelta(days = 1)
-                start = datetime(year=start.year,month=start.month,day=start.day,hour=8)
         else:
             db.clean(code)
+        start = utils.to_start_date(start)
 
         now = datetime.now()
         now = datetime(year=now.year,month=now.month,day=now.day,hour=19)
