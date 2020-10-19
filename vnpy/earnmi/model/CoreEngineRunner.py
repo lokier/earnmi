@@ -12,7 +12,8 @@ import pandas as pd
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
 from earnmi.data.SWImpl import SWImpl
-from earnmi.model.CoreEngine import CoreEngine, BarDataSource
+from earnmi.model.BarDataSource import BarDataSource
+from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.CoreEngineStrategy import CoreEngineStrategy
 from earnmi.model.Dimension import Dimension

@@ -19,14 +19,7 @@ from vnpy.trader.object import BarData
 
 
 
-class BarDataSource:
 
-    """
-    返回下一批BarData数据。 返回[bars,code]
-    """
-    @abstractmethod
-    def onNextBars(self) -> Tuple[Sequence['BarData'],str]:
-        pass
 
 class PredictModel:
 

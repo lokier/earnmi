@@ -9,6 +9,7 @@ from sklearn.ensemble import RandomForestClassifier
 import joblib
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
+from earnmi.model.BarDataSource import SWDataSource, BarDataSource
 from earnmi.model.PredictAbilityData import PredictAbilityData, ModelAbilityData
 from earnmi.model.PredictOrder import PredictOrder
 from earnmi.model.QuantData import QuantData
@@ -16,7 +17,7 @@ from vnpy.trader.object import BarData
 
 from earnmi.data.SWImpl import SWImpl
 from earnmi.model.CollectData import CollectData
-from earnmi.model.CoreEngine import CoreEngine, BarDataSource, PredictModel
+from earnmi.model.CoreEngine import CoreEngine, PredictModel
 from earnmi.model.Dimension import Dimension, TYPE_3KAGO1, TYPE_2KAGO1
 from earnmi.model.PredictData import PredictData
 import pickle
@@ -25,23 +26,6 @@ from earnmi.model.CoreEngineModel import CoreEngineModel
 import pandas as pd
 
 
-
-class SWDataSource(BarDataSource):
-    def __init__(self,start:datetime,end:datetime ):
-        self.index = 0
-        self.sw = SWImpl()
-        self.start = start
-        self.end = end
-
-    def onNextBars(self) -> Tuple[Sequence['BarData'], str]:
-        # if self.index > 2:
-        #     return None,None
-        sw_code_list = self.sw.getSW2List()
-        if self.index < len(sw_code_list):
-            code = sw_code_list[self.index]
-            self.index +=1
-            return self.sw.getSW2Daily(code,self.start,self.end),code
-        return None,None
 
 class SVMPredictModel(PredictModel):
 

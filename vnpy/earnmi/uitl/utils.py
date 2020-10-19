@@ -54,6 +54,11 @@ class utils:
         # 沪深300指数
         if code.startswith("000300"):
             return "000300.XSHG"
+
+        if code.endswith(".XSHG") \
+            or code.endswith(".XSHE"):
+            return code
+
         jq_code = jq.normalize_code(code)
 
         if jq_code is None:
