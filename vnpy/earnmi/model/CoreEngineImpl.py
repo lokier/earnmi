@@ -1,4 +1,5 @@
 import os
+import shutil
 import timeit
 from datetime import datetime
 from functools import cmp_to_key
@@ -41,6 +42,7 @@ class SVMPredictModel(PredictModel):
         self.labelListSell2:[] = None  ##标签值列表
         self.labelListBuy1:[] = None  ##标签值列表
         self.labelListBuy2:[] = None  ##标签值列表
+        self.__modelLoaded = False
 
 
     def save(self,dirPath:str):
@@ -311,13 +313,18 @@ class CoreEngineImpl(CoreEngine):
             self.mAllDimension  = pickle.load(fp)
         with open(self.__getQuantFilePath(), 'rb') as fp:
             self.mQuantDataMap = pickle.load(fp)
-        with open(self.__getAbilityFilePath(), 'rb') as fp:
-            self.mAbilityMap = pickle.load(fp)
+
+        self.__modelLoaded = False
+        if os.path.exists(self.__getAbilityFilePath()):
+            self.__modelLoaded = True
+            with open(self.__getAbilityFilePath(), 'rb') as fp:
+                self.mAbilityMap = pickle.load(fp)
 
         self.printLog(f"load() finished,总共加载{len(self.mAllDimension)}个维度数据",True)
         assert len(self.mQuantDataMap) == len(self.mAllDimension)
 
-    def build(self, soruce: BarDataSource, model: CoreEngineModel,split_rate = 0.7,limit_dimen_size = -1, onlyDimens:[] =None):
+    def build(self, soruce: BarDataSource, model: CoreEngineModel, split_rate=0.7, limit_dimen_size=-1,
+              onlyDimens: [] = None, build_quant_data_only= False):
         self.printLog("build() start...", True)
         self.__model = model
         # collector.onCreate()
@@ -354,8 +361,11 @@ class CoreEngineImpl(CoreEngine):
 
         dataSet = fitlerDataSet
         self.__saveDimeenAndQuantData(dataSet)
-        self.__buildAndSaveModelData(split_rate)
-        self.printLog(f"创建模型完成",True)
+        shutil.rmtree(self.__getModelDirPath())  # 递归删除一个目录以及目录内的所有内容
+        if build_quant_data_only == False:
+            self.__buildAndSaveModelData(split_rate)
+            self.printLog(f"创建模型完成",True)
+
         self.load(model)
         self.__ouptBuildDataToFiles();
 
@@ -373,22 +383,24 @@ class CoreEngineImpl(CoreEngine):
         pd.DataFrame(_quant_values, columns=_quant_columns) \
             .to_excel(writer, sheet_name="quantData")
 
-        def ability_data_to_list(dimen:Dimension,q:PredictAbilityData)->[]:
-            return [dimen.value,
-                    q.trainData.count,q.trainData.scoreSell,q.trainData.scoreBuy,q.trainData.biasSellWin,q.trainData.biasBuyWin,q.trainData.biasSellLoss,q.trainData.biasBuyLoss,
-                    q.testData.count,q.testData.scoreSell,q.testData.scoreBuy,q.testData.biasSellWin,q.testData.biasBuyWin,q.testData.biasSellLoss,q.testData.biasBuyLoss]
-        _ability_columns = ['dimen',
-                            "count|训", "sScore|训", "bScore|训","s正方差|训", "b正方差|训","s负方差|训", "b负方差|训",
-                            "count|测", "sScore|测", "bScore|测","s正方差|测", "b正方差|测","s负方差|测", "b负方差|测"]
-        _ability_values = []
-        for dimen in self.mAllDimension:
-            _abilityData = self.queryPredictAbilityData(dimen)
-            _ability_values.append(ability_data_to_list(dimen,_abilityData))
-        pd.DataFrame(_ability_values, columns=_ability_columns) \
-            .to_excel(writer, sheet_name="abilityData")
+        if self.__modelLoaded:
+            def ability_data_to_list(dimen:Dimension,q:PredictAbilityData)->[]:
+                return [dimen.value,
+                        q.trainData.count,q.trainData.scoreSell,q.trainData.scoreBuy,q.trainData.biasSellWin,q.trainData.biasBuyWin,q.trainData.biasSellLoss,q.trainData.biasBuyLoss,
+                        q.testData.count,q.testData.scoreSell,q.testData.scoreBuy,q.testData.biasSellWin,q.testData.biasBuyWin,q.testData.biasSellLoss,q.testData.biasBuyLoss]
+            _ability_columns = ['dimen',
+                                "count|训", "sScore|训", "bScore|训","s正方差|训", "b正方差|训","s负方差|训", "b负方差|训",
+                                "count|测", "sScore|测", "bScore|测","s正方差|测", "b正方差|测","s负方差|测", "b负方差|测"]
+            _ability_values = []
+            for dimen in self.mAllDimension:
+                _abilityData = self.queryPredictAbilityData(dimen)
+                _ability_values.append(ability_data_to_list(dimen,_abilityData))
+            pd.DataFrame(_ability_values, columns=_ability_columns) \
+                .to_excel(writer, sheet_name="abilityData")
 
         writer.save()
         writer.close()
+
 
     def __saveDimeenAndQuantData(self,dataSet:{}):
         self.printLog(f"开始保存数据",True)
@@ -622,7 +634,7 @@ class CoreEngineImpl(CoreEngine):
         return not self.queryQuantData(dimen) is None
 
     def loadPredictModel(self, dimen: Dimension) -> PredictModel:
-        if self.isSupport(dimen):
+        if self.__modelLoaded and self.isSupport(dimen):
             model = SVMPredictModel(self,dimen)
             model.load(self.__getModelFilePath(dimen))
             return model

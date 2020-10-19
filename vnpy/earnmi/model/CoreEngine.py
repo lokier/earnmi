@@ -7,6 +7,7 @@ from abc import abstractmethod, ABC
 from typing import Union, Tuple, Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder
+from earnmi.model.BarDataSource import BarDataSource
 from earnmi.model.CollectData import CollectData
 from earnmi.model.CoreEngineModel import CoreEngineModel
 from earnmi.model.Dimension import Dimension
@@ -54,10 +55,10 @@ class CoreEngine():
     """
     创建CoreEngine对象。
     """
-    def create(dirName:str, model:CoreEngineModel, dataSource:BarDataSource,split_rate = 0.7,limit_dimen_size = -1):
+    def create(dirName:str, model:CoreEngineModel, dataSource:BarDataSource,split_rate = 0.7,limit_dimen_size = -1, build_quant_data_only=True):
         from earnmi.model.CoreEngineImpl import CoreEngineImpl
         engine = CoreEngineImpl(dirName)
-        engine.build(dataSource, model,split_rate,limit_dimen_size)
+        engine.build(dataSource, model,split_rate,limit_dimen_size,onlyDimens = None,build_quant_data_only = build_quant_data_only)
         return engine
 
     """
@@ -69,12 +70,9 @@ class CoreEngine():
         engine.load(model)
         return engine
     """
-    建立引擎的能力数据
+    创建预测模型。
     testDataSource数据源不能跟引擎的初始数据一样。
     """
-    @abstractmethod
-    def buildAbilityData(self,testDataSource:BarDataSource):
-        pass
 
     @abstractmethod
     def loadPredictModel(self, dimen:Dimension) ->PredictModel:

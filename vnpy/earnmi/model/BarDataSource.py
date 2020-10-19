@@ -55,6 +55,17 @@ class ZZ500DataSource(BarDataSource):
         if limit_size > 0:
             self.limitSize = min(limit_size,self.limitSize)
 
+    """
+    清空缓存
+    """
+    def clearAll(self):
+        code_list = ZZ500DataSource.SZ500_JQ_CODE_LIST
+        for code in code_list:
+            self.market.addNotice(code)
+            bars = self.market.getHistory().clean(code)
+            self.market.removeNotice(code)
+            return code, bars
+
     def onNextBars(self) -> Tuple[Sequence['BarData'], str]:
         # if self.index > 2:
         #     return None,None
@@ -65,13 +76,14 @@ class ZZ500DataSource(BarDataSource):
             self.market.addNotice(code)
             bars = self.market.getHistory().getKbarFrom(code,self.start)
             self.market.removeNotice(code)
-            return code,bars
+            return bars,code
         return None,None
 
 if __name__ == "__main__":
     start = datetime(2015, 10, 1)
     end = datetime(2020, 9, 30)
     souces = ZZ500DataSource(start,end)
-    code,bars = souces.onNextBars()
-    assert len(bars) > 1000
-    assert utils.is_same_day(end,bars[-1].datetime)
+    bars,code = souces.onNextBars()
+    while not code is None:
+        print(f"code:{code}, start:{bars[0]},\n            end:{bars[-1]}")
+        code, bars = souces.onNextBars()

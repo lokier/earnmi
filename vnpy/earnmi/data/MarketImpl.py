@@ -106,13 +106,19 @@ class HistoryImpl(Market.History):
         self.market = market
 
     def getKbars(self, code: str, count: int) -> Sequence["BarData"]:
-        if(count >= 1000):
-            raise RuntimeError(f"count must < 1000")
+
         today = self.market.getToday()
         if(today is None):
             raise RuntimeError("market doese not set current time")
         bar_pool = self.getKBarPool(code)
         return bar_pool.getData(today,count)
+
+    def clean(self, code):
+        today = self.market.getToday()
+        if (today is None):
+            raise RuntimeError("market doese not set current time")
+        bar_pool = self.getKBarPool(code)
+        bar_pool.clean()
 
     def getKbarFrom(self, code: str, start: datetime) -> Sequence["BarData"]:
         today = self.market.getToday()

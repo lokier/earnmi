@@ -23,6 +23,7 @@ class KBarPool:
      self.__data_fetch = FetcherDailyBar(code)
      self.__pool_data:Sequence["BarData"] = None
 
+
      """
      不包含end 日期的k线
      """
@@ -45,6 +46,9 @@ class KBarPool:
             if(addingCount >= count):
                 break
         return ret
+
+    def clean(self):
+        self.__data_fetch.clearAll()
 
     """
     不包含end 日期的k线

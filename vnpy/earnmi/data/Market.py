@@ -42,6 +42,9 @@ class Market:
         def getKbars(self, code: str, count: int)-> Sequence["BarData"]:
             pass
 
+        @abstractmethod
+        def clean(self,code):
+            pass
         """
          返回到今天的k线图。（不包含今天）
         """
