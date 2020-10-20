@@ -334,24 +334,41 @@ class CoreEngineImpl(CoreEngine):
               onlyDimens: [] = None, build_quant_data_only= False):
         self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/build.log","CoreEngineImpl")
 
-        self.printLog("\n\nbuild() start...", True)
+        self.printLog("\n\nbuild() start（只适用于日K线）...", True)
         self.__model = model
         # collector.onCreate()
         bars, code = soruce.onNextBars()
         dataSet = {}
         totalCount = 0
+
+        dateOccurCount:{}= {} #记录各个交易日的产生收集数据的个数。
         while not bars is None:
-            finished, stop = model.collectBars(bars, code,onlyDimens)
-            self.printLog(f"collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
-            totalCount += len(finished)
+
+            #前40个不算
+            for i in range(40,len(bars)):
+                occurtDate:datetime = bars[i].datetime
+                occurtDate = datetime(year=occurtDate.year,month=occurtDate.month,day=occurtDate.day)
+                occurCount = dateOccurCount.get(occurtDate)
+                if occurCount is None:
+                    dateOccurCount[occurtDate] = 0
+
+            finishedList, validDataList = model.collectBars(bars, code,onlyDimens)
+            self.printLog(f"collect code:{code}, finished:{len(finishedList)},stop:{len(validDataList)}")
+            totalCount += len(finishedList)
             bars, code = soruce.onNextBars()
-            for data in finished:
+            for data in finishedList:
                 ##收录
                 listData: [] = dataSet.get(data.dimen)
                 if listData is None:
                     listData = []
                     dataSet[data.dimen] = listData
                 listData.append(data)
+
+                occurtDate: datetime = data.occurBars[-1].datetime
+                occurtDate = datetime(year=occurtDate.year,month=occurtDate.month,day=occurtDate.day)
+                occurCount = dateOccurCount.get(occurtDate)
+                if not occurCount is None:
+                    dateOccurCount[occurtDate] = occurCount + 1
 
         dimes = dataSet.keys()
         self.printLog(f"总共收集到{totalCount}数据，维度个数:{len(dimes)}",True)
@@ -375,11 +392,14 @@ class CoreEngineImpl(CoreEngine):
                 with open(filePath, 'wb+') as fp:
                     pickle.dump(listData, fp, -1)
 
-        dataSizeEncoder = FloatEncoder([10, 50, 100, 150, 200, 500, 1000, 2000, 5000])
-        dimenCountRangeList = dataSizeEncoder.computeValueDisbustion(dataCountList)
+        dimenCountEncoder = FloatEncoder([10, 50, 100, 150, 200, 500, 1000, 2000, 5000])
+        dimenCountRangeList = dimenCountEncoder.computeValueDisbustion(dataCountList)
         ##打印维度的分布情况
-        self.printLog(f"维度数量分布情况:{FloatRange.toStr(dimenCountRangeList,dataSizeEncoder)}")
-
+        self.printLog(f"各个维度数量分布情况:\n    {FloatRange.toStr(dimenCountRangeList,dimenCountEncoder)}")
+        occurDateCountEncoder = FloatEncoder([1, 3, 8,15,30])
+        occurDateCountRangeList = occurDateCountEncoder.computeValueDisbustion(list(dateOccurCount.values()))
+        ##打印维度的分布情况
+        self.printLog(f"每个交易出现收集数据数量的分布情况:\n    {FloatRange.toStr(occurDateCountRangeList, occurDateCountEncoder)}")
 
         dataSet = fitlerDataSet
         self.__saveDimeenAndQuantData(dataSet)

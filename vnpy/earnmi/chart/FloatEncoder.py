@@ -61,7 +61,7 @@ class FloatEncoder:
     def descriptEncdoe(self,encode:int):
         left,right = self.parseEncode(encode)
 
-        return f"[{left},{right}]"
+        return f"[{left},{right})"
 
     """
       计算值得分布情况。
@@ -129,7 +129,7 @@ class FloatRange(object):
                 _max = "max"
             else:
                 _max = f"%.2f" % _max
-            info += f"({_min}:{_max})=%.2f%%," % (100 * r.probal)
+            info += f"[{_min}:{_max})=%.2f%%," % (100 * r.probal)
         return info + "]"
 
 
@@ -152,3 +152,7 @@ if __name__ == "__main__":
     pctEncoder = pctEncoder.shift(0.9)
     assert  pctEncoder.encode(-6.5) == 0
     print(f"shift: {pctEncoder.splits}")
+
+    pct_split = [1, 4, 7]
+    pctEncoder = FloatEncoder(pct_split)
+    print(f"pctEncoder.encode(4) : {pctEncoder.descriptEncdoe(pctEncoder.encode(4))}")
