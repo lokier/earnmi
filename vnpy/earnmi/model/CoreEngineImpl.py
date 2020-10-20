@@ -399,11 +399,11 @@ class CoreEngineImpl(CoreEngine):
         dimenCountEncoder = FloatEncoder([10, 50, 100, 150, 200, 500, 1000, 2000, 5000])
         dimenCountRangeList = dimenCountEncoder.computeValueDisbustion(dataCountList)
         ##打印维度的分布情况
-        self.printLog(f"各个维度数量分布情况:\n    {FloatRange.toStr(dimenCountRangeList,dimenCountEncoder)}")
+        self.printLog(f"各个维度数量分布情况（将过滤数量少于{min_size}个的维度）:\n    {FloatRange.toStr(dimenCountRangeList,dimenCountEncoder)}")
         occurDateCountEncoder = FloatEncoder([1, 3, 8,15,30])
         occurDateCountRangeList = occurDateCountEncoder.computeValueDisbustion(list(dateOccurCount.values()))
         ##打印维度的分布情况
-        self.printLog(f"每个交易出现收集数据数量的分布情况:\n    {FloatRange.toStr(occurDateCountRangeList, occurDateCountEncoder)}")
+        self.printLog(f"每个交易日产生收集数据个数的分布情况:\n    {FloatRange.toStr(occurDateCountRangeList, occurDateCountEncoder)}")
 
         dataSet = fitlerDataSet
         self.__saveDimeenAndQuantData(dataSet)
