@@ -14,6 +14,7 @@ from earnmi.model.BarDataSource import SWDataSource, BarDataSource
 from earnmi.model.PredictAbilityData import PredictAbilityData, ModelAbilityData
 from earnmi.model.PredictOrder import PredictOrder
 from earnmi.model.QuantData import QuantData
+from earnmi.uitl.LogUtil import LogUtil
 from vnpy.trader.object import BarData
 
 from earnmi.data.SWImpl import SWImpl
@@ -267,7 +268,7 @@ class CoreEngineImpl(CoreEngine):
         self.mAbilityMap:{} = None
         self.__file_dir = dirPath
         self.__model = None
-        self.enableLog = False
+        self.logger = None
 
         if not os.path.exists(dirPath):
             os.makedirs(dirPath)
@@ -280,8 +281,10 @@ class CoreEngineImpl(CoreEngine):
 
 
     def printLog(self,info:str,forcePrint = False):
-        if self.enableLog or forcePrint:
+        if self.logger is None:
             print(f"[CoreEngineImpl]: {info}")
+        else:
+            self.logger.info(f"{info}")
 
     def __getDimenisonFilePath(self):
         return f"{self.__file_dir}/dimension.bin"
@@ -307,6 +310,8 @@ class CoreEngineImpl(CoreEngine):
 
 
     def load(self, model:CoreEngineModel):
+        if self.logger is None:
+            self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/load.log", "CoreEngineImpl")
         self.__model = model
         self.printLog("load() start...",True)
         with open(self.__getDimenisonFilePath(), 'rb') as fp:
@@ -323,9 +328,13 @@ class CoreEngineImpl(CoreEngine):
         self.printLog(f"load() finished,总共加载{len(self.mAllDimension)}个维度数据",True)
         assert len(self.mQuantDataMap) == len(self.mAllDimension)
 
-    def build(self, soruce: BarDataSource, model: CoreEngineModel, split_rate=0.7, limit_dimen_size=-1,
+        self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/run.log", "CoreEngineImpl")
+
+    def build(self, soruce: BarDataSource, model: CoreEngineModel, split_rate=0.7, limit_dimen_size=-1,min_size = 300,
               onlyDimens: [] = None, build_quant_data_only= False):
-        self.printLog("build() start...", True)
+        self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/build.log","CoreEngineImpl")
+
+        self.printLog("\n\nbuild() start...", True)
         self.__model = model
         # collector.onCreate()
         bars, code = soruce.onNextBars()
@@ -347,7 +356,6 @@ class CoreEngineImpl(CoreEngine):
         dimes = dataSet.keys()
         self.printLog(f"总共收集到{totalCount}数据，维度个数:{len(dimes)}",True)
 
-        MIN_SIZE = 300
         fitlerDataSet = {}
         __the_count = 0
         for dimen, listData in dataSet.items():
@@ -355,9 +363,13 @@ class CoreEngineImpl(CoreEngine):
                 ##限制个数
                 break
             size = len(listData)
-            if size >= MIN_SIZE:
+            if size >= min_size:
                 __the_count +=1
                 fitlerDataSet[dimen] = listData
+                filePath = self.__getCollectFilePath(dimen)
+                ##保存收集来的数据。
+                with open(filePath, 'wb+') as fp:
+                    pickle.dump(listData, fp, -1)
 
         dataSet = fitlerDataSet
         self.__saveDimeenAndQuantData(dataSet)
@@ -368,6 +380,16 @@ class CoreEngineImpl(CoreEngine):
 
         self.load(model)
         self.__ouptBuildDataToFiles();
+        self.logger = None
+
+    def buildQuantData(self):
+        dataSet = {}
+        for dimen in self.mAllDimension:
+            cDatas = self.loadCollectData(dimen)
+            assert  len(cDatas) > 0
+            dataSet[dimen] = cDatas
+        self.__saveDimeenAndQuantData(dataSet)
+        self.__ouptBuildDataToFiles()
 
     def __ouptBuildDataToFiles(self):
         _outputfileName = f"{self.__file_dir}/build.xlsx"
@@ -403,7 +425,7 @@ class CoreEngineImpl(CoreEngine):
 
 
     def __saveDimeenAndQuantData(self,dataSet:{}):
-        self.printLog(f"开始保存数据",True)
+        self.printLog(f"开始保存量化数据",True)
         saveDimens = []
         saveCollectCount = 0
         maxSize = 0
@@ -412,15 +434,14 @@ class CoreEngineImpl(CoreEngine):
         for dimen, listData in dataSet.items():
             size = len(listData)
             quantData = self.computeQuantData(listData)
+            self.__printQuantData(dimen,quantData)
+
             quantData.check()
             quantMap[dimen] = quantData
             maxSize = max(maxSize, size)
             minSize = min(minSize, size)
             saveDimens.append(dimen)
             saveCollectCount += size
-            filePath = self.__getCollectFilePath(dimen)
-            with open(filePath, 'wb+') as fp:
-                pickle.dump(listData, fp, -1)
 
         with open(self.__getDimenisonFilePath(), 'wb+') as fp:
             pickle.dump(saveDimens, fp, -1)
@@ -600,7 +621,7 @@ class CoreEngineImpl(CoreEngine):
         for data in dataList:
             bars: ['BarData'] = data.predictBars
             assert len(bars) > 0
-            sell_pct, buy_pct = self.__getSellBuyPctLabel(data)
+            sell_pct, buy_pct = self.getEngineModel().getYLabelPct(data)
             sell_pct_list.append(sell_pct)
             buy_pct_list.append(buy_pct)
         sellEncoder,sellRangeFloat = self.__findBestFloatEncoder(sell_pct_list,sellEncoder)
@@ -679,6 +700,18 @@ class CoreEngineImpl(CoreEngine):
             print(f"[dime:{dimeValues[i]}]: count={quant.count},pow_rate=%.3f, probal=%.2f%%,centerPct=%.2f,buy:[{_min},{_max}]" % (quant.getPowerRate(), quant.getPowerProbal(False), quant.buyCenterPct))
         print(f"top dimeValues: {dimeValues}")
 
+    def __printQuantData(self, dimen,quant:QuantData):
+
+        # print(
+        #     f", probal=%.2f%%,centerPct=%.2f,sell:[{_min},{_max}]" % (
+        #     quant.getPowerRate(), quant.getPowerProbal(True), quant.sellCenterPct))
+
+        self.printLog(f"[dime:{dimen.value}]: count={quant.count},pow_rate=%.3f,sCenterPct=%.2f,bCenterPct=%.2f"  % (quant.getPowerRate(),quant.sellCenterPct,quant.buyCenterPct))
+        self.printLog(f"      sellRange:{FloatRange.toStr(quant.sellRange,quant.getSellFloatEncoder())}")
+        self.printLog(f"      buyRange:{FloatRange.toStr(quant.buyRange,quant.getBuyFloatEncoder())}")
+
+
+        pass
 
 
 if __name__ == "__main__":
@@ -690,7 +723,6 @@ if __name__ == "__main__":
     start = datetime(2014, 5, 1)
     end = datetime(2018, 5, 17)
     engine = CoreEngineImpl("files/impltest")
-    engine.enableLog = True
 
     engine.build(SWDataSource(start,end), engineModel,limit_dimen_size = 9999999999)
     #engine.load(engineModel)

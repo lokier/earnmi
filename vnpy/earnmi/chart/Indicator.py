@@ -338,8 +338,6 @@ class Indicator(object):
         Tuple[np.ndarray, np.ndarray, np.ndarray],
         Tuple[float, float, float]
     ]:
-        if(self.close.size <=33):
-            raise RuntimeError("bars size must bigger 33!")
 
         dif, dea, bar = talib.MACD(
             self.close, fast_period, slow_period, signal_period

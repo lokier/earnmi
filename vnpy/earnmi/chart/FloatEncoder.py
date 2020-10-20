@@ -96,9 +96,19 @@ class FloatRange(object):
         info = "["
         for i in range(0, len(ranges)):
             r: FloatRange = ranges[i]
-            min, max = encoder.parseEncode(r.encode)
-            info += f"(%.2f:%.2f)=%.2f%%," % (min,max,100 * r.probal)
+            _min, _max = encoder.parseEncode(r.encode)
+            if _min is None:
+                _min = "min"
+            else:
+                _min = f"%.2f" % _min
+            if _max is None:
+                _max = "max"
+            else:
+                _max = f"%.2f" % _max
+            info += f"({_min}:{_max})=%.2f%%," % (100 * r.probal)
         return info + "]"
+
+
 
 if __name__ == "__main__":
     pct_split = [-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7]

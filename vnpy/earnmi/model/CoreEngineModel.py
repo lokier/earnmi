@@ -13,6 +13,7 @@ from typing import Tuple, Sequence
 from earnmi.model.CollectData import CollectData
 from earnmi.model.PredictData import PredictData
 from earnmi.model.PredictOrder import PredictOrder
+from earnmi.uitl.BarUtils import BarUtils
 from vnpy.trader.object import BarData
 
 
@@ -34,11 +35,12 @@ class CoreEngineModel:
     收集对象。如果收集完成返回True
     """
     @abstractmethod
-    def onCollect(self, data: CollectData, newBar: BarData) ->bool:
+    def onCollect(self, data: CollectData, newBar: BarData):
         pass
 
     def onCollectEnd(self, code: str):
         pass
+
 
 
     """
@@ -59,8 +61,8 @@ class CoreEngineModel:
     返回Y标签价格值值。[sellPrice,buyPrice]
     通过getYBasePrice()，可以计算得出买方力量和卖方里的涨跌幅度标签值。
     """
-    @abstractmethod
-    def getYLabelPrice(self, cData:CollectData)->[float, float]:
+    # def getYLabelPrice(self, cData:CollectData)->[float, float]:
+    def getYLabelPct(self, cData:CollectData)->[float, float]:
         pass
 
     @abstractmethod
@@ -72,7 +74,7 @@ class CoreEngineModel:
         collector.onCollectStart(symbol)
         traceItems = []
         finishedData = []
-        stopData = []
+        validData = []
         dimenValueMap = None
         if not dimensValue is None and len(dimensValue) > 0:
             dimenValueMap = {}
@@ -83,13 +85,17 @@ class CoreEngineModel:
             toDeleteList = []
             newObject = collector.onCollectTrace(bar)
             for collectData in traceItems:
-                isFinished = collector.onCollect(collectData, bar)
-                if isFinished:
+                collector.onCollect(collectData, bar)
+                if collectData.isFinished():
                     toDeleteList.append(collectData)
                     finishedData.append(collectData)
+                    _s,_b = self.getYLabelPct(collectData)
+                    assert not _s is None
+                    assert not _b is None
+                elif not collectData.isValid():
+                    toDeleteList.append(collectData)
             for collectData in toDeleteList:
                 traceItems.remove(collectData)
-
 
             if newObject is None:
                 continue
@@ -97,10 +103,11 @@ class CoreEngineModel:
                 continue
             traceItems.append(newObject)
 
-        ###将要结束，未追踪完的traceData
+        ###将要结束，剩下的作为validData
         for traceObject in traceItems:
-            xFeature = self.generateXFeature(traceObject)
-            if not xFeature is None:
-                stopData.append(traceObject)
+            if traceObject.isValid():
+                xFeature = self.generateXFeature(traceObject)
+                assert not xFeature is None
+                validData.append(traceObject)
         collector.onCollectEnd(symbol)
-        return finishedData,stopData
+        return finishedData,validData

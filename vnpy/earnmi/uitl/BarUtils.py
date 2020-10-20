@@ -1,3 +1,5 @@
+from typing import Sequence
+
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
 
@@ -37,3 +39,30 @@ class BarUtils:
             ))
             new_open_price = close_price
         return barList
+
+    @staticmethod
+    def isAllOpen(bars:['BarData']) ->bool:
+        for bar in bars:
+            if not BarUtils.isOpen(bar):
+                return False
+        return True
+
+    @staticmethod
+    def isOpen(bar:BarData) ->bool:
+        return bar.volume > 0
+
+    """
+    返回最大的间隔天数
+    """
+    @staticmethod
+    def getMaxIntervalDay(bars:Sequence['BarData'])->int:
+        _len = len(bars)
+        if _len < 2:
+            return 0
+        max_day = 1
+        for i in range(1,_len):
+            _day = (bars[i].datetime - bars[i-1].datetime).days
+            assert _day > 0
+            if _day > max_day:
+                max_day = _day
+        return max_day

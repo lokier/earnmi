@@ -6,13 +6,12 @@ from earnmi.model.Dimension import Dimension
 from vnpy.trader.object import BarData
 
 class DataStatus(Enum):
-    UNKONW = "unkonw"  # 正在追踪交易
-    COLLECT_OK = "collect_ok"  # 收集完成
-    PREDICT_OK = "predict_ok"
+    UNKONW = "vali"  # 正在追踪交易
+    FINISHED = "finished"  # 收集完成,可作为预测和训练
+    VALID = "predict_ok"
 
 @dataclass
 class CollectData(object):
-
     """
     维度值
     """
@@ -33,17 +32,47 @@ class CollectData(object):
     """
     额外数据1
     """
-    occurExtra = {}
+    occurExtra:{} = None
 
     """
     额外数据2
     """
-    predictExtra = {}
+    predictExtra:{} = None
+
+    """
+       是否有效
+       """
+
+    def isValid(self) -> bool:
+        return self.validFlag >= 0
+
+    def setValid(self, isValid: bool):
+        if self.isFinished():
+            raise RuntimeError("can't set valid if is Finished")
+        if isValid:
+            self.validFlag = 0
+        else:
+            self.validFlag = -1
+
+    """
+    是否完成,
+    """
+    def isFinished(self) -> bool:
+        return self.validFlag == 1
+
+    def setFinished(self):
+        if not self.isValid():
+            raise RuntimeError("can't set finished in invalid status")
+        self.validFlag = 1
 
     def __post_init__(self):
         self.occurBars = []
         self.predictBars = []
         self.occurKdj = []
+        self.occurExtra={}
+        self.predictExtra={}
+        self.validFlag = 0
+
         pass
 
 

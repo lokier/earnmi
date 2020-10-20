@@ -20,6 +20,7 @@ from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.CoreEngineRunner import CoreEngineRunner
 from earnmi.model.CoreEngineStrategy import CoreEngineStrategy
 from earnmi.model.PredictData2 import PredictData
+from earnmi.uitl.BarUtils import BarUtils
 from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 
@@ -42,12 +43,16 @@ from earnmi.model.CoreEngineModel import CoreEngineModel
 from vnpy.trader.object import BarData
 import numpy as np
 import pandas as pd
+from earnmi.chart.KPattern import KPattern
 
 class KDJMovementEngineModel(CoreEngineModel):
 
     def __init__(self):
-        self.lasted3Bar = np.array([None ,None ,None])
+        self.lasted15Bar = np.array([None ,None ,None,None,None,None,None,None,None,None,None,None,None,None,None])
         self.lasted3BarKdj = np.array([None ,None ,None])
+        self.lasted3BarMacd = np.array([None ,None ,None])
+        self.lasted3BarArron = np.array([None ,None ])
+
         self.kdjEncoder = FloatEncoder([15,30,45,60,75,90])
         self.mDateOccurCountMap = {} ##统计产生收集个数的次数
         self.sw = SWImpl()
@@ -58,65 +63,94 @@ class KDJMovementEngineModel(CoreEngineModel):
         self.code = code
         return True
 
+
     def onCollectTrace(self, bar: BarData) -> CollectData:
-
         self.indicator.update_bar(bar)
-
-        self.lasted3Bar[:-1] = self.lasted3Bar[1:]
+        self.lasted15Bar[:-1] = self.lasted15Bar[1:]
         self.lasted3BarKdj[:-1] = self.lasted3BarKdj[1:]
+        self.lasted3BarMacd[:-1] = self.lasted3BarMacd[1:]
+        self.lasted3BarArron[:-1] = self.lasted3BarArron[1:]
         k, d, j = self.indicator.kdj(fast_period=9, slow_period=3)
-        self.lasted3Bar[-1] = bar
+        dif, dea, mBar = self.indicator.macd( fast_period=12,slow_period = 26,signal_period = 9)
+        aroon_down,aroon_up = self.indicator.aroon( n=14)
+
+        self.lasted15Bar[-1] = bar
         self.lasted3BarKdj[-1] = [k, d, j]
+        self.lasted3BarMacd[-1] = [dif, dea, mBar]
+        self.lasted3BarArron[-1] = [aroon_down,aroon_up]
+
+        if self.indicator.count <=15:
+            return None
+
+        #最近15天之内不含停牌数据
+        if not BarUtils.isAllOpen(self.lasted15Bar):
+            return None
+        #交易日天数间隔超过5天的数据
+        if BarUtils.getMaxIntervalDay(self.lasted15Bar) >= 5:
+            return None
+
         timeKey = utils.to_start_date(bar.datetime);
         if self.mDateOccurCountMap.get(timeKey) is None:
             self.mDateOccurCountMap[timeKey] = 0
 
         if self.indicator.count >=30:
-            aroon_down,aroon_up = self.indicator.aroon(n=14, array=False)
-            from earnmi.chart.KPattern import KPattern
-            if  aroon_up < aroon_down or aroon_up < 50:
+            k0,d0,j0 = self.lasted3BarKdj[-2]
+            k1,d1,j1 = self.lasted3BarKdj[-1]
+            #金叉产生
+            goldCross =  k0 < d0 and k1>=d1
+            if not goldCross:
                 return None
-            kPatternValue = KPattern.encode2KAgo1(self.indicator)
+            kPatternValue = KPattern.encode3KAgo1(self.indicator)
             if not kPatternValue is None :
                 self.mDateOccurCountMap[timeKey] +=1
-
-                _kdj_mask = self.kdjEncoder.mask()
-                kPatternValue = kPatternValue * _kdj_mask* _kdj_mask + self.kdjEncoder.encode(k) * _kdj_mask + self.kdjEncoder.encode(d)
-
                 dimen = Dimension(type=TYPE_2KAGO1 ,value=kPatternValue)
                 collectData = CollectData(dimen=dimen)
-                collectData.occurBars.append(self.lasted3Bar[-2])
-                collectData.occurBars.append(self.lasted3Bar[-1])
-
-                collectData.occurKdj.append(self.lasted3BarKdj[-2])
-                collectData.occurKdj.append(self.lasted3BarKdj[-1])
-
+                collectData.occurBars = list(self.lasted15Bar[-3:])
+                collectData.occurKdj = list(self.lasted3BarKdj)
+                collectData.occurExtra['lasted3BarMacd'] = self.lasted3BarMacd
+                collectData.occurExtra['lasted3BarArron'] = self.lasted3BarArron
                 return collectData
         return None
 
-    def onCollect(self, data: CollectData, newBar: BarData) -> bool:
-        if len(data.occurBars) < 3:
-            data.occurBars.append(self.lasted3Bar[-1])
-            data.occurKdj.append(self.lasted3BarKdj[-1])
-        else:
-            data.predictBars.append(newBar)
+    def onCollect(self, data: CollectData, newBar: BarData) :
+        #不含停牌数据
+        if not BarUtils.isOpen(newBar):
+            data.setValid(False)
+            return
+        data.predictBars.append(newBar)
         size = len(data.predictBars)
-        return size >= 2
+        if size >= 5:
+            data.setFinished()
 
-
-    @abstractmethod
-    def getYLabelPrice(self, cData:CollectData)->[float, float, float]:
+    def getYLabelPct(self, cData:CollectData)->[float, float]:
+        if len(cData.predictBars) < 5:
+            #不能作为y标签。
+            return None, None
         bars: ['BarData'] = cData.predictBars
-        if len(bars) > 0:
-            sell_price = -9999999999
-            buy_price = - sell_price
-            for bar in bars:
-                sell_price = max((bar.high_price + bar.close_price) / 2,sell_price)
-                buy_price = min((bar.low_price + bar.close_price) / 2,buy_price)
-            return sell_price,buy_price
-        return None,None
+
+        basePrice = self.getYBasePrice(cData)
+
+        highIndex = 0
+        lowIndex = 0
+        highBar = cData.predictBars[0];
+        lowBar = cData.predictBars[0]
+        sell_pct =  100 * ((highBar.high_price + highBar.close_price) / 2 - basePrice) / basePrice
+        buy_pct =  100 * ((lowBar.low_price + lowBar.close_price) / 2 - basePrice) / basePrice
+
+        for i in range(1,len(cData.predictBars)):
+            bar:BarData = cData.predictBars[i]
+            _s_pct = 100 * ((bar.high_price + bar.close_price) / 2 - basePrice) / basePrice
+            _b_pct = 100 * ((bar.low_price + bar.close_price) / 2 - basePrice) / basePrice
+            if _s_pct > sell_pct:
+                sell_pct = _s_pct
+                highIndex = i
+            if _b_pct < buy_pct:
+                buy_pct = _b_pct
+                lowIndex = i
+        return sell_pct, buy_pct
 
     def getYBasePrice(self, cData:CollectData)->float:
+        ##以金叉发生的当前收盘价作为基准值。
         return cData.occurBars[-2].close_price
 
     def generateXFeature(self, cData: CollectData) -> []:
@@ -228,7 +262,14 @@ class MyStrategy(CoreEngineStrategy):
 def analysicQuantDataOnly(start:datetime,end:datetime):
     souces = ZZ500DataSource(start, end)
     model = KDJMovementEngineModel()
-    engine = CoreEngine.create(dirName, model,souces,build_quant_data_only = True)
+
+    create = True
+    engine = None
+    if create:
+        engine = CoreEngine.create(dirName, model,souces,build_quant_data_only = True,min_size=200)
+    else:
+        engine = CoreEngine.load(dirName,model)
+        engine.buildQuantData()
 
 
 
