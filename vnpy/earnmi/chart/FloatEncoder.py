@@ -3,6 +3,7 @@
 """
  预测值数据
 """
+from collections import Sequence
 from dataclasses import dataclass
 from functools import cmp_to_key
 import numpy as np
@@ -61,6 +62,29 @@ class FloatEncoder:
         left,right = self.parseEncode(encode)
 
         return f"[{left},{right}]"
+
+    """
+      计算值得分布情况。
+      """
+
+    def computeValueDisbustion(self,value_list: []) -> []:
+        rangeCount = {}
+        totalCount = len(value_list)
+        for i in range(0, self.mask()):
+            rangeCount[i] = 0
+        for value in value_list:
+            encode = self.encode(value)
+            rangeCount[encode] += 1
+
+        rangeList = []
+        for encode, count in rangeCount.items():
+            probal = 0.0
+            if totalCount > 0:
+                probal = count / totalCount
+            floatRange = FloatRange(encode=encode, probal=probal)
+            rangeList.append(floatRange)
+
+        return rangeList
 
     """
     答应分布

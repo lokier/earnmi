@@ -356,13 +356,17 @@ class CoreEngineImpl(CoreEngine):
         dimes = dataSet.keys()
         self.printLog(f"总共收集到{totalCount}数据，维度个数:{len(dimes)}",True)
 
+
         fitlerDataSet = {}
         __the_count = 0
+
+        dataCountList = []
         for dimen, listData in dataSet.items():
             if limit_dimen_size > 0 and limit_dimen_size <= __the_count:
                 ##限制个数
                 break
             size = len(listData)
+            dataCountList.append(size)
             if size >= min_size:
                 __the_count +=1
                 fitlerDataSet[dimen] = listData
@@ -370,6 +374,12 @@ class CoreEngineImpl(CoreEngine):
                 ##保存收集来的数据。
                 with open(filePath, 'wb+') as fp:
                     pickle.dump(listData, fp, -1)
+
+        dataSizeEncoder = FloatEncoder([10, 50, 100, 150, 200, 500, 1000, 2000, 5000])
+        dimenCountRangeList = dataSizeEncoder.computeValueDisbustion(dataCountList)
+        ##打印维度的分布情况
+        self.printLog(f"维度数量分布情况:{FloatRange.toStr(dimenCountRangeList,dataSizeEncoder)}")
+
 
         dataSet = fitlerDataSet
         self.__saveDimeenAndQuantData(dataSet)
