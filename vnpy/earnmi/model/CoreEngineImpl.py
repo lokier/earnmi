@@ -122,10 +122,7 @@ class SVMPredictModel(PredictModel):
         for cData in dataList:
             x = model.generateXFeature(cData)
             x_features.append(x)
-            sellPrice, buyPrice = self.engine.getEngineModel().getYLabelPrice(cData)
-            basePrice = self.engine.getEngineModel().getYBasePrice(cData)
-            real_sell_pct = 100 * (sellPrice - basePrice) / basePrice
-            real_buy_pct = 100 * (buyPrice - basePrice) / basePrice
+            real_sell_pct, real_buy_pct = self.engine.getEngineModel().getYLabelPct(cData)
             label_sell_1 = PredictModel.PctEncoder1.encode(real_sell_pct)
             label_buy_1 = PredictModel.PctEncoder1.encode(real_buy_pct)
             label_sell_2 = PredictModel.PctEncoder2.encode(real_sell_pct)
@@ -410,11 +407,13 @@ class CoreEngineImpl(CoreEngine):
         shutil.rmtree(self.__getModelDirPath())  # 递归删除一个目录以及目录内的所有内容
         if build_quant_data_only == False:
             self.__buildAndSaveModelData(split_rate)
-            self.printLog(f"创建模型完成",True)
 
         self.load(model)
         self.__ouptBuildDataToFiles();
         self.logger = None
+
+    def buildPredictModel(self):
+        self.__buildAndSaveModelData(0.7)
 
     def buildQuantData(self):
         dataSet = {}
@@ -424,6 +423,8 @@ class CoreEngineImpl(CoreEngine):
             dataSet[dimen] = cDatas
         self.__saveDimeenAndQuantData(dataSet)
         self.__ouptBuildDataToFiles()
+
+
 
     def __ouptBuildDataToFiles(self):
         _outputfileName = f"{self.__file_dir}/build.xlsx"
@@ -490,6 +491,8 @@ class CoreEngineImpl(CoreEngine):
 
     def __buildAndSaveModelData(self,split_rate:float):
 
+        oldLogger = self.logger
+        self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/buildModel.log", "CoreEngineImpl")
         def cmp_collectdata_time(c1:CollectData,c2:CollectData):
             d1 = c1.occurBars[-1].datetime
             d2 = c2.occurBars[-1].datetime
@@ -535,11 +538,12 @@ class CoreEngineImpl(CoreEngine):
             model = SVMPredictModel(self, dimen)
             model.build(self, dataList, self.mQuantDataMap[dimen])
             model.save(self.__getModelFilePath(dimen))
-
         ##saveAbliitTy
         with open(self.__getAbilityFilePath(), 'wb+') as fp:
             pickle.dump(abilityDataMap, fp, -1)
-        pass
+        self.printLog(f"创建模型完成", True)
+        self.logger = oldLogger
+
     def __buildModelAbility(self, dimen:Dimension, trainDataList:Sequence['CollectData'], testDataList:Sequence['CollectData']):
         self.printLog("buildAbilityData:", True)
         trainQauntData = self.computeQuantData(trainDataList)

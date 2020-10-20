@@ -157,6 +157,8 @@ class KDJMovementEngineModel(CoreEngineModel):
         #保证len小于三，要不然就不能作为生成特征值。
         if(len(cData.occurBars) < 3):
             return None
+        goldCrossBar = cData.occurBars[-2]
+
         occurBar = cData.occurBars[-2]
         skipBar = cData.occurBars[-1]
         kdj = cData.occurKdj[-1]
@@ -263,13 +265,13 @@ def analysicQuantDataOnly(start:datetime,end:datetime):
     souces = ZZ500DataSource(start, end)
     model = KDJMovementEngineModel()
 
-    create = True
+    create = False
     engine = None
     if create:
         engine = CoreEngine.create(dirName, model,souces,build_quant_data_only = True,min_size=200)
     else:
         engine = CoreEngine.load(dirName,model)
-        engine.buildQuantData()
+        engine.buildPredictModel()
 
 
 

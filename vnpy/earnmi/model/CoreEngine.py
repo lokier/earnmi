@@ -44,6 +44,10 @@ class PredictModel:
     def buildQuantData(self):
         pass
 
+    @abstractmethod
+    def buildPredictModel(self):
+        pass
+
     """
     自我测试，返回sell_core,buy_score
     """
