@@ -364,11 +364,7 @@ class CoreEngineImpl(CoreEngine):
                     dataSet[data.dimen] = listData
                 listData.append(data)
 
-                occurtDate: datetime = data.occurBars[-1].datetime
-                occurtDate = datetime(year=occurtDate.year,month=occurtDate.month,day=occurtDate.day)
-                occurCount = dateOccurCount.get(occurtDate)
-                if not occurCount is None:
-                    dateOccurCount[occurtDate] = occurCount + 1
+
 
         dimes = dataSet.keys()
         self.printLog(f"总共收集到{totalCount}数据，维度个数:{len(dimes)}",True)
@@ -387,6 +383,14 @@ class CoreEngineImpl(CoreEngine):
             if size >= min_size:
                 __the_count +=1
                 fitlerDataSet[dimen] = listData
+                for data in listData:
+                    #统计发生次数。
+                    occurtDate: datetime = data.occurBars[-1].datetime
+                    occurtDate = datetime(year=occurtDate.year, month=occurtDate.month, day=occurtDate.day)
+                    occurCount = dateOccurCount.get(occurtDate)
+                    if not occurCount is None:
+                        dateOccurCount[occurtDate] = occurCount + 1
+
                 filePath = self.__getCollectFilePath(dimen)
                 ##保存收集来的数据。
                 with open(filePath, 'wb+') as fp:
