@@ -10,6 +10,7 @@
 from abc import abstractmethod
 from typing import Tuple, Sequence
 
+from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.model.CollectData import CollectData
 from earnmi.model.PredictData import PredictData
 from earnmi.model.PredictOrder import PredictOrder
@@ -41,7 +42,12 @@ class CoreEngineModel:
     def onCollectEnd(self, code: str):
         pass
 
+    def getPctEncoder1(self)->FloatEncoder:
+        return FloatEncoder([-7, -5, -3, -2, -1, 0, 1, 2, 3, 5, 7], minValue=-10, maxValue=10)
 
+    def getPctEncoder2(self)->FloatEncoder:
+        return FloatEncoder([-7.5, -5.5, -3.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5, 5.5, 7.5], minValue=-10,
+                               maxValue=10)
 
     """
       预处理样本数据，比如，拆减等。

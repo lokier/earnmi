@@ -200,8 +200,8 @@ class MyStrategy(CoreEngineStrategy):
         code = predict.collectData.occurBars[-1].symbol
         name = self.sw.getSw2Name(code)
         order = PredictOrder(dimen=predict.dimen, code=code, name=name)
-        predict_sell_pct = predict.getPredictSellPct()
-        predict_buy_pct = predict.getPredictSellPct()
+        predict_sell_pct = predict.getPredictSellPct(engine.getEngineModel())
+        predict_buy_pct = predict.getPredictBuyPct(engine.getEngineModel())
         start_price = engine.getEngineModel().getYBasePrice(predict.collectData)
         order.suggestSellPrice = start_price * (1 + predict_sell_pct / 100)
         order.suggestBuyPrice = start_price * (1 + predict_buy_pct / 100)

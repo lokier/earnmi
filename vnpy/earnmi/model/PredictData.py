@@ -51,19 +51,21 @@ class PredictData(object):
     buyRange2:['FloatRange']= None
 
 
-    def getPredictSellPct(self)->float:
-        from earnmi.model.CoreEngine import PredictModel
-        min1, max1 = PredictModel.PctEncoder1.parseEncode(self.sellRange1[0].encode)
-        min2, max2 = PredictModel.PctEncoder2.parseEncode(self.sellRange2[0].encode)
+    def getPredictSellPct(self,engineModel)->float:
+        from earnmi.model.CoreEngineModel import CoreEngineModel
+        model:CoreEngineModel = engineModel;
+        min1, max1 = model.getPctEncoder1().parseEncode(self.sellRange1[0].encode)
+        min2, max2 = model.getPctEncoder2().parseEncode(self.sellRange2[0].encode)
         total_probal = self.sellRange2[0].probal + self.sellRange1[0].probal
         predict_sell_pct = (min1 + max1) / 2 * self.sellRange1[0].probal / total_probal + (min2 + max2) / 2 * \
                                 self.sellRange2[0].probal / total_probal
         return predict_sell_pct
 
-    def getPredictBuyPct(self)->float:
-        from earnmi.model.CoreEngine import PredictModel
-        min1, max1 = PredictModel.PctEncoder1.parseEncode(self.buyRange1[0].encode)
-        min2, max2 = PredictModel.PctEncoder2.parseEncode(self.buyRange2[0].encode)
+    def getPredictBuyPct(self,engineModel)->float:
+        from earnmi.model.CoreEngineModel import CoreEngineModel
+        model: CoreEngineModel = engineModel;
+        min1, max1 = model.getPctEncoder1().parseEncode(self.buyRange1[0].encode)
+        min2, max2 = model.getPctEncoder2().parseEncode(self.buyRange2[0].encode)
         total_probal = self.buyRange1[0].probal + self.buyRange2[0].probal
         predict_buy_pct = (min1 + max1) / 2 * self.buyRange1[0].probal / total_probal + (min2 + max2) / 2 * \
                               self.buyRange2[0].probal / total_probal
@@ -75,7 +77,6 @@ class PredictData(object):
         1左右表示,多方量比空方大一倍
         -1左右表示,空方量比多方大一倍
         """
-
     def getPowerRate(self):
         buy_power_pct = self.getPredictBuyPct()
         sell_power_pct = self.getPredictSellPct()

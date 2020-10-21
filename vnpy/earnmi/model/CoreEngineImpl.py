@@ -124,10 +124,12 @@ class ClassifierModel(PredictModel):
             x = model.generateXFeature(cData)
             x_features.append(x)
             real_sell_pct, real_buy_pct = self.engine.getEngineModel().getYLabelPct(cData)
-            label_sell_1 = PredictModel.PctEncoder1.encode(real_sell_pct)
-            label_buy_1 = PredictModel.PctEncoder1.encode(real_buy_pct)
-            label_sell_2 = PredictModel.PctEncoder2.encode(real_sell_pct)
-            label_buy_2 = PredictModel.PctEncoder2.encode(real_buy_pct)
+            pctEncoder1 = self.engine.getEngineModel().getPctEncoder1();
+            pctEncoder2 = self.engine.getEngineModel().getPctEncoder2();
+            label_sell_1 = pctEncoder1.encode(real_sell_pct)
+            label_buy_1 = pctEncoder1.encode(real_buy_pct)
+            label_sell_2 = pctEncoder2.encode(real_sell_pct)
+            label_buy_2 = pctEncoder2.encode(real_buy_pct)
             y_sell_1.append(label_sell_1)
             y_buy_1.append(label_buy_1)
             y_sell_2.append(label_sell_2)
@@ -194,7 +196,7 @@ class ClassifierModel(PredictModel):
     """
     分数,正偏差，负偏差
     """
-    def testScore(self,trainSampleDataList:[]) -> ModelAbilityData:
+    def testScore(self,trainSampleDataList:[],sell_pct_list:[],buy_pct_list:[]) -> ModelAbilityData:
         self.engine.printLog("start PredictModel.selfTest()",True)
         predictList: Sequence['PredictData'] = self.predict(trainSampleDataList)
         count = len(predictList);
@@ -220,8 +222,13 @@ class ClassifierModel(PredictModel):
                 high_price = max(high_price, bar.high_price)
                 low_price = min(low_price, bar.low_price)
             basePrice = self.engine.getEngineModel().getYBasePrice(predict.collectData)
-            predict_sell_price = basePrice * (1 + predict.getPredictSellPct() / 100)
-            predict_buy_price = basePrice * (1 + predict.getPredictBuyPct() / 100)
+            sell_pct = predict.getPredictSellPct(self.engine.getEngineModel())
+            buy_pct = predict.getPredictBuyPct(self.engine.getEngineModel())
+            sell_pct_list.append(sell_pct)
+            buy_pct_list.append(buy_pct)
+
+            predict_sell_price = basePrice * (1 +  sell_pct/ 100)
+            predict_buy_price = basePrice * (1 + buy_pct / 100)
             ## 预测价格有无到底最高价格
             sell_ok = high_price >= predict_sell_price
             buy_ok = low_price <= predict_buy_price
@@ -447,10 +454,10 @@ class CoreEngineImpl(CoreEngine):
 
         if self.__modelLoaded:
             def ability_data_to_list(dimen:Dimension,q:PredictAbilityData)->[]:
-                return [dimen.value,
+                return [dimen.value,q.getStabilitySell(),q.getStabilityBuy(),
                         q.trainData.count,q.trainData.scoreSell,q.trainData.scoreBuy,q.trainData.biasSellWin,q.trainData.biasBuyWin,q.trainData.biasSellLoss,q.trainData.biasBuyLoss,
                         q.testData.count,q.testData.scoreSell,q.testData.scoreBuy,q.testData.biasSellWin,q.testData.biasBuyWin,q.testData.biasSellLoss,q.testData.biasBuyLoss]
-            _ability_columns = ['dimen',
+            _ability_columns = ['dimen','s稳定性','b稳定性',
                                 "count|训", "sScore|训", "bScore|训","s正方差|训", "b正方差|训","s负方差|训", "b负方差|训",
                                 "count|测", "sScore|测", "bScore|测","s正方差|测", "b正方差|测","s负方差|测", "b负方差|测"]
             _ability_values = []
@@ -546,6 +553,43 @@ class CoreEngineImpl(CoreEngine):
         ##saveAbliitTy
         with open(self.__getAbilityFilePath(), 'wb+') as fp:
             pickle.dump(abilityDataMap, fp, -1)
+
+        ##打印模型性能指标
+        pctEncoder = self.getEngineModel().getPctEncoder1()
+        p_sell_pct_total = 0.0
+        p_buy_pct_total = 0.0
+        sell_stability_total = 0.0
+        buy_stablility_total = 0.0
+        sell_score_total = 0.0
+        buy_score_total = 0.0
+
+        for dimen,abilityData in abilityDataMap.items():
+            s_min,s_max = pctEncoder.parseEncode(abilityData.sellPctRnageList[0].encode)
+            p_sell_pct_total += (s_min + (s_max-s_min) * abilityData.sellPctRnageList[0].probal)
+            s_min,s_max = pctEncoder.parseEncode(abilityData.buyPctRnageList[0].encode)
+            p_buy_pct_total += (s_min + (s_max-s_min) * abilityData.buyPctRnageList[0].probal)
+            sell_stability_total += abilityData.getStabilitySell()
+            buy_stablility_total += abilityData.getStabilityBuy()
+            sell_score_total += abilityData.getScoreSell()
+            buy_score_total += abilityData.getScoreBuy()
+
+            self.printLog(f"dimen:{dimen.value},count = {abilityData.getCount()}"
+                          f",s_得分={abilityData.getScoreSell()}"
+                          f",b_得分={abilityData.getScoreBuy()}"
+                          f",s_稳定性={abilityData.getStabilitySell()}"
+                          f",b_稳定性={abilityData.getStabilityBuy()}"
+                          f",sell：正方差|负方差={abilityData.getBiasSell(True)}|{abilityData.getBiasSell(True)}"
+                          f",buy：正方差|负方差={abilityData.getBiasBuy(True)}|{abilityData.getBiasBuy(True)}"
+                          )
+            self.printLog(f"  预测SellPct值分布情况:{FloatRange.toStr(abilityData.sellPctRnageList,pctEncoder)}")
+            self.printLog(f"  预测Buy_Pct值分布情况:{FloatRange.toStr(abilityData.buyPctRnageList,pctEncoder)}")
+        abilitySize = len(abilityDataMap)
+        self.printLog(f"【总体】: s_pct能力:%.2f,b_pct能力:%.2f,s得分:%.2f,b得分:%.2f,s稳定性:%.2f,b稳定性%.2f" % (
+                p_sell_pct_total / abilitySize, p_buy_pct_total / abilitySize,
+                sell_score_total / abilitySize, buy_score_total / abilitySize,
+                sell_stability_total/abilitySize,buy_stablility_total/abilitySize
+        ))
+
         self.__modelLoaded = True
         self.printLog(f"创建模型完成", True)
         self.logger = oldLogger
@@ -555,12 +599,21 @@ class CoreEngineImpl(CoreEngine):
         trainQauntData = self.computeQuantData(trainDataList)
         model = ClassifierModel(self, dimen,useSVM)
         model.build(self, trainDataList,trainQauntData)
-        _trainData =  model.testScore(trainDataList)  ##训练集验证分数
-        _testData =  model.testScore(testDataList)  ##测试集验证分数
+        _sell_pct_value_list =[]
+        _buy_pct_value_list = []
+
+        _trainData =  model.testScore(trainDataList,_sell_pct_value_list,_buy_pct_value_list)  ##训练集验证分数
+        _testData =  model.testScore(testDataList,_sell_pct_value_list,_buy_pct_value_list)  ##测试集验证分数
 
         abilityData = PredictAbilityData()
         abilityData.trainData = _trainData
         abilityData.testData = _testData
+        pctEncoder = self.getEngineModel().getPctEncoder1()
+        abilityData.sellPctRnageList = pctEncoder.computeValueDisbustion(_sell_pct_value_list)
+        abilityData.buyPctRnageList = pctEncoder.computeValueDisbustion(_buy_pct_value_list)
+        abilityData.sellPctRnageList = FloatRange.sort(abilityData.sellPctRnageList)
+        abilityData.buyPctRnageList = FloatRange.sort(abilityData.buyPctRnageList)
+
         return abilityData
 
 

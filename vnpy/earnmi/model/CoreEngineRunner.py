@@ -325,8 +325,8 @@ class CoreEngineRunner():
             high_price = max(high_price, bar.high_price)
             low_price = min(low_price, bar.low_price)
         basePrice = self.coreEngine.getEngineModel().getYBasePrice(predict.collectData)
-        sell_price = basePrice * (1 + predict.getPredictSellPct() / 100)
-        buy_price = basePrice * (1 + predict.getPredictBuyPct() / 100)
+        sell_price = basePrice * (1 + predict.getPredictSellPct(self.coreEngine.getEngineModel()) / 100)
+        buy_price = basePrice * (1 + predict.getPredictBuyPct(self.coreEngine.getEngineModel()) / 100)
 
         ## 预测价格有无到底最高价格
         sell_ok = high_price >= sell_price
@@ -376,8 +376,8 @@ if __name__ == "__main__":
             code = predict.collectData.occurBars[-1].symbol
             name = self.sw.getSw2Name(code)
             order = PredictOrder(dimen=predict.dimen, code=code, name=name)
-            predict_sell_pct = predict.getPredictSellPct()
-            predict_buy_pct = predict.getPredictSellPct()
+            predict_sell_pct = predict.getPredictSellPct(engine.getEngineModel())
+            predict_buy_pct = predict.getPredictBuyPct(engine.getEngineModel())
             start_price = engine.getEngineModel().getYBasePrice(predict.collectData)
             order.suggestSellPrice = start_price * (1 + predict_sell_pct / 100)
             order.suggestBuyPrice = start_price * (1 + predict_buy_pct / 100)
