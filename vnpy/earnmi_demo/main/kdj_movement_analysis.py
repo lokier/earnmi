@@ -157,31 +157,34 @@ class KDJMovementEngineModel(CoreEngineModel):
         #保证len小于三，要不然就不能作为生成特征值。
         if(len(cData.occurBars) < 3):
             return None
+        basePrcie = self.getYBasePrice(cData)
+        ##使用随机森林，所以不需要标准化和归一化
         goldCrossBar = cData.occurBars[-2]
+        god_cross_dif,god_cross_dea,god_cross_macd = cData.occurExtra.get('lasted3BarMacd')[-2]
+        god_cross_dif = 100 * god_cross_dif /basePrcie
+        god_cross_dea = 100 * god_cross_dea / basePrcie
+        k,d,j = cData.occurKdj[-2]
 
-        occurBar = cData.occurBars[-2]
-        skipBar = cData.occurBars[-1]
-        kdj = cData.occurKdj[-1]
-        sell_pct = 100 * (
-                (skipBar.high_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
-        buy_pct = 100 * (
-                (skipBar.low_price + skipBar.close_price) / 2 - occurBar.close_price) / occurBar.close_price
+        def getSellBuyPct(bar:BarData):
+            s_pct = 100 * ((bar.high_price + bar.close_price)/2 - basePrcie) / basePrcie
+            b_pct = 100 * ((bar.low_price + bar.close_price) / 2 - basePrcie) / basePrcie
+            return s_pct,b_pct
 
-        def set_0_between_100(x):
-            if x > 100:
-                return 100
-            if x < 0:
-                return 0
-            return x
-
-        def percent_to_one(x):
-            return int(x * 100) / 1000.0
+        s_pct_1,b_pct_1 = getSellBuyPct(cData.occurBars[-3])
+        s_pct_2,b_pct_2 = getSellBuyPct(cData.occurBars[-2])
+        s_pct_3,b_pct_3 = getSellBuyPct(cData.occurBars[-1])
 
         data = []
-        data.append(percent_to_one(buy_pct))
-        data.append(percent_to_one(sell_pct))
-        data.append(set_0_between_100(kdj[0])/100)
-        data.append(set_0_between_100(kdj[2])/100)
+        data.append(god_cross_dif)
+        data.append(god_cross_dea)
+        data.append(k)
+        data.append(d)
+        data.append(s_pct_1)
+        data.append(b_pct_1)
+        data.append(s_pct_2)
+        data.append(b_pct_2)
+        data.append(s_pct_3)
+        data.append(b_pct_3)
         return data
 
 class MyStrategy(CoreEngineStrategy):
@@ -271,7 +274,7 @@ def analysicQuantDataOnly(start:datetime,end:datetime):
         engine = CoreEngine.create(dirName, model,souces,build_quant_data_only = True,min_size=200)
     else:
         engine = CoreEngine.load(dirName,model)
-        engine.buildPredictModel()
+        engine.buildPredictModel(useSVM=False)
 
 
 

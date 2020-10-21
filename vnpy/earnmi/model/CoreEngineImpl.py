@@ -29,11 +29,12 @@ import pandas as pd
 
 
 
-class SVMPredictModel(PredictModel):
+class ClassifierModel(PredictModel):
 
-    def __init__(self,engine:CoreEngine,dimen:Dimension):
+    def __init__(self,engine:CoreEngine,dimen:Dimension,useSVM = True):
         self.engine = engine
         self.dimen = dimen
+        self.useSVM = useSVM
         self.quantData:QuantData = None
         self.classifierSell_1 = None
         self.classifierSell_2 = None
@@ -79,12 +80,12 @@ class SVMPredictModel(PredictModel):
     建造模型
     """
     def build(self,engine:CoreEngine, sampleData:Sequence['CollectData'], quantData:QuantData):
-        useSVM = True
+
         start = timeit.default_timer()
         self.quantData = quantData
         trainDataList = engine.getEngineModel().generateSampleData(engine, sampleData)
         size = len(trainDataList)
-        engine.printLog(f"build PredictModel:dime={self.dimen}, sample size:{size} use SVM ={useSVM}",True)
+        engine.printLog(f"build PredictModel:dime={self.dimen}, sample size:{size} use SVM ={self.useSVM}",True)
         engine.printLog(f"   history quantdata: {self.quantData}")
 
 
@@ -99,10 +100,10 @@ class SVMPredictModel(PredictModel):
         engine.printLog(f"   labelListBuy1: {self.labelListBuy1}")
         engine.printLog(f"   labelListBuy2: {self.labelListBuy2}")
 
-        self.classifierSell_1 = self.__createClassifier(x,y_sell_1,useSVM=useSVM)
-        self.classifierSell_2 = self.__createClassifier(x,y_sell_2,useSVM=useSVM)
-        self.classifierBuy_1 = self.__createClassifier(x,y_buy_1,useSVM=useSVM)
-        self.classifierBuy_2 = self.__createClassifier(x,y_buy_2,useSVM=useSVM)
+        self.classifierSell_1 = self.__createClassifier(x,y_sell_1)
+        self.classifierSell_2 = self.__createClassifier(x,y_sell_2)
+        self.classifierBuy_1 = self.__createClassifier(x,y_buy_1)
+        self.classifierBuy_2 = self.__createClassifier(x,y_buy_2)
 
         elapsed = (timeit.default_timer() - start)
         engine.printLog(f"build PredictModel finished! elapsed = %.3fs" % (elapsed),True)
@@ -134,9 +135,9 @@ class SVMPredictModel(PredictModel):
 
         return np.array(x_features),np.array(y_sell_1),np.array(y_buy_1),np.array(y_sell_2),np.array(y_buy_2)
 
-    def __createClassifier(self,x,y,useSVM=True):
+    def __createClassifier(self,x,y):
         classifier = None
-        if useSVM:
+        if self.useSVM:
             classifier = sklearn.svm.SVC(C=2, kernel='rbf', gamma=10, decision_function_shape='ovr', probability=True)  # ovr:一对多策略
             classifier.fit(x, y)
         else:
@@ -207,6 +208,9 @@ class SVMPredictModel(PredictModel):
         bias_loss_sum_buy = 0.0
         bias_win_sum_sell = 0.0
         bias_win_sum_buy = 0.0
+
+
+
         for predict in predictList:
             predict.check();
 
@@ -308,7 +312,7 @@ class CoreEngineImpl(CoreEngine):
 
     def load(self, model:CoreEngineModel):
         if self.logger is None:
-            self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/load.log", "CoreEngineImpl")
+            self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/load.log", "load")
         self.__model = model
         self.printLog("load() start...",True)
         with open(self.__getDimenisonFilePath(), 'rb') as fp:
@@ -325,11 +329,11 @@ class CoreEngineImpl(CoreEngine):
         self.printLog(f"load() finished,总共加载{len(self.mAllDimension)}个维度数据",True)
         assert len(self.mQuantDataMap) == len(self.mAllDimension)
 
-        self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/run.log", "CoreEngineImpl")
+        self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/run.log", "run")
 
     def build(self, soruce: BarDataSource, model: CoreEngineModel, split_rate=0.7, limit_dimen_size=-1,min_size = 300,
               onlyDimens: [] = None, build_quant_data_only= False):
-        self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/build.log","CoreEngineImpl")
+        self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/build.log","build")
 
         self.printLog("\n\nbuild() start（只适用于日K线）...", True)
         self.__model = model
@@ -406,14 +410,15 @@ class CoreEngineImpl(CoreEngine):
         self.__saveDimeenAndQuantData(dataSet)
         shutil.rmtree(self.__getModelDirPath())  # 递归删除一个目录以及目录内的所有内容
         if build_quant_data_only == False:
-            self.__buildAndSaveModelData(split_rate)
+            self.__buildAndSaveModelData(split_rate,True)
 
         self.load(model)
         self.__ouptBuildDataToFiles();
         self.logger = None
 
-    def buildPredictModel(self):
-        self.__buildAndSaveModelData(0.7)
+    def buildPredictModel(self,split_rate=0.7,useSVM=True):
+        self.__buildAndSaveModelData(split_rate,useSVM)
+        self.__ouptBuildDataToFiles()
 
     def buildQuantData(self):
         dataSet = {}
@@ -489,10 +494,10 @@ class CoreEngineImpl(CoreEngine):
             f"build() finished, 总共保存{len(saveDimens)}/{len(dataSet)}个维度数据，共{saveCollectCount}个数据，其中最多{maxSize},最小{minSize}",
             True)
 
-    def __buildAndSaveModelData(self,split_rate:float):
+    def __buildAndSaveModelData(self,split_rate:float,useSVM:bool):
 
         oldLogger = self.logger
-        self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/buildModel.log", "CoreEngineImpl")
+        self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/buildModel.log", "buidModel")
         def cmp_collectdata_time(c1:CollectData,c2:CollectData):
             d1 = c1.occurBars[-1].datetime
             d2 = c2.occurBars[-1].datetime
@@ -532,22 +537,23 @@ class CoreEngineImpl(CoreEngine):
                     ##确保切割的时间顺序
                     assert  data.occurBars[-1].datetime >= split_date
 
-            ablityData = self.__buildModelAbility(dimen, trainDataList, testDataList)
+            ablityData = self.__buildModelAbility(dimen, trainDataList, testDataList,useSVM)
             abilityDataMap[dimen] = ablityData
             ##保存模型
-            model = SVMPredictModel(self, dimen)
+            model = ClassifierModel(self, dimen,useSVM)
             model.build(self, dataList, self.mQuantDataMap[dimen])
             model.save(self.__getModelFilePath(dimen))
         ##saveAbliitTy
         with open(self.__getAbilityFilePath(), 'wb+') as fp:
             pickle.dump(abilityDataMap, fp, -1)
+        self.__modelLoaded = True
         self.printLog(f"创建模型完成", True)
         self.logger = oldLogger
 
-    def __buildModelAbility(self, dimen:Dimension, trainDataList:Sequence['CollectData'], testDataList:Sequence['CollectData']):
+    def __buildModelAbility(self, dimen:Dimension, trainDataList:Sequence['CollectData'], testDataList:Sequence['CollectData'],useSVM:bool):
         self.printLog("buildAbilityData:", True)
         trainQauntData = self.computeQuantData(trainDataList)
-        model = SVMPredictModel(self, dimen)
+        model = ClassifierModel(self, dimen,useSVM)
         model.build(self, trainDataList,trainQauntData)
         _trainData =  model.testScore(trainDataList)  ##训练集验证分数
         _testData =  model.testScore(testDataList)  ##测试集验证分数
@@ -694,7 +700,7 @@ class CoreEngineImpl(CoreEngine):
 
     def loadPredictModel(self, dimen: Dimension) -> PredictModel:
         if self.__modelLoaded and self.isSupport(dimen):
-            model = SVMPredictModel(self,dimen)
+            model = ClassifierModel(self, dimen)
             model.load(self.__getModelFilePath(dimen))
             return model
         return None

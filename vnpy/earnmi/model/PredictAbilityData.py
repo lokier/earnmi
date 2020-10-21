@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+from typing import Sequence
 
+from earnmi.chart.FloatEncoder import FloatRange
 from earnmi.uitl.utils import utils
 
 
@@ -24,6 +26,12 @@ class PredictAbilityData(object):
 
     trainData:ModelAbilityData = None
     testData:ModelAbilityData = None
+
+    """
+    预测值的pct值范围分布。
+    """
+    sellPctRnageList: Sequence["FloatRange"] = None
+    buyPctRnageList: Sequence["FloatRange"] = None
 
 
     def getCount(self)->int:

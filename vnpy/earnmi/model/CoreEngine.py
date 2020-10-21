@@ -45,7 +45,7 @@ class PredictModel:
         pass
 
     @abstractmethod
-    def buildPredictModel(self):
+    def buildPredictModel(self,split_rate=0.7,useSVM=True):
         pass
 
     """
