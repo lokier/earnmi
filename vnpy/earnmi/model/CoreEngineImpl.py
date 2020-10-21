@@ -334,7 +334,7 @@ class CoreEngineImpl(CoreEngine):
         self.printLog("\n\nbuild() start（只适用于日K线）...", True)
         self.__model = model
         # collector.onCreate()
-        bars, code = soruce.onNextBars()
+        bars, code = soruce.nextBars()
         dataSet = {}
         totalCount = 0
 
@@ -352,7 +352,7 @@ class CoreEngineImpl(CoreEngine):
             finishedList, validDataList = model.collectBars(bars, code,onlyDimens)
             self.printLog(f"collect code:{code}, finished:{len(finishedList)},stop:{len(validDataList)}")
             totalCount += len(finishedList)
-            bars, code = soruce.onNextBars()
+            bars, code = soruce.nextBars()
             for data in finishedList:
                 ##收录
                 listData: [] = dataSet.get(data.dimen)

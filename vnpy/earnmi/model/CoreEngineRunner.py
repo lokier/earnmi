@@ -77,7 +77,7 @@ class CoreEngineRunner():
     计算未来两天最有可能涨的股票SW指数。
     """
     def debugBestParam(self,  soruce: BarDataSource, strategy:CoreEngineStrategy, params:{},min_deal_count = -1, max_run_count = 999999999,printDetail = False):
-        bars, code = soruce.onNextBars()
+        bars, code = soruce.nextBars()
         dataSet = {}
         totalCount = 0
         model = self.coreEngine.getEngineModel()
@@ -86,7 +86,7 @@ class CoreEngineRunner():
             finished, stop = model.collectBars(bars, code)
             print(f"[backtest]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(finished)
-            bars, code = soruce.onNextBars()
+            bars, code = soruce.nextBars()
             for data in finished:
                 ##收录
                 listData: [] = dataSet.get(data.dimen)
@@ -170,7 +170,7 @@ class CoreEngineRunner():
         end = datetime.now()
         start = end - timedelta(days=100)
         soruce = SWDataSource(start, end)
-        bars, code = soruce.onNextBars()
+        bars, code = soruce.nextBars()
         dataSet = {}
         totalCount = 0
         model = self.coreEngine.getEngineModel()
@@ -180,7 +180,7 @@ class CoreEngineRunner():
             finished, stop = model.collectBars(bars, code)
             print(f"[backtest]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(stop)
-            bars, code = soruce.onNextBars()
+            bars, code = soruce.nextBars()
             for data in stop:
                 ##收录
                 listData: [] = dataSet.get(data.dimen)
@@ -205,7 +205,7 @@ class CoreEngineRunner():
         return orderList
 
     def backtest(self, soruce: BarDataSource, strategy:CoreEngineStrategy, min_deal_count = -1):
-        bars, code = soruce.onNextBars()
+        bars, code = soruce.nextBars()
         dataSet = {}
         totalCount = 0
         model = self.coreEngine.getEngineModel()
@@ -214,7 +214,7 @@ class CoreEngineRunner():
             finished, stop = model.collectBars(bars, code)
             print(f"[backtest]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(finished)
-            bars, code = soruce.onNextBars()
+            bars, code = soruce.nextBars()
             for data in finished:
                 ##收录
                 listData: [] = dataSet.get(data.dimen)

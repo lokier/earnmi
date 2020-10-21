@@ -93,7 +93,7 @@ end = datetime.now();
 
 source = ZZ500DataSource(start,end)
 
-bars,code = source.onNextBars();
+bars,code = source.nextBars();
 
 
 print(f"bar.size = {bars.__len__()}")

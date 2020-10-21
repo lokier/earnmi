@@ -2,6 +2,8 @@ from abc import abstractmethod
 from datetime import datetime, timedelta
 from typing import Tuple, Sequence
 
+from vnpy.trader.object import BarData
+
 from earnmi.uitl.utils import utils
 
 
@@ -10,7 +12,7 @@ class BarDataSource:
     返回下一批BarData数据。 返回[bars,code]
     """
     @abstractmethod
-    def onNextBars(self) -> Tuple[Sequence['BarData'],str]:
+    def nextBars(self) -> Tuple[Sequence['BarData'], str]:
         pass
 
 
@@ -25,7 +27,7 @@ class SWDataSource(BarDataSource):
         self.start = start
         self.end = end
 
-    def onNextBars(self) -> Tuple[Sequence['BarData'], str]:
+    def nextBars(self) -> Tuple[Sequence['BarData'], str]:
         # if self.index > 2:
         #     return None,None
         sw_code_list = self.sw.getSW2List()
@@ -66,7 +68,7 @@ class ZZ500DataSource(BarDataSource):
             self.market.removeNotice(code)
             return code, bars
 
-    def onNextBars(self) -> Tuple[Sequence['BarData'], str]:
+    def nextBars(self) -> Tuple[Sequence['BarData'], str]:
         # if self.index > 2:
         #     return None,None
         code_list = ZZ500DataSource.SZ500_JQ_CODE_LIST
@@ -83,7 +85,7 @@ if __name__ == "__main__":
     start = datetime(2015, 10, 1)
     end = datetime(2020, 9, 30)
     souces = ZZ500DataSource(start,end)
-    bars,code = souces.onNextBars()
+    bars,code = souces.nextBars()
     while not code is None:
         print(f"code:{code}, start:{bars[0]},\n            end:{bars[-1]}")
-        code, bars = souces.onNextBars()
+        code, bars = souces.nextBars()
