@@ -198,13 +198,15 @@ class MyStrategy(CoreEngineStrategy):
             if bar.high_price >= order.suggestSellPrice:
                 order.sellPrice = order.suggestSellPrice
                 return 3
-            if order.holdDay >= 5:
+            if order.durationDay > 5:
                 order.sellPrice = bar.close_price
                 return 4
         elif order.status == PredictOrderStatus.READY:
+            if order.durationDay > 2:
+                return 5
             quantData = engine.queryQuantData(order.dimen)
             targetPrice = bar.low_price
-            if order.holdDay == 0:
+            if order.durationDay == 0: #生成的那天
                 targetPrice = bar.close_price
             if order.suggestBuyPrice >= targetPrice:
                 order.buyPrice = targetPrice

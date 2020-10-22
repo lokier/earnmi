@@ -39,8 +39,6 @@ class PredictOrder(object):
     #最佳买入价
     suggestBuyPrice:float = 0.0
 
-    max_hold_day = 0
-
     """
     """
     buyPrice:float = None
@@ -48,7 +46,7 @@ class PredictOrder(object):
 
     sellPrice:float =None
 
-    holdDay = 0
+    durationDay = 0
 
 
     def __post_init__(self):

@@ -171,7 +171,8 @@ class CoreEngineRunner():
                     predictList: Sequence['PredictData'] = model.predict(listData)
                     for predict in predictList:
                         order = self.__generatePredictOrder(self.coreEngine, predict)
-                        self.__updateOrdres(strategy,order, predict.collectData.predictBars);
+                        __bars = [predict.collectData.occurBars[-1]] + predict.collectData.predictBars
+                        self.__updateOrdres(strategy,order, bars);
                         self.putToStatistics(_testData, order, predict)
                     __dataList.append(_testData)
                     totalData = self.__combine(__dataList,min_deal_count)
@@ -236,22 +237,24 @@ class CoreEngineRunner():
 
             for predict in predictList:
                 order = self.__generatePredictOrder(self.coreEngine,predict)
-                self.__updateOrdres(strategy,order,predict.collectData.predictBars);
+                __bars = [predict.collectData.occurBars[-1]] +  predict.collectData.predictBars
+                self.__updateOrdres(strategy,order,__bars);
                 self.putToStatistics(_testData,order,predict)
             __dataList[dimen] = _testData
 
         self.__PrintStatictis(__dataList, min_deal_count)
 
+
     def __updateOrdres(self, strategy:CoreEngineStrategy,order,bars:[],debug_parms:{} = None):
+        order.durationDay = -1
         for bar in bars:
             if order.status == PredictOrderStatus.ABANDON or \
                     order.status == PredictOrderStatus.SUC or \
                     order.status == PredictOrderStatus.FAIL:
                 break
-            if order.status == PredictOrderStatus.HOLD:
-                order.holdDay += 1
             oldStatus = order.status
             _oldType = order.type
+            order.durationDay +=1
             operation = strategy.operatePredictOrder(self.coreEngine, order, bar, True, debug_parms)
             if oldStatus != order.status or _oldType != order.type:
                 raise RuntimeError("cant changed PredictOrder status or type！！")
@@ -278,10 +281,12 @@ class CoreEngineRunner():
                 order.status = PredictOrderStatus.ABANDON
             else:
                 assert operation == 0
-        ##强制清单
+            ##强制清单
         if order.status == PredictOrderStatus.HOLD:
             order.sellPrice = bars[-1].close_price
             order.status = PredictOrderStatus.FAIL
+        elif order.status == PredictOrderStatus.READY:
+            order.status = PredictOrderStatus.ABANDON
 
     def __generatePredictOrder(self, engine: CoreEngine, predict: PredictData) -> PredictOrder:
         code = predict.collectData.occurBars[-1].symbol
@@ -316,22 +321,24 @@ class CoreEngineRunner():
                        f"做多:[{d.longData.toStr(d.count)}]," \
                        f"做空:[{d.shortData.toStr(d.count)}]" )
 
-        self.coreEngine.printLog(f"\n回测总性能:count:{total.count}(sScore:{utils.keep_3_float(total.getSellScore())},bScore:{utils.keep_3_float(total.getBuyScore())})\n" \
+        ##
+        self.coreEngine.printLog("\n注意：预测得分高并一定代表操作成功率应该高，因为很多情况是先到最高点，再到最低点，有个顺序问题")
+        self.coreEngine.printLog(f"回测总性能:count:{total.count}(sScore:{utils.keep_3_float(total.getSellScore())},bScore:{utils.keep_3_float(total.getBuyScore())})\n" \
                                  f"做多:[{total.longData.toStr(total.count)}]\n" \
                                  f"做空:[{total.shortData.toStr(total.count)}]")
 
 
 
     def putToStatistics(self, data:BackTestData, order:PredictOrder,predict:PredictData):
+        assert  order.status!= PredictOrderStatus.READY or order.status!= PredictOrderStatus.HOLD
         data.count += 1
         high_price = -99999999
         low_price = -high_price
         for bar in predict.collectData.predictBars:
             high_price = max(high_price, bar.high_price)
             low_price = min(low_price, bar.low_price)
-        basePrice = self.coreEngine.getEngineModel().getYBasePrice(predict.collectData)
-        sell_price = basePrice * (1 + predict.getPredictSellPct(self.coreEngine.getEngineModel()) / 100)
-        buy_price = basePrice * (1 + predict.getPredictBuyPct(self.coreEngine.getEngineModel()) / 100)
+        sell_price = order.suggestSellPrice
+        buy_price = order.suggestBuyPrice
         ## 预测价格有无到底最高价格
         sell_ok = high_price >= sell_price
         buy_ok = low_price <= buy_price
@@ -339,6 +346,8 @@ class CoreEngineRunner():
             data.sell_ok += 1
         if buy_ok:
             data.buy_ok += 1
+
+        ##预测成功并一定代表操作成功，因为很多情况是先到底最高点，再到底最低点，有个顺序问题
 
         hasDeal =  order.status == PredictOrderStatus.SUC  or order.status == PredictOrderStatus.FAIL
         if hasDeal:
