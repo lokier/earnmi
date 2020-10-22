@@ -63,7 +63,7 @@ class CoreEngine():
     """
     创建CoreEngine对象。
     """
-    def create(dirName:str, model:CoreEngineModel, dataSource:BarDataSource,split_rate = 0.7,limit_dimen_size = -1, build_quant_data_only=True,min_size = 300):
+    def create(dirName:str, model:CoreEngineModel, dataSource:BarDataSource,split_rate = 0.7,limit_dimen_size = -1, build_quant_data_only=False,min_size = 300):
         from earnmi.model.CoreEngineImpl import CoreEngineImpl
         engine = CoreEngineImpl(dirName)
         engine.build(dataSource, model,split_rate,limit_dimen_size,onlyDimens = None,min_size = min_size,build_quant_data_only = build_quant_data_only)

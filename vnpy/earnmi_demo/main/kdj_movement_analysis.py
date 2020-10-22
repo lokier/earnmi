@@ -52,10 +52,7 @@ class KDJMovementEngineModel(CoreEngineModel):
         self.lasted3BarKdj = np.array([None ,None ,None])
         self.lasted3BarMacd = np.array([None ,None ,None])
         self.lasted3BarArron = np.array([None ,None ])
-
         self.kdjEncoder = FloatEncoder([15,30,45,60,75,90])
-        self.mDateOccurCountMap = {} ##统计产生收集个数的次数
-        self.sw = SWImpl()
 
     def onCollectStart(self, code: str) -> bool:
         from earnmi.chart.Indicator import Indicator
@@ -89,10 +86,6 @@ class KDJMovementEngineModel(CoreEngineModel):
         if BarUtils.getMaxIntervalDay(self.lasted15Bar) >= 5:
             return None
 
-        timeKey = utils.to_start_date(bar.datetime);
-        if self.mDateOccurCountMap.get(timeKey) is None:
-            self.mDateOccurCountMap[timeKey] = 0
-
         if self.indicator.count >=30:
             k0,d0,j0 = self.lasted3BarKdj[-2]
             k1,d1,j1 = self.lasted3BarKdj[-1]
@@ -102,7 +95,6 @@ class KDJMovementEngineModel(CoreEngineModel):
                 return None
             kPatternValue = KPattern.encode3KAgo1(self.indicator)
             if not kPatternValue is None :
-                self.mDateOccurCountMap[timeKey] +=1
                 dimen = Dimension(type=TYPE_2KAGO1 ,value=kPatternValue)
                 collectData = CollectData(dimen=dimen)
                 collectData.occurBars = list(self.lasted15Bar[-3:])
@@ -188,99 +180,79 @@ class KDJMovementEngineModel(CoreEngineModel):
         return data
 
 class MyStrategy(CoreEngineStrategy):
+
     def __init__(self):
-        self.sw = SWImpl()
-        self.mDateHoldCountMap = {} ##统计产生收集个数的次数
+        pass
 
-    def generatePredictOrder(self, engine: CoreEngine, predict: PredictData, debugPrams: {} = None) -> PredictOrder:
-
-        if debugPrams is None:
-            debugPrams = {}
-
-        code = predict.collectData.occurBars[-1].symbol
-        name = self.sw.getSw2Name(code)
-        order = PredictOrder(dimen=predict.dimen, code=code, name=name)
-        predict_sell_pct = predict.getPredictSellPct(engine.getEngineModel())
-        predict_buy_pct = predict.getPredictBuyPct(engine.getEngineModel())
-        start_price = engine.getEngineModel().getYBasePrice(predict.collectData)
-        order.suggestSellPrice = start_price * (1 + predict_sell_pct / 100)
-        order.suggestBuyPrice = start_price * (1 + predict_buy_pct / 100)
-        order.power_rate = engine.queryQuantData(predict.dimen).getPowerRate()
-
-        timeKey = utils.to_start_date(predict.collectData.occurBars[-1].datetime);
-        if self.mDateHoldCountMap.get(timeKey) is None:
-            self.mDateHoldCountMap[timeKey] = 0
-
-        ##for backTest
-        occurBar: BarData = predict.collectData.occurBars[-2]
-        skipBar: BarData = predict.collectData.occurBars[-1]
-        buy_price = skipBar.close_price
-        predict_sell_pct = 100 * (order.suggestSellPrice - start_price) / start_price
-        predict_buy_pct = 100 * (order.suggestBuyPrice - start_price) / start_price
-        buy_point_pct = 100 * (buy_price - occurBar.close_price) / occurBar.close_price  ##买入的价格
-
-        abilityData = engine.queryPredictAbilityData(predict.dimen)
-        quantData = engine.queryQuantData(predict.dimen)
-        delta = abs(quantData.sellCenterPct) - abs(quantData.buyCenterPct)
-        if abs(delta) < 0.05:
-            # 多空力量差不多
-            power = 0
-        if delta > 0:
-            # 适合做多
-            power = (quantData.sellCenterPct + quantData.buyCenterPct) / quantData.sellCenterPct
-        else:
-            power = - (quantData.sellCenterPct + quantData.buyCenterPct) / quantData.buyCenterPct
-
-        extraCondition = True
-        quant_power = debugPrams.get("quant_power")
-        if not quant_power is None:
-            extraCondition = extraCondition and predict.quantData.getPowerRate() >= quant_power
-
-        predict_buy_pct_param = debugPrams.get("predict_buy_pct")
-        if not predict_buy_pct_param is None:
-            extraCondition = extraCondition and predict_buy_pct >= predict_buy_pct_param
-
-        if extraCondition and predict_sell_pct - buy_point_pct > 1 \
-                and abilityData.trainData.biasSellLoss < 10:
-            order.status = PredictOrderStatus.HOLD
-            order.buyPrice = buy_price
-
-            timeKey = utils.to_start_date(predict.collectData.occurBars[-1].datetime);
-            self.mDateHoldCountMap[timeKey] +=1
-
-        else:
-            order.status = PredictOrderStatus.STOP
-        return order
-
-    def updatePredictOrder(self, order: PredictOrder, bar: BarData, isTodayLastBar: bool,debugParams:{}=None):
+    """
+      处理操作单
+      0: 不处理
+      1：做多
+      2：做空
+      3: 预测成功交割单
+      4：预测失败交割单
+      5：废弃改单
+      """
+    def operatePredictOrder(self,engine:CoreEngine, order: PredictOrder,bar:BarData,isTodayLastBar:bool,debugParams:{}=None) ->int:
         if (order.status == PredictOrderStatus.HOLD):
             if bar.high_price >= order.suggestSellPrice:
                 order.sellPrice = order.suggestSellPrice
-                order.status = PredictOrderStatus.CROSS
-                return
-            order.holdDay += 1
-            if order.holdDay >= 2:
+                return 3
+            if order.holdDay >= 5:
                 order.sellPrice = bar.close_price
-                order.status = PredictOrderStatus.CROSS
-                return
+                return 4
+        elif order.status == PredictOrderStatus.READY:
+            quantData = engine.queryQuantData(order.dimen)
+            targetPrice = bar.low_price
+            if order.holdDay == 0:
+                targetPrice = bar.close_price
+            if order.suggestBuyPrice >= targetPrice:
+                order.buyPrice = targetPrice
+                return 1
+        return 0
 
-def analysicQuantDataOnly(start:datetime,end:datetime):
+def analysicQuantDataOnly():
+    dirName = "models/kdj_movement_analysis"
+    start = datetime(2015, 10, 1)
+    middle = datetime(2019, 9, 30)
+    end = datetime(2020, 9, 30)
+
     souces = ZZ500DataSource(start, end)
     model = KDJMovementEngineModel()
-
     create = False
     engine = None
     if create:
         engine = CoreEngine.create(dirName, model,souces,build_quant_data_only = True,min_size=200)
     else:
         engine = CoreEngine.load(dirName,model)
-        engine.buildPredictModel(useSVM=False)
+        engine.buildQuantData()
+        #engine.buildPredictModel(useSVM=False)
+    pass
 
+def runBackTest():
+    _dirName = "models/kdj_movement_analysis_back_test"
+    start = datetime(2015, 10, 1)
+    middle = datetime(2019, 9, 30)
+    end = datetime(2020, 9, 30)
+    historySource = ZZ500DataSource(start, middle)
+    futureSouce = ZZ500DataSource(middle, end)
 
+    model = KDJMovementEngineModel()
+    create = False
+    engine = None
+    if create:
+        engine = CoreEngine.create(_dirName, model,historySource,min_size=200)
+    else:
+        engine = CoreEngine.load(_dirName,model)
+
+    runner = CoreEngineRunner(engine)
+    runner.backtest(futureSouce, MyStrategy(), min_deal_count=-1)
 
     pass
 
 if __name__ == "__main__":
+    #analysicQuantDataOnly()
+    runBackTest()
 
     """
     动量指标：
@@ -288,15 +260,7 @@ if __name__ == "__main__":
     策略：
         收集arron_up>arron_down,且arron_up大于50的数据对象。
     """
-    dirName = "models/kdj_movement_analysis"
-    start = datetime(2015, 10, 1)
-    middle = datetime(2019, 9, 30)
-    end = datetime(2020, 9, 30)
-    souces = ZZ500DataSource(start, end)
-    trainDataSouce = ZZ500DataSource(start, middle)
-    testDataSouce = ZZ500DataSource(middle, end)
 
-    analysicQuantDataOnly(start,end)
 
 
 

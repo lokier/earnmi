@@ -3,6 +3,8 @@
 
 核心引擎
 """
+import math
+import sys
 from dataclasses import dataclass
 from datetime import datetime,timedelta
 from functools import cmp_to_key
@@ -21,33 +23,79 @@ from earnmi.model.PredictAbilityData import PredictAbilityData
 from earnmi.model.PredictData import PredictData
 from earnmi.model.PredictOrder import PredictOrderStatus, PredictOrder
 from earnmi.model.QuantData import QuantData
+from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 
 """
 收集Collector数据。
 """
+class BackTestItemData(object):
+    deal_count = 0  ##交易总数
+    suc_count = 0   ##交易按预测情况成功次数
+    earn_pct_total = 0.0  #实际总盈利（没有达到预测情况也可能盈利）
+    loss_pct_total = 0.0  #实际总亏损
+    eran_count = 0  #盈利次数
+    earn_pct_max = 0
+    loss_pct_max = 0
+
+    def addTo(self,total):
+        total.deal_count += self.deal_count
+        total.suc_count += self.suc_count
+        total.earn_pct_total += self.earn_pct_total
+        total.loss_pct_total += self.loss_pct_total
+        total.eran_count += self.eran_count
+        total.earn_pct_max = max(self.earn_pct_max,total.earn_pct_max)
+        total.loss_pct_max = min(self.loss_pct_max,total.loss_pct_max)
+
+
+    def loss_cout(self):
+        return self.deal_count - self.eran_count
+
+    def deal_rate(self,total_count):
+        if total_count < 1:
+            return 0
+        return  self.deal_count /total_count
+
+    def suc_rate(self):
+        if self.deal_count < 1:
+            return 0.0
+        return self.suc_count / self.deal_count
+
+    def total_pct_avg(self):
+        if self.deal_count < 1:
+            return 0
+        return (self.earn_pct_total + self.loss_pct_total) / self.deal_count
+
+    def earn_pct_avg(self):
+        if self.eran_count < 1:
+            return 0
+        return self.earn_pct_total / self.eran_count
+
+    def loss_pct_avg(self):
+        if self.loss_cout() < 1:
+            return 0
+        return self.loss_pct_total / self.loss_cout()
+
+    def toStr(self,totolCount) -> str:
+       return f"交易率:%.2f%%,成功率:%.2f%%,单均pct:%.2f,盈pct:%.2f(%.2f),亏pct:%.2f(%.2f)" % \
+         ( 100 * self.deal_rate(totolCount), 100 * self.suc_rate(),
+          self.total_pct_avg(),self.earn_pct_avg(),self.earn_pct_max,
+          self.loss_pct_avg(),self.loss_pct_max)
 
 
 @dataclass
 class BackTestData(object):
     dimen: Dimension
-    count = 0
-    sell_ok = 0
-    buy_ok = 0
+    count = 0   ##产生操作单次数
+    sell_ok = 0  ##预测做多成功次数（不含交易）
+    buy_ok = 0  ##预测做空成功次数（不含交易）
 
-    deal_count = 0   ##
-    dec_suc_count = 0  ##处理并成功预测的个数
-    earn_pct = 0.0
-    loss_pct = 0.0
-    eran_count = 0
+    longData:BackTestItemData = None  #做多情况统计
+    shortData:BackTestItemData = None #做空情况统计
 
-    quant: QuantData = None
-    abilityData: PredictAbilityData = None
-
-    def getEarnRate(self) -> float:
-        if self.deal_count > 0:
-            return self.dec_suc_count / self.deal_count
-        return 0
+    def __post_init__(self):
+        self.longData = BackTestItemData()
+        self.shortData = BackTestItemData()
 
     def getSellScore(self):
         return 100 * self.sell_ok / self.count
@@ -55,18 +103,6 @@ class BackTestData(object):
     def getBuyScore(self):
         return 100 * self.buy_ok / self.count
 
-    def __str__(self) -> str:
-        earn_pct = 0.0
-        lost_pct = 0.0
-        if self.eran_count > 0:
-            earn_pct = self.earn_pct / self.eran_count
-        if self.deal_count - self.eran_count > 0:
-            lost_pct = self.loss_pct / (self.deal_count - self.eran_count)
-        ok_rate = self.getEarnRate()
-
-        return f"count:{self.count}(test_sell_score:%.2f,test_buy_score:%.2f),deal_count:{self.deal_count},ok_rate:%.2f%%,earn:{self.eran_count}" \
-               f",earn_pct:%.2f%%,loss_pct:%.2f%%, " % \
-               (self.getSellScore(), self.getBuyScore(), ok_rate * 100, earn_pct, lost_pct)
 
 
 class CoreEngineRunner():
@@ -134,9 +170,8 @@ class CoreEngineRunner():
 
                     predictList: Sequence['PredictData'] = model.predict(listData)
                     for predict in predictList:
-                        order = strategy.generatePredictOrder(self.coreEngine, predict,__the_param)
-                        for bar in predict.collectData.predictBars:
-                            strategy.updatePredictOrder(order, bar, True,__the_param)
+                        order = self.__generatePredictOrder(self.coreEngine, predict)
+                        self.__updateOrdres(strategy,order, predict.collectData.predictBars);
                         self.putToStatistics(_testData, order, predict)
                     __dataList.append(_testData)
                     totalData = self.__combine(__dataList,min_deal_count)
@@ -163,47 +198,6 @@ class CoreEngineRunner():
                         totalData:BackTestData = dimenSet.get(paramValue)
                         print(f"          [{paramValue}]: {totalData}")
 
-    """
-    获取申万当前的操作单
-    """
-    def getSWCurrentPredictOrder(self,strategy:CoreEngineStrategy):
-        end = datetime.now()
-        start = end - timedelta(days=100)
-        soruce = SWDataSource(start, end)
-        bars, code = soruce.nextBars()
-        dataSet = {}
-        totalCount = 0
-        model = self.coreEngine.getEngineModel()
-        orderList: Sequence['PredictOrder'] = []
-        while not bars is None:
-            # self.coreEngine.getEngineModel().collectBars(bars,code)
-            finished, stop = model.collectBars(bars, code)
-            print(f"[backtest]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
-            totalCount += len(stop)
-            bars, code = soruce.nextBars()
-            for data in stop:
-                ##收录
-                listData: [] = dataSet.get(data.dimen)
-                if listData is None:
-                    listData = []
-                    dataSet[data.dimen] = listData
-                listData.append(data)
-
-        for dimen, listData in dataSet.items():
-            model = self.coreEngine.loadPredictModel(dimen)
-            if model is None:
-                print(f"不支持的维度:{dimen}")
-                continue
-            predictList: Sequence['PredictData'] = model.predict(listData)
-            for predict in predictList:
-                order = strategy.generatePredictOrder(self.coreEngine, predict)
-                for bar in predict.collectData.predictBars:
-                    strategy.updatePredictOrder(order, bar, True, None)
-                if order.status == PredictOrderStatus.HOLD or \
-                    order.status == PredictOrderStatus.CROSS:
-                    orderList.append(order)
-        return orderList
-
     def backtest(self, soruce: BarDataSource, strategy:CoreEngineStrategy, min_deal_count = -1):
         bars, code = soruce.nextBars()
         dataSet = {}
@@ -223,7 +217,7 @@ class CoreEngineRunner():
                     dataSet[data.dimen] = listData
                 listData.append(data)
 
-        __dataList:['BackTestData'] = []
+        __dataList = {}
         run_cnt = 0
         run_limit_size = len(dataSet)
         for dimen, listData in dataSet.items():
@@ -231,93 +225,104 @@ class CoreEngineRunner():
                 break
             model = self.coreEngine.loadPredictModel(dimen)
             if model is None:
-                print(f"不支持的维度:{dimen}")
+                self.coreEngine.printLog(f"不支持的维度:{dimen}")
                 continue
             run_cnt +=1
-            print(f"开始回测维度:{dimen},进度:[{run_cnt}/{run_limit_size}]")
+            self.coreEngine.printLog(f"开始回测维度:{dimen},进度:[{run_cnt}/{run_limit_size}]")
             predictList: Sequence['PredictData'] = model.predict(listData)
             _testData = BackTestData(dimen=dimen)
             _testData.abilityData = self.coreEngine.queryPredictAbilityData(dimen)
             _testData.quant = self.coreEngine.queryQuantData(dimen)
 
             for predict in predictList:
-                order = strategy.generatePredictOrder(self.coreEngine,predict)
-                for bar in predict.collectData.predictBars:
-                    strategy.updatePredictOrder(order, bar, True,None)
+                order = self.__generatePredictOrder(self.coreEngine,predict)
+                self.__updateOrdres(strategy,order,predict.collectData.predictBars);
                 self.putToStatistics(_testData,order,predict)
+            __dataList[dimen] = _testData
 
-            __dataList.append(_testData)
+        self.__PrintStatictis(__dataList, min_deal_count)
 
-        pdData =  self.__genrateAndPrintPdData(__dataList,min_deal_count)
-        print(f"{pdData.head(20)}")
-        return pdData
-
-    def __combine(self,__dataList:['BackTestData'],min_deal_count):
-        total = BackTestData(dimen=None)
-        for d in __dataList:
-            if d.deal_count < min_deal_count:
-                continue
-            total.loss_pct += d.loss_pct
-            total.deal_count += d.deal_count
-            total.eran_count += d.eran_count
-            total.dec_suc_count += d.dec_suc_count
-            total.count += d.count
-            total.earn_pct += d.earn_pct
-            total.buy_ok += d.buy_ok
-            total.sell_ok += d.sell_ok
-        deal_rate = 0.0
-        if total.count > 0:
-            deal_rate = total.deal_count / total.count
-
-        return total
-
-    def __genrateAndPrintPdData(self,__dataList:['BackTestData'],min_deal_count:int,debugy_param:[] = None):
-
-
-        def diemdata_cmp(v1, v2):
-            return v1.getEarnRate() - v2.getEarnRate()
-        __dataList = sorted(__dataList, key=cmp_to_key(diemdata_cmp), reverse=True)
-        columns = ["dimen", "总数", "操作数", "盈利率", "总盈利", "总亏损", "分数|卖", "分数|买",
-                   "量化数据:", "power", "count", "sCPct", "bCPct", "预测能力:",
-                   "count", "sScore", "bScore","sBiasWin", "bBiasWin", "sBiasLoss","bBiasLoss"]
-        values = []
-        for d in __dataList:
-            if d.deal_count < min_deal_count:
-                continue
-            item = []
-            if(d.dimen is None):
-                item.append(-1)
+    def __updateOrdres(self, strategy:CoreEngineStrategy,order,bars:[],debug_parms:{} = None):
+        for bar in bars:
+            if order.status == PredictOrderStatus.ABANDON or \
+                    order.status == PredictOrderStatus.SUC or \
+                    order.status == PredictOrderStatus.FAIL:
+                break
+            if order.status == PredictOrderStatus.HOLD:
+                order.holdDay += 1
+            oldStatus = order.status
+            _oldType = order.type
+            operation = strategy.operatePredictOrder(self.coreEngine, order, bar, True, debug_parms)
+            if oldStatus != order.status or _oldType != order.type:
+                raise RuntimeError("cant changed PredictOrder status or type！！")
+            """
+               处理操作单
+               0: 不处理
+               1：做多
+               2：做空
+               3: 预测成功交割单
+               4：预测失败交割单
+               5：废弃改单              """
+            if operation == 1 or operation == 2:
+                assert order.type is None and  not order.buyPrice is None
+                order.type = operation
+                order.status = PredictOrderStatus.HOLD
+            elif operation == 3 or operation == 4:
+                assert not order.type is None and not order.sellPrice is None and not order.buyPrice is None and order.status == PredictOrderStatus.HOLD
+                if operation == 3:
+                    order.status = PredictOrderStatus.SUC
+                else:
+                    order.status = PredictOrderStatus.FAIL
+            elif operation ==5:
+                assert order.status == PredictOrderStatus.READY
+                order.status = PredictOrderStatus.ABANDON
             else:
-                item.append(d.dimen.value)
-            item.append(d.count)
-            item.append(d.deal_count)
-            item.append(d.getEarnRate())
-            item.append(d.earn_pct)
-            item.append(d.loss_pct)
-            item.append(d.getSellScore())
-            item.append(d.getBuyScore())
-            item.append("")
-            item.append(d.quant.getPowerRate())
-            item.append(d.quant.count)
-            item.append(d.quant.sellCenterPct)
-            item.append(d.quant.buyCenterPct)
-            item.append("")
-            ability:PredictAbilityData = d.abilityData
-            item.append(ability.getCount())
-            item.append(ability.getScoreSell())
-            item.append(ability.getScoreBuy())
+                assert operation == 0
+        ##强制清单
+        if order.status == PredictOrderStatus.HOLD:
+            order.sellPrice = bars[-1].close_price
+            order.status = PredictOrderStatus.FAIL
 
-            item.append(ability.getBiasSell(True))
-            item.append(ability.getBiasBuy(True))
-            item.append(ability.getBiasSell(False))
-            item.append(ability.getBiasBuy(False))
+    def __generatePredictOrder(self, engine: CoreEngine, predict: PredictData) -> PredictOrder:
+        code = predict.collectData.occurBars[-1].symbol
+        order = PredictOrder(dimen=predict.dimen, code=code, name=code)
+        predict_sell_pct = predict.getPredictSellPct(engine.getEngineModel())
+        predict_buy_pct = predict.getPredictBuyPct(engine.getEngineModel())
+        start_price = engine.getEngineModel().getYBasePrice(predict.collectData)
+        order.suggestSellPrice = start_price * (1 + predict_sell_pct / 100)
+        order.suggestBuyPrice = start_price * (1 + predict_buy_pct / 100)
+        order.power_rate = engine.queryQuantData(predict.dimen).getPowerRate()
+        return order
 
-            values.append(item)
+    def __PrintStatictis(self, __dataList:{}, min_deal_count:int, debugy_param:[] = None):
 
-        return pd.DataFrame(values, columns=columns)
+        # def diemdata_cmp(v1, v2):
+        #     return v1.getEarnRate() - v2.getEarnRate()
+        # __dataList = sorted(__dataList, key=cmp_to_key(diemdata_cmp), reverse=True)
+        # columns = ["dimen", "总数", "操作数", "盈利率", "总盈利", "总亏损", "分数|卖", "分数|买",
+        #            "量化数据:", "power", "count", "sCPct", "bCPct", "预测能力:",
+        #            "count", "sScore", "bScore","sBiasWin", "bBiasWin", "sBiasLoss","bBiasLoss"]
+        values = []
+        total = BackTestData(None)
+        for dimen,d in __dataList.items():
+            if (d.longData.deal_count + d.shortData.deal_count) < min_deal_count:
+                continue
+            total.count += d.count
+            total.buy_ok +=d.buy_ok
+            total.sell_ok += d.sell_ok
+            d.longData.addTo(total.longData)
+            d.shortData.addTo(total.shortData)
+            self.coreEngine.printLog(f"[{dimen.value}]=>count:{d.count}(sScore:{utils.keep_3_float(d.getSellScore())},bScore:{utils.keep_3_float(d.getBuyScore())})," \
+                       f"做多:[{d.longData.toStr(d.count)}]," \
+                       f"做空:[{d.shortData.toStr(d.count)}]" )
+
+        self.coreEngine.printLog(f"\n回测总性能:count:{total.count}(sScore:{utils.keep_3_float(total.getSellScore())},bScore:{utils.keep_3_float(total.getBuyScore())})\n" \
+                                 f"做多:[{total.longData.toStr(total.count)}]\n" \
+                                 f"做空:[{total.shortData.toStr(total.count)}]")
 
 
-    def putToStatistics(self, data:BackTestData, order,predict:PredictData):
+
+    def putToStatistics(self, data:BackTestData, order:PredictOrder,predict:PredictData):
         data.count += 1
         high_price = -99999999
         low_price = -high_price
@@ -327,28 +332,43 @@ class CoreEngineRunner():
         basePrice = self.coreEngine.getEngineModel().getYBasePrice(predict.collectData)
         sell_price = basePrice * (1 + predict.getPredictSellPct(self.coreEngine.getEngineModel()) / 100)
         buy_price = basePrice * (1 + predict.getPredictBuyPct(self.coreEngine.getEngineModel()) / 100)
-
         ## 预测价格有无到底最高价格
         sell_ok = high_price >= sell_price
         buy_ok = low_price <= buy_price
-
         if sell_ok:
             data.sell_ok += 1
         if buy_ok:
             data.buy_ok += 1
-        deal = order.status == PredictOrderStatus.CROSS
-        if deal:
-            success = order.sellPrice == order.suggestSellPrice
-            if success:
-                data.dec_suc_count += 1
-            pct = 100 * (order.sellPrice - order.buyPrice) / order.buyPrice
-            data.deal_count += 1
-            if pct > 0.0:
-                data.earn_pct += pct
-                data.eran_count += 1
-            else:
-                data.loss_pct += pct
 
+        hasDeal =  order.status == PredictOrderStatus.SUC  or order.status == PredictOrderStatus.FAIL
+        if hasDeal:
+            pct = 100 * (order.sellPrice - order.buyPrice) / order.buyPrice
+            if order.type == 2:
+                #做空
+                data.shortData.deal_count +=1
+                if order.status == PredictOrderStatus.SUC:
+                    data.shortData.suc_count += 1
+                if pct > 0.0:
+                    data.shortData.earn_pct_total += pct
+                    data.shortData.eran_count += 1
+                    data.shortData.earn_pct_max = max(data.shortData.earn_pct_max, pct)
+                else:
+                    data.shortData.loss_pct_total += pct
+                    data.shortData.loss_pct_max = min(data.shortData.loss_pct_max, pct)
+
+
+            elif order.type == 1:
+                #做多
+                data.longData.deal_count += 1
+                if order.status == PredictOrderStatus.SUC:
+                    data.longData.suc_count += 1
+                if pct > 0.0:
+                    data.longData.earn_pct_total += pct
+                    data.longData.eran_count += 1
+                    data.longData.earn_pct_max = max(data.longData.earn_pct_max, pct)
+                else:
+                    data.longData.loss_pct_total += pct
+                    data.longData.loss_pct_max = min(data.longData.loss_pct_max, pct)
 
 
     def __getFloatRangeInfo(self,ranges:['FloatRange'],encoder:FloatEncoder):

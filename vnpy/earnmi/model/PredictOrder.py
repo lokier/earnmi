@@ -1,18 +1,13 @@
 from dataclasses import dataclass
 from enum import Enum
-
-from earnmi.model.CollectData import CollectData
 from earnmi.model.Dimension import Dimension
-from earnmi.model.QuantData import QuantData
 
 class PredictOrderStatus(Enum):
-    """
-    start of PredictOrder.
-    """
-    TRACE = "trace"  #正在追踪交易
-    HOLD = "hold"   #已经持有筹码
-    STOP = "stop"   #终止交易
-    CROSS = "cross"   #交割完成
+    READY = "ready"  #准备交易
+    HOLD = "hold"   #持筹码
+    FAIL = "fail"   #预测成功单
+    SUC = "suc"   #预测失败单
+    ABANDON = "abandon"  #没有操作的废弃单
 
 @dataclass
 class PredictOrder(object):
@@ -25,7 +20,13 @@ class PredictOrder(object):
 
     name:str
 
-    status = PredictOrderStatus.TRACE
+    """
+    1为买入做多单：
+    2为买入做空单：
+    """
+    type:int = None
+
+    status:PredictOrderStatus = PredictOrderStatus.READY
 
     """
     多空力量比例
