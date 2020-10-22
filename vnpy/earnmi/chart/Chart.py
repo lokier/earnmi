@@ -173,8 +173,11 @@ class Chart:
         #self.holdBar:HoldBar = None
 
     def run(self,bars:list,item:IndicatorItem=None):
-        if (bars[0].datetime > bars[-1].datetime):
-            bars = bars.__reversed__()
+        try:
+            if (bars[0].datetime > bars[-1].datetime):
+                bars = bars.__reversed__()
+        except AttributeError:
+            print(f"sfsdfdsf")
         data = []
         index = []
         indicator = Indicator()

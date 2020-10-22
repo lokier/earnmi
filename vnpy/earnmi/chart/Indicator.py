@@ -1,7 +1,9 @@
+import math
 from datetime import datetime
 
 import numpy as np
 import talib
+from numba import jit
 
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
@@ -320,6 +322,25 @@ class Indicator(object):
         if array:
             return result
         return result[-1]
+
+    #@jit(nopython=True)  # jit，numba装饰器中的一种
+    def macd_rao(self,period:int = 30)->float:
+        total:float = 0.0
+        for i in range(-period,0):
+            total +=  (self.close[i] + self.open[i]) / 2
+        base_price:float = total / period
+        total:float = 0.0
+        for i in range(-period,0):
+            dela = self.close[i] - base_price
+            if dela > 0:
+                total += (dela * dela)
+            else:
+                total -= (dela * dela)
+        if abs(total)<0.001:
+            return 0
+        if total < 0:
+            return -100 * math.sqrt(-total) / base_price
+        return 100 * math.sqrt(total) / base_price
 
     """
     前33个必须要有值。
