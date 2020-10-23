@@ -3,11 +3,13 @@ import os
 from earnmi.chart.Chart import Chart
 from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange
 from earnmi.chart.Indicator import Indicator
+from earnmi.chart.KD import KD
 from earnmi.data.MarketImpl import MarketImpl
 from datetime import datetime, timedelta
 import talib
 import numpy as np
 from earnmi.model.BarDataSource import ZZ500DataSource
+from earnmi.uitl.BarUtils import BarUtils
 
 """
 不同的股票价格的macd的数值不同，macd是跟价格相关的。这样不同股票的价格的macd数值就不好做个比较。
@@ -82,37 +84,48 @@ def parse_macd_rao_disbute():
     end = datetime(2020, 9, 30)
     souces = ZZ500DataSource(start, end)
     bars, code = souces.nextBars()
-    value_list = []
     last_33bars = np.full(33, None)
     imgeDir = "files/zz500_macd_rao"
     if not os.path.exists(imgeDir):
         os.makedirs(imgeDir)
+
     chart = Chart()
+    period_list = [30,20,12,9,7]
+    value_list_map = {}
+    for p in period_list:
+        value_list_map[p] = []
+
     while not bars is None:
         indicator = Indicator(40)
         for bar in bars:
+            if not BarUtils.isOpen(bar):
+                continue
             indicator.update_bar(bar)
             last_33bars[:-1] = last_33bars[1:]
             last_33bars[-1] = bar
             if indicator.count > 32:
-                v = indicator.macd_rao(period=30)
-                value_list.append(v)
-                if v > 80:
-                     chart.show(last_33bars,
-                                savefig=f"{imgeDir}/z80_{bar.symbol}time_{bar.datetime.year}_{bar.datetime.month}_{bar.datetime.day}.jpg")
-                #
-        bars, code = souces.nextBars()
-    value_list = np.array(value_list)
-    _min, _max = [value_list.min(), value_list.max()]
-    print(f"max:{_max},min:{_min},count:{len(value_list)}")
+                #v = indicator.macd_rao(period=30)
+                for p in period_list:
+                    v = KD.vibrate(indicator.close, indicator.open, period=p)
+                    value_list_map[p].append(v)
+                    # if abs(v - 5) < 1:
+                    #      chart.show(last_33bars,
+                    #                 savefig=f"{imgeDir}/z80_{bar.symbol}time_{bar.datetime.year}_{bar.datetime.month}_{bar.datetime.day}.jpg")
 
-    N = 5
-    spli_list = []
-    for i in range(0, N + 1):
-        spli_list.append(_min + i * (_max - _min) / N)
-    spli_list = [ -100,-80,-50,-30,-10,-5,5,10,30,50,80,100]
-    dif_encoder = FloatEncoder(spli_list)
-    print(f"分布:{FloatRange.toStr(dif_encoder.computeValueDisbustion(value_list), dif_encoder)}")
+        bars, code = souces.nextBars()
+
+
+    for period, value_list in value_list_map.items():
+        value_list = np.array(value_list)
+        _min, _max = [value_list.min(), value_list.max()]
+        print(f"period:{period}, max:%.2f,min:%.2f,count:{len(value_list)}" % (_max,_min))
+        N = 5
+        spli_list = []
+        for i in range(0, N + 1):
+            spli_list.append(_min + i * (_max - _min) / N)
+        spli_list = [ 0,100]
+        dif_encoder = FloatEncoder(spli_list)
+        print(f"    分布:{FloatRange.toStr(dif_encoder.computeValueDisbustion(value_list), dif_encoder)}")
     pass
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ from datetime import datetime
 
 import numpy as np
 import talib
-from numba import jit
+from numba import jit, float64, int32
 
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
@@ -323,13 +323,13 @@ class Indicator(object):
             return result
         return result[-1]
 
-    #@jit(nopython=True)  # jit，numba装饰器中的一种
-    def macd_rao(self,period:int = 30)->float:
-        total:float = 0.0
+    @jit(nopython=True)  # jit，numba装饰器中的一种
+    def macd_rao(self,period:int32 = 30)->float64:
+        total:float64 = 0.0
         for i in range(-period,0):
             total +=  (self.close[i] + self.open[i]) / 2
-        base_price:float = total / period
-        total:float = 0.0
+        base_price:float64 = total / period
+        total:float64 = 0.0
         for i in range(-period,0):
             dela = self.close[i] - base_price
             if dela > 0:
