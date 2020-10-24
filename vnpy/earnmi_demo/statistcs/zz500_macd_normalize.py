@@ -3,7 +3,7 @@ import os
 from earnmi.chart.Chart import Chart
 from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange
 from earnmi.chart.Indicator import Indicator
-from earnmi.chart.KD import KD
+from earnmi.chart.Factory import Factory
 from earnmi.data.MarketImpl import MarketImpl
 from datetime import datetime, timedelta
 import talib
@@ -106,7 +106,7 @@ def parse_macd_rao_disbute():
             if indicator.count > 32:
                 #v = indicator.macd_rao(period=30)
                 for p in period_list:
-                    v = KD.vibrate(indicator.close, indicator.open, period=p)
+                    v = Factory.vibrate(indicator.close, indicator.open, period=p)
                     value_list_map[p].append(v)
                     # if abs(v - 5) < 1:
                     #      chart.show(last_33bars,

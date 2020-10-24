@@ -11,7 +11,7 @@ class BarUtils:
     """
     将零散的整理bars的价格
     """
-    def arrangePrice(bars:['BarData'],basePrice:float)->['BarData']:
+    def arrangePrice(bars:['BarData'],basePrice:float,accumulate=True)->['BarData']:
 
         barList = []
         new_open_price = basePrice
@@ -37,7 +37,8 @@ class BarUtils:
                 close_price=close_price,
                 gateway_name='arrangePrice'
             ))
-            new_open_price = close_price
+            if accumulate:
+                new_open_price = close_price
         return barList
 
     @staticmethod
