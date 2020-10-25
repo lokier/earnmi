@@ -566,26 +566,29 @@ class Indicator(object):
     """
      这是一个指标值。改进后的AD，可以解决缺口导致的问题。
     """
-    @jit(nopython=True)  # jit，numba装饰器中的一种
-    def ad2(self,array: bool = False) -> Union[
+    #@jit(nopython=True)  # jit，numba装饰器中的一种
+    def ad2(self,period = 30,array: bool = False) -> Union[
         float, np.ndarray]:
-        size = self.count
         # assert  size >=2
-        ret = np.full(size, None)
+        ret = np.full(period, None)
         ret[0] = 0
-        for i in range(-size + 1, 0):
-            osc = self.lsosc(self.close[i - 1], self.close[i], self.high[i], self.low[i])
-            ret[i] = ret[i - 1] + osc * self.volume[i]
+        for i in range(-period + 1, 0):
+            osc = Indicator.lsosc(self.close[i - 1], self.close[i], self.high[i], self.low[i])
+            ret[i] = ret[i-1] + osc * self.volume[i]
+        if not array:
+            return ret[-1]
+
         return ret
 
     """
     改进后的多空对方分析（不会受缺口影响）
     多空对比 = [（收盘价- 最低价） - （最高价 - 收盘价）] / （最高价 - 最低价)
     """
-    def lsosc(self,pre_close, close, high, low) -> float:
+    def lsosc(pre_close, close, high, low) -> float:
         low = min(pre_close, low)
         high = max(pre_close, high)
-        assert abs(high-low) > 0.1
+        assert abs(high-low) > 0.008
+            #print("why")
         return ((close - low) - (high - close)) / (high - low)
 
     def ad(self, array: bool = False) -> Union[float, np.ndarray]:

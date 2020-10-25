@@ -2,12 +2,15 @@ from datetime import datetime, timedelta
 from typing import List
 
 from ibapi.common import BarData
+from statsmodels.multivariate.factor import Factor
 from werkzeug.routing import Map
 
 from earnmi.chart.Chart import Chart, BollItem, IndicatorItem, Signal, HoldBarMaker
+from earnmi.chart.Factory import Factory
 from earnmi.chart.Indicator import Indicator
 from earnmi.data.SWImpl import SWImpl
 from earnmi.model.BarDataSource import ZZ500DataSource
+from earnmi.uitl.BarUtils import BarUtils
 
 """
  RSI指标
@@ -47,31 +50,37 @@ class kdj(IndicatorItem):
         super().__init__(False)
 
     def getNames(self) -> List:
-        return ["k","d","j"]
-
+        return [
+            "osi1",
+                "osi2",
+                "osi3",
+                "osi4"
+                ];
+        #return ["osi3"];
 
     def getValues(self, indicator: Indicator,bar:BarData,signal:Signal) -> Map:
         values = {}
-        if indicator.count>20:
-            k,d,j = indicator.kdj(fast_period=9,slow_period=3,array=True)
-            values["k"] = k[-1]
-            values["d"] = d[-1]
-            values["j"] = j[-1]
-
-            if k[-2] < d[-2] and k[-1] >= d[-1]:
-                signal.buy = True
-
+        if indicator.count>35 and BarUtils.isOpen(bar):
+            values["osi1"] = Factory.pvb(indicator.close,indicator.high,indicator.low,indicator.volume,30);
+            values["osi2"] =  indicator.ad2(15);
+            values["osi3"]  = indicator.ad2(30)
+            values["osi1"] = 0
+            #alues["osi3"] = Factory.pvb(indicator.close,indicator.high,indicator.low,indicator.volume,12);
+            values["osi4"] =indicator.ad2(9);
         else:
-            values["k"] = 50
-            values["d"] = 50
-            values["j"] = 50
+            values["osi1"] = 0
+            values["osi2"] = 0
+            values["osi3"] = 0
+            values["osi4"] =0
         return values
 
     def getColor(self, name: str):
-        if name == "k":
+        if name == "osi1":
             return 'r'
-        elif name == 'd':
+        elif name == 'osi2':
             return 'b'
+        elif name == 'osi3':
+            return 'black'
         return 'y'
 
     def isLowerPanel(self) ->bool:
@@ -79,7 +88,7 @@ class kdj(IndicatorItem):
 
 code = "600196"
 
-start = datetime(2020, 5, 1)
+start = datetime(2020, 3, 1)
 end = datetime.now();
 #end = datetime(2020, 8, 17)
 
@@ -93,6 +102,11 @@ end = datetime.now();
 
 source = ZZ500DataSource(start,end)
 
+bars,code = source.nextBars();
+bars,code = source.nextBars();
+bars,code = source.nextBars();
+bars,code = source.nextBars();
+bars,code = source.nextBars();
 bars,code = source.nextBars();
 
 

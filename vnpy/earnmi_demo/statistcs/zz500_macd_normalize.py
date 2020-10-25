@@ -95,6 +95,8 @@ def parse_macd_rao_disbute():
     for p in period_list:
         value_list_map[p] = []
 
+    count = 0
+
     while not bars is None:
         indicator = Indicator(40)
         for bar in bars:
@@ -103,14 +105,28 @@ def parse_macd_rao_disbute():
             indicator.update_bar(bar)
             last_33bars[:-1] = last_33bars[1:]
             last_33bars[-1] = bar
-            if indicator.count > 32:
+            if indicator.count > 34:
+                count += 1
+                #print(f"progress: {count}")
+
+                #if count == 14:
+                if count %10000 == 0:
+                    print(f"progress: {count}")
+                    #break
                 #v = indicator.macd_rao(period=30)
                 for p in period_list:
-                    v = Factory.vibrate(indicator.close, indicator.open, period=p)
+                    #v = Factory.vibrate(indicator.close, indicator.open, period=p)
+                    v= Factory.pvb(indicator.close,indicator.high,indicator.low,indicator.volume,period=p)
                     value_list_map[p].append(v)
-                    # if abs(v - 5) < 1:
-                    #      chart.show(last_33bars,
-                    #                 savefig=f"{imgeDir}/z80_{bar.symbol}time_{bar.datetime.year}_{bar.datetime.month}_{bar.datetime.day}.jpg")
+                    if p == 30:
+                        if  v< -0.9:
+                            print(f"find:{v}")
+                            chart.show(last_33bars,
+                                savefig=f"{imgeDir}/z80_1_minus_{bar.symbol}time_{bar.datetime.year}_{bar.datetime.month}_{bar.datetime.day}.jpg")
+                        # elif v>0.99:
+                        #     print(f"find:{v}")
+                        #     chart.show(last_33bars,
+                        #                savefig=f"{imgeDir}/z80_1_{bar.symbol}time_{bar.datetime.year}_{bar.datetime.month}_{bar.datetime.day}.jpg")
 
         bars, code = souces.nextBars()
 
@@ -123,7 +139,7 @@ def parse_macd_rao_disbute():
         spli_list = []
         for i in range(0, N + 1):
             spli_list.append(_min + i * (_max - _min) / N)
-        spli_list = [ 0,100]
+        #spli_list = [ 0,100]
         dif_encoder = FloatEncoder(spli_list)
         print(f"    分布:{FloatRange.toStr(dif_encoder.computeValueDisbustion(value_list), dif_encoder)}")
     pass

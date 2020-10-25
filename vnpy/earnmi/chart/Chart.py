@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 
 import pandas as pd
 import numpy as np
+
+from earnmi.uitl.BarUtils import BarUtils
 from vnpy.trader.constant import Exchange, Interval
 from werkzeug.routing import Map
 
@@ -205,49 +207,53 @@ class Chart:
         ##current_hold_bar: HoldBar = None
         has_buy = False;
         for bar in bars:
-            index.append(bar.datetime)
-            list = [bar.open_price, bar.high_price, bar.low_price, bar.close_price, bar.volume]
-            indicator.update_bar(bar)
+            if not BarUtils.isOpen(bar):
+                ##没开盘
+                if len(list)> 0:
+                    index.append(bar.datetime)
+                    list = data[-1]
+            else:
+                index.append(bar.datetime)
+                list = [bar.open_price, bar.high_price, bar.low_price, bar.close_price, bar.volume]
+                indicator.update_bar(bar)
+                if not item is None:
+                    item_names = item.getNames()
+                    item_size = len(item_names)
+                    item_signal.reset()
+                    item_signal.hasBuy = has_buy
+                    item_value = item.getValues(indicator, bar, item_signal);
+                    for i in range(item_size):
+                        list.append(item_value[item_names[i]])
+                    if item_signal.buy:
+                        list.append(bar.low_price * 0.99)
+                        item_signal_buy_open = True
+                        has_buy = True
+                        ##生成一个新的holdbar。
+                        if not holdbarMaker is None:
+                            holdbarMaker.onHoldStart(bar)
 
-            if not item is None:
-                item_names = item.getNames()
-                item_size = len(item_names)
-                item_signal.reset()
-                item_signal.hasBuy = has_buy
-                item_value = item.getValues(indicator, bar, item_signal);
-                for i in range(item_size):
-                    list.append(item_value[item_names[i]])
-                if item_signal.buy:
-                    list.append(bar.low_price * 0.99)
-                    item_signal_buy_open = True
-                    has_buy = True
-                    ##生成一个新的holdbar。
-                    if not holdbarMaker is None:
-                        holdbarMaker.onHoldStart(bar)
+                    else:
+                        ##更新holdBar
+                        if not holdbarMaker is None:
+                            holdbarMaker.onHoldUpdate(bar)
 
-                else:
-                    ##更新holdBar
-                    if not holdbarMaker is None:
-                        holdbarMaker.onHoldUpdate(bar)
+                        list.append(np.nan)
 
-                    list.append(np.nan)
+                    if item_signal.sell:
+                        list.append(bar.high_price * 1.01)
+                        item_signal_sell_open = True
+                        has_buy = False
+                        ##结束目前的HoldBar
+                        if not holdbarMaker is None:
+                            holdbarMaker.onHoldEnd()
+                    else:
+                        list.append(np.nan)
 
-                if item_signal.sell:
-                    list.append(bar.high_price * 1.01)
-                    item_signal_sell_open = True
-                    has_buy = False
-                    ##结束目前的HoldBar
-                    if not holdbarMaker is None:
-                        holdbarMaker.onHoldEnd()
-                else:
-                    list.append(np.nan)
-
-                if item_signal.redTag:
-                    item_signal_redTag_open = True
-                    list.append(bar.low_price * 0.99)
-                else:
-                    list.append(np.nan)
-
+                    if item_signal.redTag:
+                        item_signal_redTag_open = True
+                        list.append(bar.low_price * 0.99)
+                    else:
+                        list.append(np.nan)
             data.append(list)
 
         trades = pd.DataFrame(data, index=index, columns=columns)

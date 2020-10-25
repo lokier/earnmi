@@ -78,6 +78,9 @@ class ZZ500DataSource(BarDataSource):
             self.market.addNotice(code)
             bars = self.market.getHistory().getKbarFrom(code,self.start)
             self.market.removeNotice(code)
+            if bars[0].close_price < 10 or bars[-1].close_price < 10:
+                ##过滤价格比较低的股票
+                return self.nextBars()
             return bars,code
         return None,None
 
