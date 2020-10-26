@@ -119,7 +119,7 @@ def parse_macd_rao_disbute():
                     v= Factory.pvb(indicator.close,indicator.high,indicator.low,indicator.volume,period=p)
                     value_list_map[p].append(v)
                     if p == 30:
-                        if  v< -0.9:
+                        if  v< -0.85:
                             print(f"find:{v}")
                             chart.show(last_33bars,
                                 savefig=f"{imgeDir}/z80_1_minus_{bar.symbol}time_{bar.datetime.year}_{bar.datetime.month}_{bar.datetime.day}.jpg")

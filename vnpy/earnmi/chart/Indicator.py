@@ -567,7 +567,7 @@ class Indicator(object):
      这是一个指标值。改进后的AD，可以解决缺口导致的问题。
     """
     #@jit(nopython=True)  # jit，numba装饰器中的一种
-    def ad2(self,period = 30,array: bool = False) -> Union[
+    def ad2(self,period = 30) -> Union[
         float, np.ndarray]:
         # assert  size >=2
         ret = np.full(period, None)
@@ -575,10 +575,18 @@ class Indicator(object):
         for i in range(-period + 1, 0):
             osc = Indicator.lsosc(self.close[i - 1], self.close[i], self.high[i], self.low[i])
             ret[i] = ret[i-1] + osc * self.volume[i]
-        if not array:
-            return ret[-1]
+        #if not array:
+        return ret[-1]
 
-        return ret
+    def obv2(self):
+
+        _low = min(self.close[-2], self.low[-1])
+        _high = max(self.close[-2], self.high[-1])
+        assert abs(_high - _low) > 0.008
+        # print("why")
+        return (((self.close[-1] - _low) - (_high - self.close[-1])) / (_high - _low)) / self.volume[-1]
+
+        #return ret
 
     """
     改进后的多空对方分析（不会受缺口影响）

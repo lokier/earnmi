@@ -8,6 +8,7 @@ from werkzeug.routing import Map
 from earnmi.chart.Chart import Chart, BollItem, IndicatorItem, Signal, HoldBarMaker
 from earnmi.chart.Factory import Factory
 from earnmi.chart.Indicator import Indicator
+from earnmi.data.MarketImpl import MarketImpl
 from earnmi.data.SWImpl import SWImpl
 from earnmi.model.BarDataSource import ZZ500DataSource
 from earnmi.uitl.BarUtils import BarUtils
@@ -52,20 +53,20 @@ class kdj(IndicatorItem):
     def getNames(self) -> List:
         return [
             "osi1",
-                "osi2",
-                "osi3",
-                "osi4"
+               # "osi2",
+                #"osi3",
+                #"osi4"
                 ];
         #return ["osi3"];
 
     def getValues(self, indicator: Indicator,bar:BarData,signal:Signal) -> Map:
         values = {}
         if indicator.count>35 and BarUtils.isOpen(bar):
-            values["osi1"] = Factory.pvb(indicator.close,indicator.high,indicator.low,indicator.volume,30);
+            values["osi1"] = indicator.obv2();
             values["osi2"] =  indicator.ad2(15);
-            values["osi3"]  = indicator.ad2(30)
-            values["osi1"] = 0
-            #alues["osi3"] = Factory.pvb(indicator.close,indicator.high,indicator.low,indicator.volume,12);
+            values["osi3"]  = 0
+            #values["osi1"] = 0
+            values["osi3"] = Factory.pvb(indicator.close,indicator.high,indicator.low,indicator.volume,12);
             values["osi4"] =indicator.ad2(9);
         else:
             values["osi1"] = 0
@@ -86,28 +87,23 @@ class kdj(IndicatorItem):
     def isLowerPanel(self) ->bool:
         return True
 
+
+
+
 code = "600196"
 
-start = datetime(2020, 3, 1)
-end = datetime.now();
+start = datetime(2018, 1, 8)
+end =datetime(2018, 10, 1)
 #end = datetime(2020, 8, 17)
 
-#code = '000300'
-#801161.XSHG
-#market = MarketImpl()
-#market.addNotice(code)
-#market.setToday(datetime.now())
-#bars = market.getHistory().getKbarFrom(code,start)
+code = '603377'
+market = MarketImpl()
+market.addNotice(code)
+market.setToday(end)
+bars = market.getHistory().getKbarFrom(code,start)
 
 
-source = ZZ500DataSource(start,end)
 
-bars,code = source.nextBars();
-bars,code = source.nextBars();
-bars,code = source.nextBars();
-bars,code = source.nextBars();
-bars,code = source.nextBars();
-bars,code = source.nextBars();
 
 
 print(f"bar.size = {bars.__len__()}")
@@ -115,5 +111,5 @@ print(f"bar.size = {bars.__len__()}")
 
 chart = Chart()
 
-chart.show(bars,kdj())
+chart.show(bars,kdj(),savefig="dsjf1.jpg")
 #chart.showCompare(bars,"000300")
