@@ -93,8 +93,8 @@ class KDJMovementEngineModel(CoreEngineModel):
         if not BarUtils.isAllOpen(self.lasted15Bar):
             return None
         #交易日天数间隔超过5天的数据
-        if BarUtils.getMaxIntervalDay(self.lasted15Bar) >= 5:
-            return None
+        # if BarUtils.getMaxIntervalDay(self.lasted15Bar) >= 5:
+        #     return None
         k0, d0, j0 = self.lasted3BarKdj[-2]
         k1, d1, j1 = self.lasted3BarKdj[-1]
         # 金叉产生
@@ -263,21 +263,46 @@ def runBackTest():
     futureSouce = ZZ500DataSource(middle, end)
 
     model = KDJMovementEngineModel()
-    create = False
+    create = True
     engine = None
     if create:
-        engine = CoreEngine.create(_dirName, model,historySource,min_size=200)
+        engine = CoreEngine.create(_dirName, model,historySource,min_size=200,useSVM=False)
     else:
         engine = CoreEngine.load(_dirName,model)
-
     runner = CoreEngineRunner(engine)
     runner.backtest(futureSouce, MyStrategy(), min_deal_count=-1)
+    pass
 
+def printLaststTops():
+    _dirName = "models/kdj_movement_lastesd_top"
+
+    model = KDJMovementEngineModel()
+    create = True
+    engine = None
+    if create:
+        start = datetime(2015, 10, 1)
+        end = datetime(2020, 9, 30)
+        historySource = ZZ500DataSource(start, end)
+        engine = CoreEngine.create(_dirName, model, historySource, min_size=200,useSVM=False)
+    else:
+        engine = CoreEngine.load(_dirName, model)
+    runner = CoreEngineRunner(engine)
+
+    end = datetime.now()
+    start = end - timedelta(days=90)
+    currentSource = ZZ500DataSource(start, end)
+
+    orderList = runner.getTops(currentSource,MyStrategy());
+
+    engine.printLog(f"最新Top订单：{len(orderList)}个")
+    for order in orderList:
+        engine.printLog(order.getStr())
     pass
 
 if __name__ == "__main__":
-    analysicQuantDataOnly()
+    #analysicQuantDataOnly()
     #runBackTest()
+    printLaststTops()
 
     """
     动量指标：

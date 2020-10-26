@@ -339,7 +339,7 @@ class CoreEngineImpl(CoreEngine):
         self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/run.log", "run")
 
     def build(self, soruce: BarDataSource, model: CoreEngineModel, split_rate=0.7, limit_dimen_size=-1,min_size = 300,
-              onlyDimens: [] = None, build_quant_data_only= False):
+              onlyDimens: [] = None, build_quant_data_only= False,useSVM=True):
         self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/build.log","build")
 
         self.printLog("\n\nbuild() start（只适用于日K线）...", True)
@@ -417,7 +417,7 @@ class CoreEngineImpl(CoreEngine):
         self.__saveDimeenAndQuantData(dataSet)
         shutil.rmtree(self.__getModelDirPath())  # 递归删除一个目录以及目录内的所有内容
         if build_quant_data_only == False:
-            self.__buildAndSaveModelData(split_rate,True)
+            self.__buildAndSaveModelData(split_rate,useSVM)
 
         self.load(model)
         self.__ouptBuildDataToFiles();

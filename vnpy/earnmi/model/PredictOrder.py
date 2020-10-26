@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
 from earnmi.model.Dimension import Dimension
+from earnmi.uitl.utils import utils
+
 
 class PredictOrderStatus(Enum):
     READY = "ready"  #准备交易
@@ -48,6 +50,10 @@ class PredictOrder(object):
 
     durationDay = 0
 
+    def getStr(self):
+        current_price = "未知"
+        return f"dimen:{self.dimen.value},code:{self.code},建议卖出价:{utils.keep_3_float(self.suggestSellPrice)},止损价:{utils.keep_3_float(self.suggestBuyPrice)}," \
+               f"经历天数:{self.durationDay}"
 
     def __post_init__(self):
         pass

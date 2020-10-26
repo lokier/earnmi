@@ -389,6 +389,45 @@ class CoreEngineRunner():
 
         return None
 
+    def getTops(self, soruce:BarDataSource, strategy:CoreEngineStrategy):
+        bars, code = soruce.nextBars()
+        dataSet = {}
+        totalCount = 0
+        model = self.coreEngine.getEngineModel()
+        while not bars is None:
+            # self.coreEngine.getEngineModel().collectBars(bars,code)
+            finished, stop = model.collectBars(bars, code)
+            print(f"[getTops]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
+            totalCount += len(stop)
+            bars, code = soruce.nextBars()
+            for data in stop:
+                ##收录
+                listData: [] = dataSet.get(data.dimen)
+                if listData is None:
+                    listData = []
+                    dataSet[data.dimen] = listData
+                listData.append(data)
+        if len(dataSet) < 1:
+            self.coreEngine.printLog("当前没有出现特征数据！！")
+        order_list = []
+        for dimen, listData in dataSet.items():
+            model = self.coreEngine.loadPredictModel(dimen)
+            if model is None:
+                self.coreEngine.printLog(f"不支持的维度:{dimen}")
+                continue
+            self.coreEngine.printLog(f"开始实盘计算维度:{dimen}]")
+            predictList: Sequence['PredictData'] = model.predict(listData)
+            _testData = BackTestData(dimen=dimen)
+            _testData.abilityData = self.coreEngine.queryPredictAbilityData(dimen)
+            _testData.quant = self.coreEngine.queryQuantData(dimen)
+            for predict in predictList:
+                order = self.__generatePredictOrder(self.coreEngine,predict)
+                __bars = [predict.collectData.occurBars[-1]] +  predict.collectData.predictBars
+                self.__updateOrdres(strategy,order,__bars);
+                #self.putToStatistics(_testData,order,predict)
+                order_list.append(order)
+
+        return order_list;
 
 
 if __name__ == "__main__":
