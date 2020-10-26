@@ -13,6 +13,7 @@ from sklearn.tree import DecisionTreeClassifier
 import pickle
 
 from earnmi.chart.Chart import Chart
+from earnmi.chart.Factory import Factory
 from earnmi.data.SWImpl import SWImpl
 from earnmi.model.BarDataSource import ZZ500DataSource
 from earnmi.model.CoreEngine import CoreEngine
@@ -82,7 +83,10 @@ class KDJMovementEngineModel(CoreEngineModel):
         self.lasted3BarMacd[-1] = [dif, dea, mBar]
         self.lasted3BarArron[-1] = [aroon_down,aroon_up]
 
-        if self.indicator.count <=15:
+        if self.indicator.count <=34:
+            return None
+
+        if dif < 0 or dea < 0:
             return None
 
         #最近15天之内不含停牌数据
@@ -91,24 +95,41 @@ class KDJMovementEngineModel(CoreEngineModel):
         #交易日天数间隔超过5天的数据
         if BarUtils.getMaxIntervalDay(self.lasted15Bar) >= 5:
             return None
+        k0, d0, j0 = self.lasted3BarKdj[-2]
+        k1, d1, j1 = self.lasted3BarKdj[-1]
+        # 金叉产生
+        goldCross = k0 < d0 and k1 >= d1
+        if not goldCross:
+            return None
 
-        if self.indicator.count >=30:
-            k0,d0,j0 = self.lasted3BarKdj[-2]
-            k1,d1,j1 = self.lasted3BarKdj[-1]
-            #金叉产生
-            goldCross =  k0 < d0 and k1>=d1
-            if not goldCross:
-                return None
-            kPatternValue = KPattern.encode3KAgo1(self.indicator)
-            if not kPatternValue is None :
-                dimen = Dimension(type=TYPE_2KAGO1 ,value=kPatternValue)
-                collectData = CollectData(dimen=dimen)
-                collectData.occurBars = list(self.lasted15Bar[-3:])
-                collectData.occurKdj = list(self.lasted3BarKdj)
-                collectData.occurExtra['lasted3BarMacd'] = self.lasted3BarMacd
-                collectData.occurExtra['lasted3BarArron'] = self.lasted3BarArron
-                return collectData
-        return None
+        verbute = Factory.vibrate(self.indicator.close,self.indicator.open,period=12)
+        kPatternValue = self.makePatthernValue(verbute,dif/bar.close_price,dea/bar.close_price);
+        dimen = Dimension(type=TYPE_2KAGO1, value=kPatternValue)
+        collectData = CollectData(dimen=dimen)
+        collectData.occurBars = list(self.lasted15Bar[-3:])
+        collectData.occurKdj = list(self.lasted3BarKdj)
+        collectData.occurExtra['lasted3BarMacd'] = self.lasted3BarMacd
+        collectData.occurExtra['lasted3BarArron'] = self.lasted3BarArron
+
+        verbute9 =Factory.vibrate(self.indicator.close,self.indicator.open,period=9)
+        verbute20 =Factory.vibrate(self.indicator.close,self.indicator.open,period=20)
+        collectData.occurExtra['verbute9'] = verbute9
+        collectData.occurExtra['verbute20'] = verbute20
+        collectData.occurExtra['aroon_up'] = self.lasted3BarArron[-1][1];
+        collectData.occurExtra['aroon_down'] =  self.lasted3BarArron[-1][0]
+
+        return collectData
+
+    ENCODE1 = FloatEncoder([0,1,5,10,20,50,80]);
+    ENCODE2 = FloatEncoder([-5,-3,-2,-1,0,1,2,3,5]);
+
+    def makePatthernValue(self,verbute, dif,dea):
+        #mask1 = KDJMovementEngineModel.ENCODE1.mask()
+        mask2 = KDJMovementEngineModel.ENCODE2.mask()
+        v1 = KDJMovementEngineModel.ENCODE1.encode(verbute)
+        v2 = KDJMovementEngineModel.ENCODE2.encode(dif)
+        v3 = KDJMovementEngineModel.ENCODE2.encode(dea)
+        return v1 * mask2 * mask2 + v2 * mask2 +v3;
 
     def onCollect(self, data: CollectData, newBar: BarData) :
         #不含停牌数据
@@ -152,15 +173,15 @@ class KDJMovementEngineModel(CoreEngineModel):
         return cData.occurBars[-2].close_price
 
     def generateXFeature(self, cData: CollectData) -> []:
-        #保证len小于三，要不然就不能作为生成特征值。
+        #保证len等于三，要不然就不能作为生成特征值。
         if(len(cData.occurBars) < 3):
             return None
         basePrcie = self.getYBasePrice(cData)
+
         ##使用随机森林，所以不需要标准化和归一化
-        goldCrossBar = cData.occurBars[-2]
-        god_cross_dif,god_cross_dea,god_cross_macd = cData.occurExtra.get('lasted3BarMacd')[-2]
-        god_cross_dif = 100 * god_cross_dif /basePrcie
-        god_cross_dea = 100 * god_cross_dea / basePrcie
+        god_cross_dif,god_cross_dea,god_cross_macd = cData.occurExtra.get('lasted3BarMacd')[-1]
+        god_cross_dif = 100 * god_cross_dif /cData.occurBars[-1].close_price
+        god_cross_dea = 100 * god_cross_dea /cData.occurBars[-1].close_price
         k,d,j = cData.occurKdj[-2]
 
         def getSellBuyPct(bar:BarData):
@@ -168,21 +189,17 @@ class KDJMovementEngineModel(CoreEngineModel):
             b_pct = 100 * ((bar.low_price + bar.close_price) / 2 - basePrcie) / basePrcie
             return s_pct,b_pct
 
-        s_pct_1,b_pct_1 = getSellBuyPct(cData.occurBars[-3])
-        s_pct_2,b_pct_2 = getSellBuyPct(cData.occurBars[-2])
-        s_pct_3,b_pct_3 = getSellBuyPct(cData.occurBars[-1])
+        s_pct,b_pc = getSellBuyPct(cData.occurBars[-1])
 
         data = []
+        data.append(s_pct)
+        data.append(b_pc)
         data.append(god_cross_dif)
         data.append(god_cross_dea)
-        data.append(k)
-        data.append(d)
-        data.append(s_pct_1)
-        data.append(b_pct_1)
-        data.append(s_pct_2)
-        data.append(b_pct_2)
-        data.append(s_pct_3)
-        data.append(b_pct_3)
+        data.append(cData.occurExtra.get('verbute9'))
+        data.append(cData.occurExtra.get('verbute20'))
+        data.append(cData.occurExtra.get('aroon_up'))
+        data.append(cData.occurExtra.get('aroon_down'))
         return data
 
 class MyStrategy(CoreEngineStrategy):
@@ -220,14 +237,14 @@ class MyStrategy(CoreEngineStrategy):
         return 0
 
 def analysicQuantDataOnly():
-    dirName = "models/kdj_movement_analysis"
+    dirName = "models/kdj_movement_analysis2"
     start = datetime(2015, 10, 1)
     middle = datetime(2019, 9, 30)
     end = datetime(2020, 9, 30)
 
     souces = ZZ500DataSource(start, end)
     model = KDJMovementEngineModel()
-    create = False
+    create = True
     engine = None
     if create:
         engine = CoreEngine.create(dirName, model,souces,build_quant_data_only = True,min_size=200)
@@ -238,7 +255,7 @@ def analysicQuantDataOnly():
     pass
 
 def runBackTest():
-    _dirName = "models/kdj_movement_analysis_back_test"
+    _dirName = "models/kdj_movement_analysis_back_test2"
     start = datetime(2015, 10, 1)
     middle = datetime(2019, 9, 30)
     end = datetime(2020, 9, 30)
@@ -259,8 +276,8 @@ def runBackTest():
     pass
 
 if __name__ == "__main__":
-    #analysicQuantDataOnly()
-    runBackTest()
+    analysicQuantDataOnly()
+    #runBackTest()
 
     """
     动量指标：

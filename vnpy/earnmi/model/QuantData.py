@@ -50,6 +50,16 @@ class QuantData(object):
     def getPowerRate(self):
         sellMin, sellMax = self.getSellFloatEncoder().parseEncode(self.sellRange[0].encode)
         buyMin, buyMax = self.getBuyFloatEncoder().parseEncode(self.buyRange[0].encode)
+
+        if sellMin is None:
+            sellMin = self.sellSplits[0] -1
+        if sellMax is None:
+            sellMax = self.sellSplits[-1]+1
+        if buyMin is None:
+            buyMin = self.buySplits[0] -1
+        if buyMax is None:
+            buyMax = self.buySplits[-1]+1
+
         buy_power_pct = (buyMax + buyMin) / 2    # 买方力量的主力值越高，说明看多情况更好（大于0是铁定赚钱）
         sell_power_pct = (sellMax + sellMin) / 2   # 越高说明赚钱效益更好
 

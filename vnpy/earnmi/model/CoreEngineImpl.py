@@ -268,7 +268,7 @@ class CoreEngineImpl(CoreEngine):
 
     COLLECT_DATA_FILE_NAME = "colllect"
     ##量化数据的涨幅分布区域。
-    quantFloatEncoder = FloatEncoder([-7, -4.5, -3, -1.5, 0, 1.5, 3, 4.5, 7])
+    #quantFloatEncoder = FloatEncoder([-7, -4.5, -3, -1.5, 0, 1.5, 3, 4.5, 7])
 
     def __init__(self, dirPath: str):
         self.mAllDimension:['Dimension'] = None
@@ -628,7 +628,7 @@ class CoreEngineImpl(CoreEngine):
         return self.__model
 
     def computeQuantData(self, dataList: Sequence['CollectData']) -> QuantData:
-        return self.__computeQuantData(CoreEngineImpl.quantFloatEncoder,CoreEngineImpl.quantFloatEncoder,dataList)
+        return self.__computeQuantData(dataList)
 
     """
         计算编码分区最佳的QuantData
@@ -710,7 +710,7 @@ class CoreEngineImpl(CoreEngine):
         __buy_pct = 100 * (buyPrice - basePrice) / basePrice
         return __sell_pct,__buy_pct
 
-    def __computeQuantData(self,sellEncoder:FloatEncoder,buyEncoder:FloatEncoder,dataList: Sequence['CollectData']):
+    def __computeQuantData(self,dataList: Sequence['CollectData']):
 
         sell_pct_list = []
         buy_pct_list = []
@@ -721,6 +721,11 @@ class CoreEngineImpl(CoreEngine):
             sell_pct, buy_pct = self.getEngineModel().getYLabelPct(data)
             sell_pct_list.append(sell_pct)
             buy_pct_list.append(buy_pct)
+
+
+        sellEncoder = self.getEngineModel().getPctEncoder1()
+        buyEncoder = self.getEngineModel().getPctEncoder1()
+
         sellEncoder,sellRangeFloat = self.__findBestFloatEncoder(sell_pct_list,sellEncoder)
         buyEncoder,buyRangeFloat = self.__findBestFloatEncoder(buy_pct_list,buyEncoder)
 
