@@ -277,7 +277,7 @@ def printLaststTops():
     _dirName = "models/kdj_movement_lastesd_top"
 
     model = KDJMovementEngineModel()
-    create = True
+    create = False
     engine = None
     if create:
         start = datetime(2015, 10, 1)
@@ -288,15 +288,9 @@ def printLaststTops():
         engine = CoreEngine.load(_dirName, model)
     runner = CoreEngineRunner(engine)
 
-    end = datetime.now()
-    start = end - timedelta(days=90)
-    currentSource = ZZ500DataSource(start, end)
+    runner.printZZ500Tops(MyStrategy());
 
-    orderList = runner.getTops(currentSource,MyStrategy());
 
-    engine.printLog(f"最新Top订单：{len(orderList)}个")
-    for order in orderList:
-        engine.printLog(order.getStr())
     pass
 
 if __name__ == "__main__":
@@ -304,6 +298,17 @@ if __name__ == "__main__":
     #runBackTest()
     printLaststTops()
 
+
+
+    # from earnmi.uitl.jqSdk import jqSdk
+    #
+    # jq = jqSdk.get()
+    #
+    # todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
+    #
+    # for code,bar in todayBarsMap.items():
+    #     print(f"code:{code},price:{bar.close_price}")
+    # print(f"todayBars:{len(todayBarsMap)}")
     """
     动量指标：
     

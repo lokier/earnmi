@@ -14,7 +14,7 @@ import pandas as pd
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
 from earnmi.data.SWImpl import SWImpl
-from earnmi.model.BarDataSource import BarDataSource
+from earnmi.model.BarDataSource import BarDataSource, ZZ500DataSource
 from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.CoreEngineStrategy import CoreEngineStrategy
@@ -290,7 +290,8 @@ class CoreEngineRunner():
 
     def __generatePredictOrder(self, engine: CoreEngine, predict: PredictData) -> PredictOrder:
         code = predict.collectData.occurBars[-1].symbol
-        order = PredictOrder(dimen=predict.dimen, code=code, name=code)
+        crateDate = predict.collectData.occurBars[-1].datetime
+        order = PredictOrder(dimen=predict.dimen, code=code, name=code,create_time=crateDate)
         predict_sell_pct = predict.getPredictSellPct(engine.getEngineModel())
         predict_buy_pct = predict.getPredictBuyPct(engine.getEngineModel())
         start_price = engine.getEngineModel().getYBasePrice(predict.collectData)
@@ -389,13 +390,22 @@ class CoreEngineRunner():
 
         return None
 
-    def getTops(self, soruce:BarDataSource, strategy:CoreEngineStrategy):
+    ###中证500的数据
+    def printZZ500Tops(self, strategy:CoreEngineStrategy):
+        end = utils.to_end_date(datetime.now() - timedelta(days=1))
+        start = end - timedelta(days=90)
+        soruce = ZZ500DataSource(start, end)
+        from earnmi.uitl.jqSdk import jqSdk
+        todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
         bars, code = soruce.nextBars()
         dataSet = {}
         totalCount = 0
         model = self.coreEngine.getEngineModel()
         while not bars is None:
-            # self.coreEngine.getEngineModel().collectBars(bars,code)
+            ##加上今天的数据
+            todayBar =  todayBarsMap.get(code)
+            if not todayBar is None:
+                bars.append(todayBar)
             finished, stop = model.collectBars(bars, code)
             print(f"[getTops]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(stop)
@@ -425,7 +435,28 @@ class CoreEngineRunner():
                 __bars = [predict.collectData.occurBars[-1]] +  predict.collectData.predictBars
                 self.__updateOrdres(strategy,order,__bars);
                 #self.putToStatistics(_testData,order,predict)
-                order_list.append(order)
+                if order.status == PredictOrderStatus.HOLD \
+                    or order.status == PredictOrderStatus.READY \
+                    or order.status == PredictOrderStatus.ABANDON:
+                    order_list.append(order)
+        def order_cmp(o1,o2):
+            if o1.create_time < o2.create_time:
+                return -1
+            if o1.create_time > o2.create_time:
+                return 1
+            return 0
+        order_list = sorted(order_list, key=cmp_to_key(order_cmp), reverse=True)
+        self.coreEngine.printLog(f"最新Top订单：{len(order_list)}个")
+        for order in order_list:
+            self.coreEngine.printLog(order.getStr())
+            bar:BarData = todayBarsMap.get(order.code)
+            if bar is None:
+                info = f"    当前价格未知！"
+            else:
+                target_pct = utils.keep_3_float(100*(order.suggestSellPrice - bar.close_price)/bar.close_price);
+                info = f"    当前价格:{bar.close_price},离目标:{target_pct}%"
+            self.coreEngine.printLog(info)
+
 
         return order_list;
 

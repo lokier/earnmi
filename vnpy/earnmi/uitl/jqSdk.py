@@ -1,6 +1,14 @@
 import jqdatasdk as jq
 from datetime import datetime, timedelta
 
+from vnpy.trader.constant import Interval
+
+from vnpy.trader.object import BarData
+
+from earnmi.uitl import BarUtils
+from earnmi.uitl.utils import utils
+
+
 class jqSdk(object):
 
     def __init__(self):
@@ -28,6 +36,36 @@ class jqSdk(object):
         jqCode =  jq.normalize_code(code)
         security = jq.get_security_info(jqCode, date=None)
         return security.start_date
+
+    """
+    """
+    def fethcNowDailyBars(self,codeList:[]):
+        self.checkOk()
+        ret = {}
+        end = datetime.now()
+        start = utils.to_start_date(end)
+        df = jq.get_price(codeList, start_date=start, end_date=end, frequency='1d')
+        for code in codeList:
+            close = df['close'][code][0]
+            open = df['open'][code][0]
+            high = df['high'][code][0]
+            low = df['low'][code][0]
+            volume = df['volume'][code][0]
+            ret[code] =BarData(
+                symbol=code,
+                exchange=utils.getExchange(code),
+                datetime=end,
+                interval=Interval.DAILY,
+                volume=volume,
+                open_price=open,
+                high_price=high,
+                low_price=low,
+                close_price=close,
+                gateway_name='DB')
+        return ret;
+
+
+
 
     def get(self) ->jq:
         self.checkOk()
