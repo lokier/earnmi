@@ -55,8 +55,15 @@ class PredictOrder(object):
 
     durationDay = 0
 
+    """
+    今天操作状态：
+    
+    
+    """
+    trace_status = 0
+
     def getStr(self):
-        return f"dimen:{self.dimen.value},code:{self.code},建议卖出价:{utils.keep_3_float(self.suggestSellPrice)},止损价:{utils.keep_3_float(self.suggestBuyPrice)}," \
+        return f"dimen:{self.dimen.value},code:{self.code},建议卖出价:{utils.keep_3_float(self.suggestSellPrice)},买入价:{utils.keep_3_float(self.suggestBuyPrice)}," \
                f"经历天数:{self.durationDay},创建时间:{self.create_time}"
 
     def __post_init__(self):

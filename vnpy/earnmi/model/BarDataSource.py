@@ -52,7 +52,7 @@ class ZZ500DataSource(BarDataSource):
         self.end = end
         from earnmi.data.MarketImpl import MarketImpl
         self.market = MarketImpl()
-        self.market.setToday(end + timedelta(days=1))
+        self.market.setToday(end + timedelta(days=-1))
         self.limitSize = len(ZZ500DataSource.SZ500_JQ_CODE_LIST)
         if limit_size > 0:
             self.limitSize = min(limit_size,self.limitSize)
@@ -81,6 +81,8 @@ class ZZ500DataSource(BarDataSource):
             if bars[0].close_price < 10 or bars[-1].close_price < 10:
                 ##过滤价格比较低的股票
                 return self.nextBars()
+            if len(bars) > 0:
+                assert bars[-1].datetime <= utils.to_end_date(self.end)
             return bars,code
         return None,None
 

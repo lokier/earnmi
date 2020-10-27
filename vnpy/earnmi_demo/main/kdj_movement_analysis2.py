@@ -150,10 +150,11 @@ class KDJMovementEngineModel(CoreEngineModel):
 
         basePrice = self.getYBasePrice(cData)
 
-        highIndex = 0
-        lowIndex = 0
-        highBar = cData.predictBars[0];
-        lowBar = cData.predictBars[0]
+        highIndex = 1
+        lowIndex = 1
+        ##跳过第一天观察
+        highBar = cData.predictBars[1];
+        lowBar = cData.predictBars[1]
         sell_pct =  100 * ((highBar.high_price + highBar.close_price) / 2 - basePrice) / basePrice
         buy_pct =  100 * ((lowBar.low_price + lowBar.close_price) / 2 - basePrice) / basePrice
 
@@ -218,19 +219,41 @@ class DefaultStrategy(CoreEngineStrategy):
         self.failBuyBar = None
         pass
 
+    """
+    根据时间调整策略。
+    1、555 : pct_limit = 4,offset = 0, opera_day = 3  = ==> 交易率:11.45%,成功率:25.00%,盈利率:71.15%,单均pct:3.80
+       455 : pct_llimi = 2,offset = -1%，opera_day= 2   =》[交易率:13.26%,成功率:41.32%,盈利率:76.05%,单均pct:3.50
+    """
+    def getParams(self):
+        pass
+
     def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
                             debugParams: {} = None) -> int:
+        first_day_pct_limit = 2
+        buy_offset = -1
+        opera_day = 2
+        cut_loss = False ##减损
+
+        if order.dimen == 555:
+            buy_offset = 0
+            first_day_pct_limit = 2
+            opera_day = 3
+
+
         suggestSellPrice = order.suggestSellPrice
-        suggestBuyPrice = order.suggestBuyPrice
+        suggestBuyPrice = order.suggestBuyPrice * (1 + buy_offset /100)
         if (order.status == PredictOrderStatus.HOLD):
             if bar.high_price >= suggestSellPrice:
                 order.sellPrice = suggestSellPrice
                 return 3
+            if cut_loss and bar.close_price  < suggestBuyPrice:
+                order.sellPrice = bar.close_price
+                return 4
             if order.durationDay >= 5:
                 order.sellPrice = bar.close_price
                 return 4
         elif order.status == PredictOrderStatus.READY:
-            if order.durationDay > 2:
+            if order.durationDay > opera_day:
                 return 5
             quantData = engine.queryQuantData(order.dimen)
             targetPrice = bar.low_price
@@ -238,9 +261,12 @@ class DefaultStrategy(CoreEngineStrategy):
                 targetPrice = bar.close_price
                 return 0
             if order.durationDay == 1:  # 生成的那天
-                ##这天观察走势
+                ##这天观察走势,且最高价不能超过预测价
+                __pct = 100 * (suggestSellPrice - bar.close_price) / bar.close_price
+                if __pct < first_day_pct_limit:
+                     return 5
                 return 0
-            if suggestBuyPrice >= targetPrice and order.durationDay ==2:
+            if suggestBuyPrice >= targetPrice and order.durationDay <=opera_day:
                 ##趋势形成的第二天买入。
                 order.buyPrice = targetPrice
                 return 1
@@ -275,53 +301,9 @@ def runBackTest():
     futureSouce = ZZ500DataSource(middle, end)
 
 
-    class BestStrategy(DefaultStrategy):
-
-        def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool, debugParams: {} = None) -> int:
-            suggestSellPrice = order.suggestSellPrice
-            suggestBuyPrice = order.suggestBuyPrice
-
-            buy_pct = order.predict.getPredictBuyPct(engine.getEngineModel())
-
-            if buy_pct < 0:
-                return 5;
-
-            pct_dist = 100 * (suggestSellPrice - suggestBuyPrice) / suggestBuyPrice
-            last_deal_day = 2;
-            assert last_deal_day >=2
-            # if pct_dist > 7 or pct_dist < 3:
-            #     return 5;
-
-            if (order.status == PredictOrderStatus.HOLD):
-                if bar.high_price >= suggestSellPrice:
-                    order.sellPrice = suggestSellPrice
-                    return 3
-                ##止损
-                # if order.durationDay >last_deal_day and bar.close_price <= order.buyPrice:
-                #      order.sellPrice = bar.close_price
-                #      return 4
-                if order.durationDay >= 5:
-                    order.sellPrice = bar.close_price
-                    return 4
-            elif order.status == PredictOrderStatus.READY:
-                if order.durationDay > last_deal_day:
-                    return 5
-                targetPrice = bar.low_price
-                if order.durationDay == 0:  # 生成的那天
-                    targetPrice = bar.close_price
-                    return 0
-                if order.durationDay == 1:
-                    ##这天观察走势
-                    return 0
-                if suggestBuyPrice >= targetPrice and order.durationDay >= last_deal_day:
-                    ##趋势形成的第二天买入。
-                    order.buyPrice = targetPrice
-                    return 1
-            return 0
-
     model = KDJMovementEngineModel()
     strategy = DefaultStrategy()
-    strategy = BestStrategy()
+    #strategy = BestStrategy()
     create = False
     engine = None
     if create:
@@ -358,8 +340,8 @@ def printLaststTops():
 
 if __name__ == "__main__":
     #analysicQuantDataOnly()
-    runBackTest()
-    #printLaststTops()
+    #runBackTest()
+    printLaststTops()
     """
 [555]=>count:454(sScore:76.651,bScore:63.876),做多:[交易率:44.05%,预测成功率:45.00%,盈利率:54.50%,单均pct:2.12,盈pct:6.37(17.15),亏pct:-2.98(-10.02)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
 [455]=>count:1259(sScore:79.189,bScore:61.318),做多:[交易率:45.35%,预测成功率:46.06%,盈利率:57.97%,单均pct:2.10,盈pct:5.22(19.42),亏pct:-2.20(-11.45)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
