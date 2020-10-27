@@ -207,6 +207,7 @@ class MyStrategy(CoreEngineStrategy):
     def __init__(self):
         pass
 
+
     """
       处理操作单
       0: 不处理
@@ -225,9 +226,15 @@ class MyStrategy(CoreEngineStrategy):
         quantData = engine.queryQuantData(order.dimen)
         basePrice = engine.getEngineModel().getYBasePrice(order.predict.collectData)
         suggestSellPrice = order.suggestSellPrice
-        suggestBuyPrcie =  order.suggestBuyPrice
+        suggestBuyPrcie =  order.suggestBuyPrice * 0.985
 
         if (order.status == PredictOrderStatus.HOLD):
+            if not self.failBuyBar is None:
+                #昨天抄底失败，第二天卖出 0. 8%卖出
+                _sell_price = self.failBuyBar.close_price * 1.008
+                if bar.high_price >= _sell_price:
+                    order.sellPrice = _sell_price
+                    return 4
             if bar.high_price >= suggestSellPrice:
                 order.sellPrice = suggestSellPrice
                 return 3
@@ -235,7 +242,7 @@ class MyStrategy(CoreEngineStrategy):
                 order.sellPrice = bar.close_price
                 return 4
             # 买入之后第二天收盘价亏，止损卖出
-            if order.durationDay> buyDay and bar.close_price <= order.buyPrice:
+            if order.durationDay> buyDay and bar.close_price <= order.suggestBuyPrice:
                 order.sellPrice = bar.close_price
                 return 4
         elif order.status == PredictOrderStatus.READY:
@@ -248,8 +255,16 @@ class MyStrategy(CoreEngineStrategy):
                 #      #废弃改单
                 #      return 5
                 targetPrice = bar.close_price
+                return 0
             if suggestBuyPrcie >= targetPrice:
                 order.buyPrice = targetPrice
+
+                if bar.close_price <= order.suggestBuyPrice:
+                    #抄底失败
+                    self.failBuyBar = bar
+                else:
+                    self.failBuyBar = None
+
                 return 1
 
         return 0
@@ -320,11 +335,10 @@ if __name__ == "__main__":
     runBackTest()
     #printLaststTops()
     """
-     day <= 2
-    [555] = > count: 454(sScore:76.651, bScore: 63.876), 做多: [交易率:44.05 %, 成功率: 45.00 %, 单均pct: 2.12, 盈pct: 6.37(17.15), 亏pct: -2.98(-10.02)], 
-    [455] = > count: 1259(sScore:79.189, bScore: 61.318), 做多: [交易率:45.35 %, 成功率: 46.06 %, 单均pct: 2.10, 盈pct: 5.22(19.42), 亏pct: -2.20(-11.45)], 做空: [交易率:0.00 %, 成功率: 0.00 %, 单均pct: 0.00, 盈pct: 0.00(0.00), 亏pct: 0.00(0.00)]
-    [355] = > count: 965(sScore:80.103, bScore: 66.528), 做多: [交易率:54.92 %, 成功率: 50.38 %, 单均pct: 1.52, 盈pct: 3.99( 17.19), 亏pct: -1.93(-9.98)], 做空: [交易率:0.00 %, 成功率: 0.00 %, 单均pct: 0.00, 盈pct: 0.00(0.00), 亏pct: 0.00(0.00)]
-    [255] = > count: 239(sScore:73.221, bScore: 55.648), 做多: [交易率:44.77 %, 成功率: 39.25 %, 单均pct: 0.61, 盈pct: 3.68(15.10), 亏pct: -2.18(-9.44)], 做空: [交易率:0.00 %, 成功率: 0.00 %, 单均pct: 0.00, 盈pct: 0.00(0.00), 亏pct: 0.00(0.00)]
+[555]=>count:454(sScore:76.651,bScore:63.876),做多:[交易率:44.05%,预测成功率:45.00%,盈利率:54.50%,单均pct:2.12,盈pct:6.37(17.15),亏pct:-2.98(-10.02)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+[455]=>count:1259(sScore:79.189,bScore:61.318),做多:[交易率:45.35%,预测成功率:46.06%,盈利率:57.97%,单均pct:2.10,盈pct:5.22(19.42),亏pct:-2.20(-11.45)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+[355]=>count:965(sScore:80.103,bScore:66.528),做多:[交易率:54.92%,预测成功率:50.38%,盈利率:58.30%,单均pct:1.52,盈pct:3.99(17.19),亏pct:-1.93(-9.98)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+[255]=>count:239(sScore:73.221,bScore:55.648),做多:[交易率:44.77%,预测成功率:39.25%,盈利率:47.66%,单均pct:0.61,盈pct:3.68(15.10),亏pct:-2.18(-9.44)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
 
     """
 
