@@ -117,7 +117,7 @@ class KDJMovementEngineModel(CoreEngineModel):
         collectData.occurExtra['verbute20'] = verbute20
         collectData.occurExtra['aroon_up'] = self.lasted3BarArron[-1][1];
         collectData.occurExtra['aroon_down'] =  self.lasted3BarArron[-1][0]
-
+        collectData.setValid(False)
         return collectData
 
     ENCODE1 = FloatEncoder([0,1,5,10,20,50,80]);
@@ -137,6 +137,7 @@ class KDJMovementEngineModel(CoreEngineModel):
             data.setValid(False)
             return
         data.predictBars.append(newBar)
+        data.setValid(True)
         size = len(data.predictBars)
         if size >= 5:
             data.setFinished()
@@ -173,25 +174,33 @@ class KDJMovementEngineModel(CoreEngineModel):
         return cData.occurBars[-2].close_price
 
     def generateXFeature(self, cData: CollectData) -> []:
-        #保证len等于三，要不然就不能作为生成特征值。
-        if(len(cData.occurBars) < 3):
+        # 保证len等于三，要不然就不能作为生成特征值。
+        if (len(cData.occurBars) < 3):
             return None
         basePrcie = self.getYBasePrice(cData)
 
         ##使用随机森林，所以不需要标准化和归一化
-        god_cross_dif,god_cross_dea,god_cross_macd = cData.occurExtra.get('lasted3BarMacd')[-1]
-        god_cross_dif = 100 * god_cross_dif /cData.occurBars[-1].close_price
-        god_cross_dea = 100 * god_cross_dea /cData.occurBars[-1].close_price
-        k,d,j = cData.occurKdj[-2]
+        god_cross_dif, god_cross_dea, god_cross_macd = cData.occurExtra.get('lasted3BarMacd')[-1]
+        god_cross_dif = 100 * god_cross_dif / cData.occurBars[-1].close_price
+        god_cross_dea = 100 * god_cross_dea / cData.occurBars[-1].close_price
+        k, d, j = cData.occurKdj[-2]
 
-        def getSellBuyPct(bar:BarData):
-            s_pct = 100 * ((bar.high_price + bar.close_price)/2 - basePrcie) / basePrcie
+        def getSellBuyPct(bar: BarData):
+            s_pct = 100 * ((bar.high_price + bar.close_price) / 2 - basePrcie) / basePrcie
             b_pct = 100 * ((bar.low_price + bar.close_price) / 2 - basePrcie) / basePrcie
-            return s_pct,b_pct
+            return s_pct, b_pct
 
-        s_pct,b_pc = getSellBuyPct(cData.occurBars[-1])
+        s_pct, b_pc = getSellBuyPct(cData.occurBars[-1])
+
+
+        assert len(cData.predictBars) > 0
+        _bar: BarData = cData.predictBars[0]
+        d1_low_pct = 100 * (_bar.low_price - basePrcie) / basePrcie
+        d1_close_pct = 100 * (_bar.close_price - basePrcie) / basePrcie
 
         data = []
+        data.append(d1_low_pct)
+        data.append(d1_close_pct)
         data.append(s_pct)
         data.append(b_pc)
         data.append(god_cross_dif)
@@ -202,72 +211,40 @@ class KDJMovementEngineModel(CoreEngineModel):
         data.append(cData.occurExtra.get('aroon_down'))
         return data
 
-class MyStrategy(CoreEngineStrategy):
+
+class DefaultStrategy(CoreEngineStrategy):
 
     def __init__(self):
+        self.failBuyBar = None
         pass
 
-
-    """
-      处理操作单
-      0: 不处理
-      1：做多
-      2：做空
-      3: 预测成功交割单
-      4：预测失败交割单
-      5：废弃改单
-      """
-    def operatePredictOrder(self,engine:CoreEngine, order: PredictOrder,bar:BarData,isTodayLastBar:bool,debugParams:{}=None) ->int:
-
-        buyDay = 2
-        if not  debugParams.get('buyDay') is None:
-            buyDay = debugParams.get('buyDay')
-
-        quantData = engine.queryQuantData(order.dimen)
-        basePrice = engine.getEngineModel().getYBasePrice(order.predict.collectData)
-        suggestSellPrice = order.suggestSellPrice
-        suggestBuyPrcie =  order.suggestBuyPrice * 0.985
-
+    def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
+                            debugParams: {} = None) -> int:
         if (order.status == PredictOrderStatus.HOLD):
-            if not self.failBuyBar is None:
-                #昨天抄底失败，第二天卖出 0. 8%卖出
-                _sell_price = self.failBuyBar.close_price * 1.008
-                if bar.high_price >= _sell_price:
-                    order.sellPrice = _sell_price
-                    return 4
-            if bar.high_price >= suggestSellPrice:
-                order.sellPrice = suggestSellPrice
+            if bar.high_price >= order.suggestSellPrice:
+                order.sellPrice = order.suggestSellPrice
                 return 3
             if order.durationDay > 5:
                 order.sellPrice = bar.close_price
                 return 4
-            # 买入之后第二天收盘价亏，止损卖出
-            if order.durationDay> buyDay and bar.close_price <= order.suggestBuyPrice:
-                order.sellPrice = bar.close_price
-                return 4
         elif order.status == PredictOrderStatus.READY:
-
-            if order.durationDay > buyDay:
+            if order.durationDay > 2:
                 return 5
+            quantData = engine.queryQuantData(order.dimen)
             targetPrice = bar.low_price
-            if order.durationDay == 0: #生成的那天
-                # if order.suggestSellPrice > bar.high_price:
-                #      #废弃改单
-                #      return 5
+            if order.durationDay == 0:  # 生成的那天
                 targetPrice = bar.close_price
                 return 0
-            if suggestBuyPrcie >= targetPrice:
+            if order.durationDay == 1:  # 生成的那天
+                ##这天观察走势
+                return 0
+            if order.suggestBuyPrice >= targetPrice and order.durationDay ==2:
+                ##趋势形成的第二天买入。
                 order.buyPrice = targetPrice
-
-                if bar.close_price <= order.suggestBuyPrice:
-                    #抄底失败
-                    self.failBuyBar = bar
-                else:
-                    self.failBuyBar = None
-
                 return 1
-
         return 0
+
+
 
 def analysicQuantDataOnly():
     dirName = "models/kdj_movement_analysis2"
@@ -295,15 +272,104 @@ def runBackTest():
     historySource = ZZ500DataSource(start, middle)
     futureSouce = ZZ500DataSource(middle, end)
 
+    # class KDJMovementEngineModel2(KDJMovementEngineModel):
+    #     def generateXFeature(self, cData: CollectData) -> []:
+    #         # 保证len等于三，要不然就不能作为生成特征值。
+    #         if (len(cData.occurBars) < 3):
+    #             return None
+    #         basePrcie = self.getYBasePrice(cData)
+    #
+    #         ##使用随机森林，所以不需要标准化和归一化
+    #         god_cross_dif, god_cross_dea, god_cross_macd = cData.occurExtra.get('lasted3BarMacd')[-1]
+    #         god_cross_dif = 100 * god_cross_dif / cData.occurBars[-1].close_price
+    #         god_cross_dea = 100 * god_cross_dea / cData.occurBars[-1].close_price
+    #         k, d, j = cData.occurKdj[-2]
+    #
+    #         def getSellBuyPct(bar: BarData):
+    #             s_pct = 100 * ((bar.high_price + bar.close_price) / 2 - basePrcie) / basePrcie
+    #             b_pct = 100 * ((bar.low_price + bar.close_price) / 2 - basePrcie) / basePrcie
+    #             return s_pct, b_pct
+    #
+    #         s_pct, b_pc = getSellBuyPct(cData.occurBars[-1])
+    #
+    #         d1_low_pct = 0
+    #         d1_close_pct = 0
+    #         if len(cData.predictBars) > 0:
+    #             _bar:BarData = cData.predictBars[0]
+    #             d1_low_pct = 100 * (_bar.low_price - basePrcie) / basePrcie
+    #             d1_close_pct = 100 *  (_bar.close_price - basePrcie) / basePrcie
+    #
+    #         data = []
+    #         data.append(d1_low_pct)
+    #         data.append(d1_close_pct)
+    #         data.append(s_pct)
+    #         data.append(b_pc)
+    #         data.append(god_cross_dif)
+    #         data.append(god_cross_dea)
+    #         data.append(cData.occurExtra.get('verbute9'))
+    #         data.append(cData.occurExtra.get('verbute20'))
+    #         data.append(cData.occurExtra.get('aroon_up'))
+    #         data.append(cData.occurExtra.get('aroon_down'))
+    #         return data
+
+    class DebugStrategy(DefaultStrategy):
+
+        def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
+                                 debugParams: {} = None) -> int:
+            buyDay = 2
+            if not debugParams.get('buyDay') is None:
+                buyDay = debugParams.get('buyDay')
+            quantData = engine.queryQuantData(order.dimen)
+            basePrice = engine.getEngineModel().getYBasePrice(order.predict.collectData)
+            suggestSellPrice = order.suggestSellPrice
+            suggestBuyPrcie = order.suggestBuyPrice
+
+            if (order.status == PredictOrderStatus.HOLD):
+                # if not self.failBuyBar is None:
+                #     #昨天抄底失败，第二天卖出 0. 8%卖出，提高盈利率
+                #     _sell_price = self.failBuyBar.close_price * 1.008
+                #     if bar.high_price >= _sell_price:
+                #         order.sellPrice = _sell_price
+                #         return 4
+                if bar.high_price >= suggestSellPrice:
+                    order.sellPrice = suggestSellPrice
+                    return 3
+                if order.durationDay > 5:
+                    order.sellPrice = bar.close_price
+                    return 4
+                # # 买入之后第二天收盘价亏，止损卖出，提高盈利率
+                # if order.durationDay> buyDay and bar.close_price <= order.suggestBuyPrice:
+                #     order.sellPrice = bar.close_price
+                #     return 4
+            elif order.status == PredictOrderStatus.READY:
+
+                if order.durationDay > buyDay:
+                    return 5
+                targetPrice = bar.low_price
+                if order.durationDay == 0:  # 生成的那天
+                    # if order.suggestSellPrice > bar.high_price:
+                    #      #废弃改单
+                    #      return 5
+                    targetPrice = bar.close_price
+                    return 0
+                ##第一天才开始操作。
+                if suggestBuyPrcie >= targetPrice and order.durationDay == 2:
+                    order.buyPrice = targetPrice
+                    return 1
+
+            return 0
+
     model = KDJMovementEngineModel()
-    create = False
+    strategy = DefaultStrategy()
+    #strategy = DebugStrategy()
+    create = True
     engine = None
     if create:
         engine = CoreEngine.create(_dirName, model,historySource,min_size=200,useSVM=False)
     else:
         engine = CoreEngine.load(_dirName,model)
     runner = CoreEngineRunner(engine)
-    runner.backtest(futureSouce, MyStrategy(), min_deal_count=-1)
+    runner.backtest(futureSouce, strategy, min_deal_count=-1)
     #params = {'buyDay':[0,1,2,3]}
     #runner.debugBestParam(futureSouce, MyStrategy(),params, min_deal_count=-1)
 
@@ -325,7 +391,7 @@ def printLaststTops():
         engine = CoreEngine.load(_dirName, model)
     runner = CoreEngineRunner(engine)
 
-    runner.printZZ500Tops(MyStrategy());
+    runner.printZZ500Tops(DefaultStrategy());
 
 
     pass
