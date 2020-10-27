@@ -61,6 +61,11 @@ class PredictData(object):
                                 self.sellRange2[0].probal / total_probal
         return predict_sell_pct
 
+    def getPredictSellProbal(self) -> float:
+        from earnmi.model.CoreEngineModel import CoreEngineModel
+        total_probal = self.sellRange2[0].probal + self.sellRange1[0].probal
+        return total_probal / 2
+
     def getPredictBuyPct(self,engineModel)->float:
         from earnmi.model.CoreEngineModel import CoreEngineModel
         model: CoreEngineModel = engineModel;

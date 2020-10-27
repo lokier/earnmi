@@ -235,22 +235,18 @@ class MyStrategy(CoreEngineStrategy):
                 order.sellPrice = bar.close_price
                 return 4
             # 买入之后第二天收盘价亏，止损卖出
-            if bar.close_price <= order.buyPrice:
+            if order.durationDay> buyDay and bar.close_price <= order.buyPrice:
                 order.sellPrice = bar.close_price
                 return 4
         elif order.status == PredictOrderStatus.READY:
-
-            # predictPct = order.predict.getPredictSellPct(engine.getEngineModel())
-            # if quantData.buyCenterPct < order.predict.getPredictBuyPct(engine.getEngineModel()):
-            #     return 5
 
             if order.durationDay > buyDay:
                 return 5
             targetPrice = bar.low_price
             if order.durationDay == 0: #生成的那天
-                # if order.suggestSellPrice <= bar.high_price:
-                #     #废弃改单
-                #     return 5
+                # if order.suggestSellPrice > bar.high_price:
+                #      #废弃改单
+                #      return 5
                 targetPrice = bar.close_price
             if suggestBuyPrcie >= targetPrice:
                 order.buyPrice = targetPrice
@@ -266,7 +262,7 @@ def analysicQuantDataOnly():
 
     souces = ZZ500DataSource(start, end)
     model = KDJMovementEngineModel()
-    create = True
+    create = False
     engine = None
     if create:
         engine = CoreEngine.create(dirName, model,souces,build_quant_data_only = True,min_size=200)
@@ -285,7 +281,7 @@ def runBackTest():
     futureSouce = ZZ500DataSource(middle, end)
 
     model = KDJMovementEngineModel()
-    create = True
+    create = False
     engine = None
     if create:
         engine = CoreEngine.create(_dirName, model,historySource,min_size=200,useSVM=False)
