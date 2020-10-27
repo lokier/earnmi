@@ -217,23 +217,45 @@ class MyStrategy(CoreEngineStrategy):
       5：废弃改单
       """
     def operatePredictOrder(self,engine:CoreEngine, order: PredictOrder,bar:BarData,isTodayLastBar:bool,debugParams:{}=None) ->int:
+
+        buyDay = 2
+        if not  debugParams.get('buyDay') is None:
+            buyDay = debugParams.get('buyDay')
+
+        quantData = engine.queryQuantData(order.dimen)
+        basePrice = engine.getEngineModel().getYBasePrice(order.predict.collectData)
+        suggestSellPrice = order.suggestSellPrice
+        suggestBuyPrcie =  order.suggestBuyPrice
+
         if (order.status == PredictOrderStatus.HOLD):
-            if bar.high_price >= order.suggestSellPrice:
-                order.sellPrice = order.suggestSellPrice
+            if bar.high_price >= suggestSellPrice:
+                order.sellPrice = suggestSellPrice
                 return 3
             if order.durationDay > 5:
                 order.sellPrice = bar.close_price
                 return 4
+            # 买入之后第二天收盘价亏，止损卖出
+            if bar.close_price <= order.buyPrice:
+                order.sellPrice = bar.close_price
+                return 4
         elif order.status == PredictOrderStatus.READY:
-            if order.durationDay > 2:
+
+            # predictPct = order.predict.getPredictSellPct(engine.getEngineModel())
+            # if quantData.buyCenterPct < order.predict.getPredictBuyPct(engine.getEngineModel()):
+            #     return 5
+
+            if order.durationDay > buyDay:
                 return 5
-            quantData = engine.queryQuantData(order.dimen)
             targetPrice = bar.low_price
             if order.durationDay == 0: #生成的那天
+                # if order.suggestSellPrice <= bar.high_price:
+                #     #废弃改单
+                #     return 5
                 targetPrice = bar.close_price
-            if order.suggestBuyPrice >= targetPrice:
+            if suggestBuyPrcie >= targetPrice:
                 order.buyPrice = targetPrice
                 return 1
+
         return 0
 
 def analysicQuantDataOnly():
@@ -271,6 +293,10 @@ def runBackTest():
         engine = CoreEngine.load(_dirName,model)
     runner = CoreEngineRunner(engine)
     runner.backtest(futureSouce, MyStrategy(), min_deal_count=-1)
+    #params = {'buyDay':[0,1,2,3]}
+    #runner.debugBestParam(futureSouce, MyStrategy(),params, min_deal_count=-1)
+
+
     pass
 
 def printLaststTops():
@@ -295,10 +321,16 @@ def printLaststTops():
 
 if __name__ == "__main__":
     #analysicQuantDataOnly()
-    #runBackTest()
-    printLaststTops()
+    runBackTest()
+    #printLaststTops()
+    """
+     day <= 2
+    [555] = > count: 454(sScore:76.651, bScore: 63.876), 做多: [交易率:44.05 %, 成功率: 45.00 %, 单均pct: 2.12, 盈pct: 6.37(17.15), 亏pct: -2.98(-10.02)], 
+    [455] = > count: 1259(sScore:79.189, bScore: 61.318), 做多: [交易率:45.35 %, 成功率: 46.06 %, 单均pct: 2.10, 盈pct: 5.22(19.42), 亏pct: -2.20(-11.45)], 做空: [交易率:0.00 %, 成功率: 0.00 %, 单均pct: 0.00, 盈pct: 0.00(0.00), 亏pct: 0.00(0.00)]
+    [355] = > count: 965(sScore:80.103, bScore: 66.528), 做多: [交易率:54.92 %, 成功率: 50.38 %, 单均pct: 1.52, 盈pct: 3.99( 17.19), 亏pct: -1.93(-9.98)], 做空: [交易率:0.00 %, 成功率: 0.00 %, 单均pct: 0.00, 盈pct: 0.00(0.00), 亏pct: 0.00(0.00)]
+    [255] = > count: 239(sScore:73.221, bScore: 55.648), 做多: [交易率:44.77 %, 成功率: 39.25 %, 单均pct: 0.61, 盈pct: 3.68(15.10), 亏pct: -2.18(-9.44)], 做空: [交易率:0.00 %, 成功率: 0.00 %, 单均pct: 0.00, 盈pct: 0.00(0.00), 亏pct: 0.00(0.00)]
 
-
+    """
 
     # from earnmi.uitl.jqSdk import jqSdk
     #

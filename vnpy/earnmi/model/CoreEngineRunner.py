@@ -61,6 +61,11 @@ class BackTestItemData(object):
             return 0.0
         return self.suc_count / self.deal_count
 
+    def earn_rate(self):
+        if self.deal_count < 1:
+            return 0;
+        return self.eran_count /self.deal_count
+
     def total_pct_avg(self):
         if self.deal_count < 1:
             return 0
@@ -77,8 +82,8 @@ class BackTestItemData(object):
         return self.loss_pct_total / self.loss_cout()
 
     def toStr(self,totolCount) -> str:
-       return f"交易率:%.2f%%,成功率:%.2f%%,单均pct:%.2f,盈pct:%.2f(%.2f),亏pct:%.2f(%.2f)" % \
-         ( 100 * self.deal_rate(totolCount), 100 * self.suc_rate(),
+       return f"交易率:%.2f%%,成功率:%.2f%%,盈利率:%.2f%%,单均pct:%.2f,盈pct:%.2f(%.2f),亏pct:%.2f(%.2f)" % \
+         ( 100 * self.deal_rate(totolCount), 100 * self.suc_rate(), 100 * self.earn_rate(),
           self.total_pct_avg(),self.earn_pct_avg(),self.earn_pct_max,
           self.loss_pct_avg(),self.loss_pct_max)
 
@@ -167,17 +172,28 @@ class CoreEngineRunner():
                     _testData.abilityData = self.coreEngine.queryPredictAbilityData(dimen)
                     _testData.quant = self.coreEngine.queryQuantData(dimen)
                     __the_param = {paramName:paramValue}
-
                     predictList: Sequence['PredictData'] = model.predict(listData)
                     for predict in predictList:
                         order = self.__generatePredictOrder(self.coreEngine, predict)
                         __bars = [predict.collectData.occurBars[-1]] + predict.collectData.predictBars
-                        self.__updateOrdres(strategy,order, bars);
+                        self.__updateOrdres(strategy,order, __bars,__the_param);
                         self.putToStatistics(_testData, order, predict)
+
                     __dataList.append(_testData)
-                    totalData = self.__combine(__dataList,min_deal_count)
                     dimenSet[paramValue] = totalData
                     _paramTotalSet[paramValue].append(totalData)
+        """
+         for predict in predictList:
+            order = self.__generatePredictOrder(self.coreEngine, predict)
+            __bars = [predict.collectData.occurBars[-1]] + predict.collectData.predictBars
+            self.__updateOrdres(strategy, order, __bars);
+            self.putToStatistics(_testData, order, predict)
+        __dataList[dimen] = _testData
+        self.__PrintStatictis(__dataList, min_deal_count)
+
+        """
+
+
 
         for paramName, paramsList in params.items():
             _paramNameSet = __dataDetailSet[paramName]
@@ -246,6 +262,8 @@ class CoreEngineRunner():
 
 
     def __updateOrdres(self, strategy:CoreEngineStrategy,order,bars:[],debug_parms:{} = None):
+        if debug_parms is None:
+            debug_parms = {}
         order.durationDay = -1
         for bar in bars:
             if order.status == PredictOrderStatus.ABANDON or \
@@ -265,7 +283,7 @@ class CoreEngineRunner():
                2：做空
                3: 预测成功交割单
                4：预测失败交割单
-               5：废弃改单              """
+               5：废弃单              """
             if operation == 1 or operation == 2:
                 assert order.type is None and  not order.buyPrice is None
                 order.type = operation
@@ -285,8 +303,8 @@ class CoreEngineRunner():
         if order.status == PredictOrderStatus.HOLD:
             order.sellPrice = bars[-1].close_price
             order.status = PredictOrderStatus.FAIL
-        elif order.status == PredictOrderStatus.READY:
-            order.status = PredictOrderStatus.ABANDON
+        # elif order.status == PredictOrderStatus.READY:
+        #     order.status = PredictOrderStatus.ABANDON
 
     def __generatePredictOrder(self, engine: CoreEngine, predict: PredictData) -> PredictOrder:
         code = predict.collectData.occurBars[-1].symbol
@@ -298,6 +316,8 @@ class CoreEngineRunner():
         order.suggestSellPrice = start_price * (1 + predict_sell_pct / 100)
         order.suggestBuyPrice = start_price * (1 + predict_buy_pct / 100)
         order.power_rate = engine.queryQuantData(predict.dimen).getPowerRate()
+        order.predict = predict
+
         return order
 
     def __PrintStatictis(self, __dataList:{}, min_deal_count:int, debugy_param:[] = None):
@@ -331,7 +351,7 @@ class CoreEngineRunner():
 
 
     def putToStatistics(self, data:BackTestData, order:PredictOrder,predict:PredictData):
-        assert  order.status!= PredictOrderStatus.READY or order.status!= PredictOrderStatus.HOLD
+        assert  order.status!= PredictOrderStatus.HOLD
         data.count += 1
         high_price = -99999999
         low_price = -high_price
@@ -436,8 +456,7 @@ class CoreEngineRunner():
                 self.__updateOrdres(strategy,order,__bars);
                 #self.putToStatistics(_testData,order,predict)
                 if order.status == PredictOrderStatus.HOLD \
-                    or order.status == PredictOrderStatus.READY \
-                    or order.status == PredictOrderStatus.ABANDON:
+                    or order.status == PredictOrderStatus.READY :
                     order_list.append(order)
         def order_cmp(o1,o2):
             if o1.create_time < o2.create_time:
@@ -454,7 +473,8 @@ class CoreEngineRunner():
                 info = f"    当前价格未知！"
             else:
                 target_pct = utils.keep_3_float(100*(order.suggestSellPrice - bar.close_price)/bar.close_price);
-                info = f"    当前价格:{bar.close_price},离目标:{target_pct}%"
+                buy_pct = utils.keep_3_float(100 * ( bar.close_price -order.suggestBuyPrice) / bar.close_price);
+                info = f"    当前价格:{bar.close_price},离目标:{target_pct},买入目标:{buy_pct}%"
             self.coreEngine.printLog(info)
 
 

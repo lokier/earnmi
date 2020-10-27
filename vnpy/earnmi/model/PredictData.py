@@ -77,9 +77,9 @@ class PredictData(object):
         1左右表示,多方量比空方大一倍
         -1左右表示,空方量比多方大一倍
         """
-    def getPowerRate(self):
-        buy_power_pct = self.getPredictBuyPct()
-        sell_power_pct = self.getPredictSellPct()
+    def getPowerRate(self,engineModel):
+        buy_power_pct = self.getPredictBuyPct(engineModel)
+        sell_power_pct = self.getPredictSellPct(engineModel)
 
         delta = abs(sell_power_pct) - abs(buy_power_pct)
 

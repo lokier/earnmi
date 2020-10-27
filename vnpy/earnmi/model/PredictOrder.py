@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from earnmi.model.Dimension import Dimension
+from earnmi.model.PredictData import PredictData
 from earnmi.uitl.utils import utils
 
 
@@ -47,7 +48,7 @@ class PredictOrder(object):
     """
     """
     buyPrice:float = None
-
+    predict: PredictData = None
 
     sellPrice:float =None
 
