@@ -52,7 +52,7 @@ class ZZ500DataSource(BarDataSource):
         self.end = end
         from earnmi.data.MarketImpl import MarketImpl
         self.market = MarketImpl()
-        self.market.setToday(end + timedelta(days=-1))
+        self.market.setToday(end)
         self.limitSize = len(ZZ500DataSource.SZ500_JQ_CODE_LIST)
         if limit_size > 0:
             self.limitSize = min(limit_size,self.limitSize)

@@ -417,7 +417,8 @@ class CoreEngineRunner():
 
     ###中证500的数据
     def printZZ500Tops(self, strategy:CoreEngineStrategy,level = 1):
-        end = utils.to_end_date(datetime.now() - timedelta(days=1))
+        today = datetime.now()
+        end = utils.to_end_date(today - timedelta(days=1))
         start = end - timedelta(days=90)
         soruce = ZZ500DataSource(start, end)
         from earnmi.uitl.jqSdk import jqSdk
@@ -425,8 +426,11 @@ class CoreEngineRunner():
         bars, code = soruce.nextBars()
         dataSet = {}
         totalCount = 0
+
         model = self.coreEngine.getEngineModel()
         while not bars is None:
+            if utils.is_same_day(bars[-1].datetime,today):
+                del bars[-1]
             ##加上今天的数据
             todayBar =  todayBarsMap.get(code)
             if not todayBar is None and BarUtils.isOpen(todayBar):
