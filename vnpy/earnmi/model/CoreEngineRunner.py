@@ -426,7 +426,7 @@ class CoreEngineRunner():
         bars, code = soruce.nextBars()
         dataSet = {}
         totalCount = 0
-
+        latestDay = None
         model = self.coreEngine.getEngineModel()
         while not bars is None:
             if utils.is_same_day(bars[-1].datetime,today):
@@ -435,6 +435,9 @@ class CoreEngineRunner():
             todayBar =  todayBarsMap.get(code)
             if not todayBar is None and BarUtils.isOpen(todayBar):
                 bars.append(todayBar)
+
+            if latestDay is None or bars[-1].datetime > latestDay:
+                latestDay = bars[-1].datetime
             finished, stop = model.collectBars(bars, code)
             print(f"[getTops]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(stop)
@@ -490,7 +493,7 @@ class CoreEngineRunner():
             if o1.todayOpration == o2.todayOpration:
                 return order_cmp_by_time(o1,o2)
             return o1.todayOpration - o2.todayOpration
-        self.coreEngine.printLog(f"=========今天关注订单：{len(today_order_list)}个")
+        self.coreEngine.printLog(f"=========今天关注订单：{len(today_order_list)}个,date:{latestDay}")
         today_order_list = sorted(today_order_list, key=cmp_to_key(order_cmp_today), reverse=False)
         for order in today_order_list:
             desc = "unkonw"
