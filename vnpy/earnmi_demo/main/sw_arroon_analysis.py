@@ -42,11 +42,11 @@ from vnpy.trader.object import BarData
 import numpy as np
 import pandas as pd
 
-class TheEngineModel(CoreEngineModel):
+class SKDJ_EngineModel(CoreEngineModel):
 
     def __init__(self):
-        self.lasted3Bar = np.array([None ,None ,None])
-        self.lasted3BarKdj = np.array([None ,None ,None])
+        self.lasted3Bar = np.full(3,None)
+        self.lasted3BarKdj = np.full(3,None)
         self.kdjEncoder = FloatEncoder([15,30,45,60,75,90])
         self.mDateOccurCountMap = {} ##统计产生收集个数的次数
         self.sw = SWImpl()
@@ -235,7 +235,7 @@ if __name__ == "__main__":
     trainDataSouce = SWDataSource(start=datetime(2014, 2, 1), end=datetime(2019, 9, 1))
     testDataSouce = SWDataSource(datetime(2019, 9, 1), datetime(2020, 9, 1))
 
-    model = TheEngineModel()
+    model = SKDJ_EngineModel()
     #engine = CoreEngine.create(dirName,model,trainDataSouce,limit_dimen_size=99999999)
     engine = CoreEngine.load(dirName, model)
     runner = CoreEngineRunner(engine)

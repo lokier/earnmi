@@ -176,8 +176,7 @@ class CoreEngineRunner():
                     predictList: Sequence['PredictData'] = model.predict(listData)
                     for predict in predictList:
                         order = self.__generatePredictOrder(self.coreEngine, predict)
-                        __bars = [predict.collectData.occurBars[-1]] + predict.collectData.predictBars
-                        self.__updateOrdres(strategy,order, __bars,__the_param);
+                        self.__updateOrdres(strategy,order, predict.collectData.predictBars,__the_param);
                         self.putToStatistics(_testData, order, predict)
 
                     __dataList.append(_testData)
@@ -254,8 +253,7 @@ class CoreEngineRunner():
 
             for predict in predictList:
                 order = self.__generatePredictOrder(self.coreEngine,predict)
-                __bars = [predict.collectData.occurBars[-1]] +  predict.collectData.predictBars
-                self.__updateOrdres(strategy,order,__bars);
+                self.__updateOrdres(strategy,order,predict.collectData.predictBars);
                 self.putToStatistics(_testData,order,predict)
             __dataList[dimen] = _testData
 
@@ -265,7 +263,7 @@ class CoreEngineRunner():
     def __updateOrdres(self, strategy:CoreEngineStrategy,order,bars:[],debug_parms:{} = None,foce_close_order= True):
         if debug_parms is None:
             debug_parms = {}
-        order.durationDay = -1
+        order.durationDay = 0
         todayOperaion = None
         for bar in bars:
             if order.status == PredictOrderStatus.ABANDON or \
@@ -429,20 +427,24 @@ class CoreEngineRunner():
         latestDay = None
         model = self.coreEngine.getEngineModel()
         while not bars is None:
+
+            ##去除今天的数据
             if utils.is_same_day(bars[-1].datetime,today):
                 del bars[-1]
-            ##加上今天的数据
-            todayBar =  todayBarsMap.get(code)
-            if not todayBar is None and BarUtils.isOpen(todayBar):
-                bars.append(todayBar)
 
             if latestDay is None or bars[-1].datetime > latestDay:
                 latestDay = bars[-1].datetime
+
             finished, stop = model.collectBars(bars, code)
             print(f"[getTops]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(stop)
             bars, code = soruce.nextBars()
             for data in stop:
+                ##因为是实盘操作，所以未完成的stop收集对象应该包含今天的bar
+                todayBar = todayBarsMap.get(code)
+                if not todayBar is None:
+                    data.predictBars.append(todayBar)
+
                 ##收录
                 listData: [] = dataSet.get(data.dimen)
                 if listData is None:
@@ -465,8 +467,7 @@ class CoreEngineRunner():
             _testData.quant = self.coreEngine.queryQuantData(dimen)
             for predict in predictList:
                 order = self.__generatePredictOrder(self.coreEngine,predict)
-                __bars = [predict.collectData.occurBars[-1]] +  predict.collectData.predictBars
-                todayOpration = self.__updateOrdres(strategy,order,__bars,foce_close_order=False);
+                todayOpration = self.__updateOrdres(strategy,order,predict.collectData.predictBars,foce_close_order=False);
                 if not todayOpration is None:
                     order.todayOpration = todayOpration
                     today_order_list.append(order)

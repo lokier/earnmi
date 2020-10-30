@@ -99,6 +99,12 @@ class ClassifierModel(PredictModel):
         engine.printLog(f"   labelListSell2: {self.labelListSell2}")
         engine.printLog(f"   labelListBuy1: {self.labelListBuy1}")
         engine.printLog(f"   labelListBuy2: {self.labelListBuy2}")
+        ##打印下特征值
+        for i in range(0,min(5,len(x))):
+            engine.printLog(f"   x[{i}]: {x[i]}")
+        ##打印下特征值
+        for i in range(0, min(5, len(y_sell_1))):
+                engine.printLog(f"   y[{i}]: ySell = {y_sell_1[i]}, yBuy = {y_buy_1[i]}")
 
         self.classifierSell_1 = self.__createClassifier(x,y_sell_1)
         self.classifierSell_2 = self.__createClassifier(x,y_sell_2)
@@ -382,6 +388,7 @@ class CoreEngineImpl(CoreEngine):
         __the_count = 0
 
         dataCountList = []
+        fitlerTotalCount = 0
         for dimen, listData in dataSet.items():
             if limit_dimen_size > 0 and limit_dimen_size <= __the_count:
                 ##限制个数
@@ -392,6 +399,7 @@ class CoreEngineImpl(CoreEngine):
                 __the_count +=1
                 fitlerDataSet[dimen] = listData
                 for data in listData:
+                    fitlerTotalCount+=1
                     #统计发生次数。
                     occurtDate: datetime = data.occurBars[-1].datetime
                     occurtDate = datetime(year=occurtDate.year, month=occurtDate.month, day=occurtDate.day)
@@ -413,6 +421,8 @@ class CoreEngineImpl(CoreEngine):
         ##打印维度的分布情况
         self.printLog(f"每个交易日产生收集数据个数的分布情况:\n    {FloatRange.toStr(occurDateCountRangeList, occurDateCountEncoder)}")
 
+        self.printLog(f"可用训练的数据利用率为: {fitlerTotalCount} / {totalCount} = %.2f%%" % (100 * fitlerTotalCount /totalCount) )
+
         dataSet = fitlerDataSet
         self.__saveDimeenAndQuantData(dataSet)
         shutil.rmtree(self.__getModelDirPath())  # 递归删除一个目录以及目录内的所有内容
@@ -420,7 +430,7 @@ class CoreEngineImpl(CoreEngine):
             self.__buildAndSaveModelData(split_rate,useSVM)
 
         self.load(model)
-        self.__ouptBuildDataToFiles();
+        #self.__ouptBuildDataToFiles();
         self.logger = None
 
     def buildPredictModel(self,split_rate=0.7,useSVM=True):
@@ -553,6 +563,8 @@ class CoreEngineImpl(CoreEngine):
         ##saveAbliitTy
         with open(self.__getAbilityFilePath(), 'wb+') as fp:
             pickle.dump(abilityDataMap, fp, -1)
+
+        self.mAbilityMap = abilityDataMap
 
         ##打印模型性能指标
         pctEncoder = self.getEngineModel().getPctEncoder1()

@@ -94,10 +94,11 @@ class CoreEngineModel:
                 collector.onCollect(collectData, bar)
                 if collectData.isFinished():
                     toDeleteList.append(collectData)
-                    finishedData.append(collectData)
-                    _s,_b = self.getYLabelPct(collectData)
-                    assert not _s is None
-                    assert not _b is None
+                    if collectData.isValid():
+                        finishedData.append(collectData)
+                        _s,_b = self.getYLabelPct(collectData)
+                        assert not _s is None
+                        assert not _b is None
                 elif not collectData.isValid():
                     toDeleteList.append(collectData)
             for collectData in toDeleteList:

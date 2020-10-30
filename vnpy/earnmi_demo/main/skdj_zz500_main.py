@@ -46,20 +46,23 @@ import numpy as np
 import pandas as pd
 from earnmi.chart.KPattern import KPattern
 
-class KDJMovementEngineModel(CoreEngineModel):
+class SKDJ_EngineModel(CoreEngineModel):
+
+    PREDICT_LENGT = 3
+    PCT_MAX_LIMIT = 99999999
 
     def __init__(self):
-        self.lasted15Bar = np.array([None ,None ,None,None,None,None,None,None,None,None,None,None,None,None,None])
-        self.lasted3BarKdj = np.array([None ,None ,None])
-        self.lasted3BarMacd = np.array([None ,None ,None])
-        self.lasted3BarArron = np.array([None ,None ])
+        self.lasted15Bar = np.full(15,None)
+        self.lasted3BarKdj = np.full(3,None)
+        self.lasted3BarMacd = np.full(3,None)
+        self.lasted3BarArron = np.full(3,None)
         self.kdjEncoder = FloatEncoder([15,30,45,60,75,90])
 
     def getPctEncoder1(self)->FloatEncoder:
-        return FloatEncoder(list(np.arange(-25,25.5, 50/15)), minValue=-26, maxValue=26)
+        return FloatEncoder(list(np.arange(-25,25.5, 50/20)), minValue=-26, maxValue=26)
 
     def getPctEncoder2(self)->FloatEncoder:
-        return FloatEncoder(list(np.arange(-24.5, 27, 50 / 15)), minValue=-25, maxValue=27)
+        return FloatEncoder(list(np.arange(-24.5, 27, 50 /20)), minValue=-25, maxValue=27)
 
     def onCollectStart(self, code: str) -> bool:
         from earnmi.chart.Indicator import Indicator
@@ -77,7 +80,6 @@ class KDJMovementEngineModel(CoreEngineModel):
         k, d, j = self.indicator.kdj(fast_period=9, slow_period=3)
         dif, dea, mBar = self.indicator.macd( fast_period=12,slow_period = 26,signal_period = 9)
         aroon_down,aroon_up = self.indicator.aroon( n=14)
-
         self.lasted15Bar[-1] = bar
         self.lasted3BarKdj[-1] = [k, d, j]
         self.lasted3BarMacd[-1] = [dif, dea, mBar]
@@ -86,126 +88,124 @@ class KDJMovementEngineModel(CoreEngineModel):
         if self.indicator.count <=34:
             return None
 
+        # 最近15天之内不含停牌数据
+        if not BarUtils.isAllOpen(self.lasted15Bar):
+            return None
+
         if dif < 0 or dea < 0:
             return None
 
-        #最近15天之内不含停牌数据
-        if not BarUtils.isAllOpen(self.lasted15Bar):
-            return None
-        #交易日天数间隔超过5天的数据
-        # if BarUtils.getMaxIntervalDay(self.lasted15Bar) >= 5:
-        #     return None
-        k0, d0, j0 = self.lasted3BarKdj[-2]
-        k1, d1, j1 = self.lasted3BarKdj[-1]
+        k0, d0, j0 = self.lasted3BarKdj[-3]
+        k1, d1, j1 = self.lasted3BarKdj[-2]
         # 金叉产生
         goldCross = k0 < d0 and k1 >= d1
         if not goldCross:
             return None
+        #最近12天的震荡因子和金叉当前的dea和dif因子组合作为维度值
+        goldBar:BarData = self.lasted15Bar[-2]
+        goldBarMacd = self.lasted3BarMacd[2];
+        gold_dif_factory,gold_dea_factory = [ 100*goldBarMacd[0]/goldBar.close_price, 100*goldBarMacd[1]/goldBar.close_price]
 
+        ##生成维度值
         verbute = Factory.vibrate(self.indicator.close,self.indicator.open,period=12)
-        kPatternValue = self.makePatthernValue(verbute,dif/bar.close_price,dea/bar.close_price);
+        kPatternValue = self.makePatthernValue(verbute,gold_dif_factory,gold_dea_factory);
+
         dimen = Dimension(type=TYPE_2KAGO1, value=kPatternValue)
         collectData = CollectData(dimen=dimen)
         collectData.occurBars = list(self.lasted15Bar[-3:])
         collectData.occurKdj = list(self.lasted3BarKdj)
         collectData.occurExtra['lasted3BarMacd'] = self.lasted3BarMacd
         collectData.occurExtra['lasted3BarArron'] = self.lasted3BarArron
-
         verbute9 =Factory.vibrate(self.indicator.close,self.indicator.open,period=9)
         verbute20 =Factory.vibrate(self.indicator.close,self.indicator.open,period=20)
         collectData.occurExtra['verbute9'] = verbute9
         collectData.occurExtra['verbute20'] = verbute20
         collectData.occurExtra['aroon_up'] = self.lasted3BarArron[-1][1];
         collectData.occurExtra['aroon_down'] =  self.lasted3BarArron[-1][0]
-        collectData.setValid(False)
+
+        #收集对象的有效性:无要求
+        collectData.setValid(True)
         return collectData
 
-    ENCODE1 = FloatEncoder([0,1,5,10,20,50,80]);
-    ENCODE2 = FloatEncoder([-5,-3,-2,-1,0,1,2,3,5]);
+    ENCODE1 = FloatEncoder([1,8,20,45,80]);
+    ENCODE2 = FloatEncoder([-1,0,1,2.2,4.7]);
 
     def makePatthernValue(self,verbute, dif,dea):
         #mask1 = KDJMovementEngineModel.ENCODE1.mask()
-        mask2 = KDJMovementEngineModel.ENCODE2.mask()
-        v1 = KDJMovementEngineModel.ENCODE1.encode(verbute)
-        v2 = KDJMovementEngineModel.ENCODE2.encode(dif)
-        v3 = KDJMovementEngineModel.ENCODE2.encode(dea)
+        mask2 = SKDJ_EngineModel.ENCODE2.mask()
+        v1 = SKDJ_EngineModel.ENCODE1.encode(verbute)
+        v2 = SKDJ_EngineModel.ENCODE2.encode(dif)
+        v3 = SKDJ_EngineModel.ENCODE2.encode(dea)
         return v1 * mask2 * mask2 + v2 * mask2 +v3;
 
     def onCollect(self, data: CollectData, newBar: BarData) :
         #不含停牌数据
-        if not BarUtils.isOpen(newBar):
-            data.setValid(False)
-            return
         data.predictBars.append(newBar)
-        data.setValid(True)
         size = len(data.predictBars)
-        if size >= 5:
+        if size >= SKDJ_EngineModel.PREDICT_LENGT:
+            data.setValid(BarUtils.isAllOpen(data.predictBars))
             data.setFinished()
 
+    def getYBasePrice(self, cData: CollectData) -> float:
+        ## 金叉形成后的前一天
+        return cData.occurBars[-3].close_price
+
     def getYLabelPct(self, cData:CollectData)->[float, float]:
-        if len(cData.predictBars) < 5:
+        if len(cData.predictBars) < SKDJ_EngineModel.PREDICT_LENGT:
             #不能作为y标签。
             return None, None
-        bars: ['BarData'] = cData.predictBars
 
         basePrice = self.getYBasePrice(cData)
 
-        highIndex = 1
-        lowIndex = 1
-        ##跳过第一天观察
-        highBar = cData.predictBars[1];
-        lowBar = cData.predictBars[1]
-        sell_pct =  100 * ((highBar.high_price + highBar.close_price) / 2 - basePrice) / basePrice
-        buy_pct =  100 * ((lowBar.low_price + lowBar.close_price) / 2 - basePrice) / basePrice
+        sell_pct =  -self.PCT_MAX_LIMIT
+        buy_pct =  self.PCT_MAX_LIMIT
 
-        for i in range(1,len(cData.predictBars)):
+        for i in range(0,len(cData.predictBars)):
             bar:BarData = cData.predictBars[i]
             _s_pct = 100 * ((bar.high_price + bar.close_price) / 2 - basePrice) / basePrice
             _b_pct = 100 * ((bar.low_price + bar.close_price) / 2 - basePrice) / basePrice
-            if _s_pct > sell_pct:
-                sell_pct = _s_pct
-                highIndex = i
-            if _b_pct < buy_pct:
-                buy_pct = _b_pct
-                lowIndex = i
+            sell_pct = max(_s_pct,sell_pct)
+            buy_pct = min(_b_pct,buy_pct)
+        assert sell_pct > -self.PCT_MAX_LIMIT
+        assert buy_pct < self.PCT_MAX_LIMIT
         return sell_pct, buy_pct
 
-    def getYBasePrice(self, cData:CollectData)->float:
-        ##以金叉发生的当前收盘价作为基准值。
-        return cData.occurBars[-2].close_price
+
 
     def generateXFeature(self, cData: CollectData) -> []:
-        # 保证len等于三，要不然就不能作为生成特征值。
+        #保证len等于三，要不然就不能作为生成特征值。
         if (len(cData.occurBars) < 3):
             return None
         basePrcie = self.getYBasePrice(cData)
+        data = []
+
+        #occurBars[-1]最后一天（ 金叉形成后的第2天）形成的收盘价pct，开盘价pct，最低价pct，最高价pct （4个）
+        lastest1_occurBars :BarData = cData.occurBars[-1]
+        open_pct = 100 * (lastest1_occurBars.open_price - basePrcie) / basePrcie
+        high_pct = 100 * (lastest1_occurBars.high_price - basePrcie) / basePrcie
+        close_pct = 100 * (lastest1_occurBars.close_price - basePrcie) / basePrcie
+        low_pct = 100 * (lastest1_occurBars.low_price - basePrcie) / basePrcie
+        data.append(open_pct)
+        data.append(high_pct)
+        data.append(close_pct)
+        data.append(low_pct)
 
         ##使用随机森林，所以不需要标准化和归一化
-        god_cross_dif, god_cross_dea, god_cross_macd = cData.occurExtra.get('lasted3BarMacd')[-1]
-        god_cross_dif = 100 * god_cross_dif / cData.occurBars[-1].close_price
-        god_cross_dea = 100 * god_cross_dea / cData.occurBars[-1].close_price
+        #金叉生成当天的（occurBars[-2]）的macd的dea，def因子，和kdj的k，d值，收盘价pct（5个）
+        gold_occurBars :BarData = cData.occurBars[-2]
+        god_cross_dif, god_cross_dea, god_cross_macd = cData.occurExtra.get('lasted3BarMacd')[-2]
+        god_cross_dif = 100 * god_cross_dif / gold_occurBars.close_price
+        god_cross_dea = 100 * god_cross_dea / gold_occurBars.close_price
         k, d, j = cData.occurKdj[-2]
-
-        def getSellBuyPct(bar: BarData):
-            s_pct = 100 * ((bar.high_price + bar.close_price) / 2 - basePrcie) / basePrcie
-            b_pct = 100 * ((bar.low_price + bar.close_price) / 2 - basePrcie) / basePrcie
-            return s_pct, b_pct
-
-        s_pct, b_pc = getSellBuyPct(cData.occurBars[-1])
-
-
-        assert len(cData.predictBars) > 0
-        _bar: BarData = cData.predictBars[0]
-        d1_low_pct = 100 * (_bar.low_price - basePrcie) / basePrcie
-        d1_close_pct = 100 * (_bar.close_price - basePrcie) / basePrcie
-
-        data = []
-        data.append(d1_low_pct)
-        data.append(d1_close_pct)
-        data.append(s_pct)
-        data.append(b_pc)
+        gold_close_pct = 100 * (gold_occurBars.close_price - basePrcie) / basePrcie
         data.append(god_cross_dif)
         data.append(god_cross_dea)
+        data.append(k)
+        data.append(d)
+        data.append(gold_close_pct)
+
+        #occurBars[-1]最后一天的震荡因子值：virbute_9,virbute_20
+        #occurBars[ -1]最后一天的arron_up,arron_down值
         data.append(cData.occurExtra.get('verbute9'))
         data.append(cData.occurExtra.get('verbute20'))
         data.append(cData.occurExtra.get('aroon_up'))
@@ -230,70 +230,60 @@ class DefaultStrategy(CoreEngineStrategy):
     def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
                             debugParams: {} = None) -> int:
         first_day_pct_limit = 1
-        buy_offset = -1
-        opera_day = 2
-        cut_loss = False ##减损
-
-        # if order.dimen == 555:
-        #     buy_offset = 0
-        #     first_day_pct_limit = 2
-        #     opera_day = 3
-
+        buy_offset_pct = 0
+        min_allow_buy_day = 2  #可以买入的交易天数
 
         suggestSellPrice = order.suggestSellPrice
-        suggestBuyPrice = order.suggestBuyPrice * (1 + buy_offset /100)
+        suggestBuyPrice = order.suggestBuyPrice * (1 + buy_offset_pct /100)
         if (order.status == PredictOrderStatus.HOLD):
+
+            if order.isOverHighPrice:
+                ##止损、止盈操作，第二天开盘价卖出
+                order.sellPrice = bar.open_price
+                return 4
             if bar.high_price >= suggestSellPrice:
                 order.sellPrice = suggestSellPrice
                 return 3
-            if cut_loss and bar.close_price  < suggestBuyPrice:
-                order.sellPrice = bar.close_price
-                return 4
-            if order.durationDay >= 5:
+            if order.durationDay >= SKDJ_EngineModel.PREDICT_LENGT:
                 order.sellPrice = bar.close_price
                 return 4
         elif order.status == PredictOrderStatus.READY:
-            if order.durationDay > opera_day:
+            if order.durationDay > min_allow_buy_day:
+                #超过买入交易时间天数，废弃
                 return 5
-            quantData = engine.queryQuantData(order.dimen)
-            targetPrice = bar.low_price
-            if order.durationDay == 0:  # 生成的那天
-                targetPrice = bar.close_price
-                return 0
-            if order.durationDay == 1:  # 生成的那天
-                ##这天观察走势,且最高价不能超过预测价
-                __pct = 100 * (suggestSellPrice - bar.close_price) / bar.close_price
-                if __pct < first_day_pct_limit:
-                     return 5
-                return 0
-            if suggestBuyPrice >= targetPrice and order.durationDay <=opera_day:
+            ##这天观察走势,且当天high_price 不能超过预测卖出价
+            #这里有个坑，
+            # 1、如果当天是超过卖出价之后再跌到买入价，  这时第二天就要考虑止损
+            # 2、如果是到底买入价之后的当天马上涨到卖出价，这时第二天就要考虑止盈
+            #不管是那种情况，反正第二天就卖出。
+            if suggestBuyPrice >= bar.low_price :
                 ##趋势形成的第二天买入。
-                order.buyPrice = targetPrice
+                order.buyPrice = suggestBuyPrice
+                order.isOverHighPrice = bar.high_price >= suggestSellPrice
                 return 1
         return 0
 
 
 
 def analysicQuantDataOnly():
-    dirName = "models/kdj_movement_analysis2"
+    dirName = "models/skdj_analysic_quantdata"
     start = datetime(2015, 10, 1)
-    middle = datetime(2019, 9, 30)
-    end = datetime(2020, 9, 30)
+    end = datetime(2019, 10, 1)
 
     souces = ZZ500DataSource(start, end)
-    model = KDJMovementEngineModel()
+    model = SKDJ_EngineModel()
     create = False
     engine = None
     if create:
         engine = CoreEngine.create(dirName, model,souces,build_quant_data_only = True,min_size=200)
     else:
         engine = CoreEngine.load(dirName,model)
-        engine.buildQuantData()
-        #engine.buildPredictModel(useSVM=False)
+        #engine.buildQuantData()
+    engine.buildPredictModel(useSVM=False)
     pass
 
 def runBackTest():
-    _dirName = "models/kdj_movement_analysis_back_test2"
+    _dirName = "models/skdj_zz500_runbacktest"
     start = datetime(2015, 10, 1)
     middle = datetime(2019, 9, 30)
     end = datetime(2020, 9, 30)
@@ -301,7 +291,7 @@ def runBackTest():
     futureSouce = ZZ500DataSource(middle, end)
 
 
-    model = KDJMovementEngineModel()
+    model = SKDJ_EngineModel()
     strategy = DefaultStrategy()
     #strategy = BestStrategy()
     create = False
@@ -321,7 +311,7 @@ def runBackTest():
 def printLaststTops():
     _dirName = "models/kdj_movement_lastesd_top"
 
-    model = KDJMovementEngineModel()
+    model = SKDJ_EngineModel()
     create = False
     engine = None
     if create:
@@ -340,8 +330,8 @@ def printLaststTops():
 
 if __name__ == "__main__":
     #analysicQuantDataOnly()
-    #runBackTest()
-    printLaststTops()
+    runBackTest()
+    #printLaststTops()
     """
 [555]=>count:454(sScore:76.651,bScore:63.876),做多:[交易率:44.05%,预测成功率:45.00%,盈利率:54.50%,单均pct:2.12,盈pct:6.37(17.15),亏pct:-2.98(-10.02)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
 [455]=>count:1259(sScore:79.189,bScore:61.318),做多:[交易率:45.35%,预测成功率:46.06%,盈利率:57.97%,单均pct:2.10,盈pct:5.22(19.42),亏pct:-2.20(-11.45)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]

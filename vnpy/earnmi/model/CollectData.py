@@ -61,8 +61,6 @@ class CollectData(object):
         return self.validFlag == 1
 
     def setFinished(self):
-        if not self.isValid():
-            raise RuntimeError("can't set finished in invalid status")
         self.validFlag = 1
 
     def __post_init__(self):
