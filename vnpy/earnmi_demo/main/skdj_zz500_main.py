@@ -170,7 +170,12 @@ class SKDJ_EngineModel(CoreEngineModel):
         assert buy_pct < self.PCT_MAX_LIMIT
         return sell_pct, buy_pct
 
-
+    def __to_one(self,vallue,min_value,max_value):
+        if(vallue< min_value):
+            return 0;
+        if(vallue > max_value):
+            return 1
+        return (vallue - min_value) / (max_value-min_value)
 
     def generateXFeature(self, cData: CollectData) -> []:
         #保证len等于三，要不然就不能作为生成特征值。
@@ -185,10 +190,10 @@ class SKDJ_EngineModel(CoreEngineModel):
         high_pct = 100 * (lastest1_occurBars.high_price - basePrcie) / basePrcie
         close_pct = 100 * (lastest1_occurBars.close_price - basePrcie) / basePrcie
         low_pct = 100 * (lastest1_occurBars.low_price - basePrcie) / basePrcie
-        data.append(open_pct)
-        data.append(high_pct)
-        data.append(close_pct)
-        data.append(low_pct)
+        data.append(self.__to_one(open_pct,-10,10))
+        data.append(self.__to_one(high_pct,-10,10))
+        data.append(self.__to_one(close_pct,-10,10))
+        data.append(self.__to_one(low_pct,-10,10))
 
         ##使用随机森林，所以不需要标准化和归一化
         #金叉生成当天的（occurBars[-2]）的macd的dea，def因子，和kdj的k，d值，收盘价pct（5个）
@@ -198,18 +203,18 @@ class SKDJ_EngineModel(CoreEngineModel):
         god_cross_dea = 100 * god_cross_dea / gold_occurBars.close_price
         k, d, j = cData.occurKdj[-2]
         gold_close_pct = 100 * (gold_occurBars.close_price - basePrcie) / basePrcie
-        data.append(god_cross_dif)
-        data.append(god_cross_dea)
-        data.append(k)
-        data.append(d)
-        data.append(gold_close_pct)
+        data.append(self.__to_one(god_cross_dif,-10,10))
+        data.append(self.__to_one(god_cross_dea,-10,10))
+        data.append(self.__to_one(k,0,100))
+        data.append(self.__to_one(d,0,100))
+        data.append(self.__to_one(gold_close_pct,-10,10))
 
         #occurBars[-1]最后一天的震荡因子值：virbute_9,virbute_20
         #occurBars[ -1]最后一天的arron_up,arron_down值
-        data.append(cData.occurExtra.get('verbute9'))
-        data.append(cData.occurExtra.get('verbute20'))
-        data.append(cData.occurExtra.get('aroon_up'))
-        data.append(cData.occurExtra.get('aroon_down'))
+        data.append(self.__to_one(cData.occurExtra.get('verbute9'),0,100))
+        data.append(self.__to_one(cData.occurExtra.get('verbute20'),0,100))
+        data.append(self.__to_one(cData.occurExtra.get('aroon_up'),0,100))
+        data.append(self.__to_one(cData.occurExtra.get('aroon_down'),0,100))
         return data
 
 
@@ -290,11 +295,61 @@ def runBackTest():
     historySource = ZZ500DataSource(start, middle)
     futureSouce = ZZ500DataSource(middle, end)
 
+    class SKDJ_EngineModelV2(SKDJ_EngineModel):
 
-    model = SKDJ_EngineModel()
+        def __to_one(self, vallue, min_value, max_value):
+            if (vallue < min_value):
+                return 0;
+            if (vallue > max_value):
+                return 1
+            return (vallue - min_value) / (max_value - min_value)
+
+        def generateXFeature(self, cData: CollectData) -> []:
+            # 保证len等于三，要不然就不能作为生成特征值。
+            if (len(cData.occurBars) < 3):
+                return None
+            basePrcie = self.getYBasePrice(cData)
+            data = []
+
+            # occurBars[-1]最后一天（ 金叉形成后的第2天）形成的收盘价pct，最低价pct（2个）
+            lastest1_occurBars: BarData = cData.occurBars[-1]
+            #open_pct = 100 * (lastest1_occurBars.open_price - basePrcie) / basePrcie
+            #high_pct = 100 * (lastest1_occurBars.high_price - basePrcie) / basePrcie
+            close_pct = 100 * (lastest1_occurBars.close_price - basePrcie) / basePrcie
+            low_pct = 100 * (lastest1_occurBars.low_price - basePrcie) / basePrcie
+            #data.append(open_pct)
+            #data.append(high_pct)
+            data.append(close_pct)
+            data.append(low_pct)
+
+            ##使用随机森林，所以不需要标准化和归一化
+            # 金叉生成当天的（occurBars[-2]）的macd的dea，def因子，金叉生成当天（occurBars[-2]）sell_pct,buy_pct;
+            def getSellBuyPct(bar: BarData):
+                s_pct = 100 * ((bar.high_price + bar.close_price) / 2 - basePrcie) / basePrcie
+                b_pct = 100 * ((bar.low_price + bar.close_price) / 2 - basePrcie) / basePrcie
+                return s_pct, b_pct
+            gold_occurBars: BarData = cData.occurBars[-2]
+            god_cross_dif, god_cross_dea, god_cross_macd = cData.occurExtra.get('lasted3BarMacd')[-2]
+            god_cross_dif = 100 * god_cross_dif / gold_occurBars.close_price
+            god_cross_dea = 100 * god_cross_dea / gold_occurBars.close_price
+            gold_sell_pct,golde_buy_pct  = getSellBuyPct(gold_occurBars)
+            data.append(god_cross_dif)
+            data.append(god_cross_dea)
+            data.append(gold_sell_pct)
+            data.append(golde_buy_pct)
+
+            # occurBars[-1]最后一天的震荡因子值：virbute_9,virbute_20
+            # occurBars[ -1]最后一天的arron_up,arron_down值
+            data.append(cData.occurExtra.get('verbute9'))
+            data.append(cData.occurExtra.get('verbute20'))
+            data.append(cData.occurExtra.get('aroon_up'))
+            data.append(cData.occurExtra.get('aroon_down'))
+            return data
+
+    model = SKDJ_EngineModelV2()
     strategy = DefaultStrategy()
     #strategy = BestStrategy()
-    create = False
+    create = True
     engine = None
     if create:
         engine = CoreEngine.create(_dirName, model,historySource,min_size=200,useSVM=False)
@@ -332,29 +387,7 @@ if __name__ == "__main__":
     #analysicQuantDataOnly()
     runBackTest()
     #printLaststTops()
-    """
-[555]=>count:454(sScore:76.651,bScore:63.876),做多:[交易率:44.05%,预测成功率:45.00%,盈利率:54.50%,单均pct:2.12,盈pct:6.37(17.15),亏pct:-2.98(-10.02)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
-[455]=>count:1259(sScore:79.189,bScore:61.318),做多:[交易率:45.35%,预测成功率:46.06%,盈利率:57.97%,单均pct:2.10,盈pct:5.22(19.42),亏pct:-2.20(-11.45)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
-[355]=>count:965(sScore:80.103,bScore:66.528),做多:[交易率:54.92%,预测成功率:50.38%,盈利率:58.30%,单均pct:1.52,盈pct:3.99(17.19),亏pct:-1.93(-9.98)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
-[255]=>count:239(sScore:73.221,bScore:55.648),做多:[交易率:44.77%,预测成功率:39.25%,盈利率:47.66%,单均pct:0.61,盈pct:3.68(15.10),亏pct:-2.18(-9.44)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
 
-    """
-
-    # from earnmi.uitl.jqSdk import jqSdk
-    #
-    # jq = jqSdk.get()
-    #
-    # todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
-    #
-    # for code,bar in todayBarsMap.items():
-    #     print(f"code:{code},price:{bar.close_price}")
-    # print(f"todayBars:{len(todayBarsMap)}")
-    """
-    动量指标：
-    
-    策略：
-        收集arron_up>arron_down,且arron_up大于50的数据对象。
-    """
 
 
 

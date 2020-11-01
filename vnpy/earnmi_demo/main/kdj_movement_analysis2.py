@@ -200,6 +200,8 @@ class KDJMovementEngineModel(CoreEngineModel):
         d1_close_pct = 100 * (_bar.close_price - basePrcie) / basePrcie
 
         data = []
+        #最后一天的low_pct,close_pct。相对于 （2个）
+
         data.append(d1_low_pct)
         data.append(d1_close_pct)
         data.append(s_pct)
@@ -268,7 +270,7 @@ class DefaultStrategy(CoreEngineStrategy):
                 return 0
             if suggestBuyPrice >= targetPrice and order.durationDay <=opera_day:
                 ##趋势形成的第二天买入。
-                order.buyPrice = targetPrice
+                order.buyPrice = suggestBuyPrice
                 return 1
         return 0
 
@@ -340,8 +342,8 @@ def printLaststTops():
 
 if __name__ == "__main__":
     #analysicQuantDataOnly()
-    #runBackTest()
-    printLaststTops()
+    runBackTest()
+    #printLaststTops()
     """
 [555]=>count:454(sScore:76.651,bScore:63.876),做多:[交易率:44.05%,预测成功率:45.00%,盈利率:54.50%,单均pct:2.12,盈pct:6.37(17.15),亏pct:-2.98(-10.02)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
 [455]=>count:1259(sScore:79.189,bScore:61.318),做多:[交易率:45.35%,预测成功率:46.06%,盈利率:57.97%,单均pct:2.10,盈pct:5.22(19.42),亏pct:-2.20(-11.45)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]

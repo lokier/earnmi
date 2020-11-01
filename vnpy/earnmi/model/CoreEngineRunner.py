@@ -244,6 +244,11 @@ class CoreEngineRunner():
             if model is None:
                 self.coreEngine.printLog(f"不支持的维度:{dimen}")
                 continue
+            #abliity = self.coreEngine.queryPredictAbilityData(dimen)
+            #if abliity.getScoreSell() < 0.71:
+            #     self.coreEngine.printLog(f"维度分数太低:{dimen}")
+            #     continue
+
             run_cnt +=1
             self.coreEngine.printLog(f"开始回测维度:{dimen},进度:[{run_cnt}/{run_limit_size}]")
             predictList: Sequence['PredictData'] = model.predict(listData)
