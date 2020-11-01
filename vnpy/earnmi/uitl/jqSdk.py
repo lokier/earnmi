@@ -46,6 +46,9 @@ class jqSdk(object):
         start = utils.to_start_date(end)
         df = jq.get_price(codeList, start_date=start, end_date=end, frequency='1d')
         for code in codeList:
+            if len(df['close']) == 0:
+                ret[code] = None
+                continue
             close = df['close'][code][0]
             open = df['open'][code][0]
             high = df['high'][code][0]

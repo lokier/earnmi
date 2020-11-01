@@ -449,9 +449,9 @@ class CoreEngineRunner():
             bars, code = soruce.nextBars()
             for data in stop:
                 ##因为是实盘操作，所以未完成的stop收集对象应该包含今天的bar
-                todayBar = todayBarsMap.get(code)
-                if not todayBar is None:
-                    data.predictBars.append(todayBar)
+                # todayBar = todayBarsMap.get(code)
+                # if not todayBar is None:
+                #     data.predictBars.append(todayBar)
 
                 ##收录
                 listData: [] = dataSet.get(data.dimen)
