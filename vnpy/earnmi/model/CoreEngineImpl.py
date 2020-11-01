@@ -504,34 +504,38 @@ class CoreEngineImpl(CoreEngine):
         buy_stablility_total = 0.0
         sell_score_total = 0.0
         buy_score_total = 0.0
+        sell_score_total_quant = 0.0
+        buy_score_total_quant = 0.0
 
         for dimen,abilityData in abilityDataMap.items():
             s_min,s_max = pctEncoder.parseEncode(abilityData.sellPctRnageList[0].encode)
             p_sell_pct_total += (s_min + (s_max-s_min) * abilityData.sellPctRnageList[0].probal)
             s_min,s_max = pctEncoder.parseEncode(abilityData.buyPctRnageList[0].encode)
             p_buy_pct_total += (s_min + (s_max-s_min) * abilityData.buyPctRnageList[0].probal)
+            quantData = self.queryQuantData(dimen)
             sell_stability_total += abilityData.getStabilitySell()
             buy_stablility_total += abilityData.getStabilityBuy()
             sell_score_total += abilityData.getScoreSell()
             buy_score_total += abilityData.getScoreBuy()
-
-            self.printLog(f"dimen:{dimen.value},count = {abilityData.getCount()}"
-                          f",s_得分={abilityData.getScoreSell()}"
-                          f",b_得分={abilityData.getScoreBuy()}"
-                          f",s_稳定性={abilityData.getStabilitySell()}"
-                          f",b_稳定性={abilityData.getStabilityBuy()}"
-                          f",sell：正方差|负方差={abilityData.getBiasSell(True)}|{abilityData.getBiasSell(True)}"
-                          f",buy：正方差|负方差={abilityData.getBiasBuy(True)}|{abilityData.getBiasBuy(True)}"
-                          )
-            self.printLog(f"  预测SellPct值分布情况:{FloatRange.toStr(abilityData.sellPctRnageList,pctEncoder)}")
-            self.printLog(f"  预测Buy_Pct值分布情况:{FloatRange.toStr(abilityData.buyPctRnageList,pctEncoder)}")
+            sell_score_total_quant += quantData.abilityData.scoreSell
+            buy_score_total_quant += quantData.abilityData.scoreBuy
+            self.printLog(f"dimen:{dimen.value} => {abilityData.toStr()}")
+            self.printLog(f"    量化数据情况：{quantData.abilityData.toStr()}")
+            self.printLog(f"    预测SellPct值分布情况:{FloatRange.toStr(abilityData.sellPctRnageList,pctEncoder)}")
+            self.printLog(f"    预测Buy_Pct值分布情况:{FloatRange.toStr(abilityData.buyPctRnageList,pctEncoder)}")
         abilitySize = len(abilityDataMap)
-        self.printLog(f"【总体】: s_pct能力:%.2f,b_pct能力:%.2f,s得分:%.2f,b得分:%.2f,s稳定性:%.2f,b稳定性%.2f" % (
+        sell_extra = 100 * (sell_score_total - sell_score_total_quant) / sell_score_total_quant
+        buy_extra  = 100 *  (buy_score_total - buy_score_total_quant) / buy_score_total_quant
+        sell_extra_dec:str = f"+%.2f%%%%" % sell_extra  if sell_extra > 0  else f"-%.2f%%%%" % sell_extra
+        buy_extra_dec:str = f"+%.2f%%%%" % buy_extra  if buy_extra > 0 else f"-%.2f%%%%" % buy_extra
+
+        self.printLog(f"【总体】: s得分:%.2f[{sell_extra_dec}],b得分:%.2f[{buy_extra_dec}],s_pct能力:%.2f,b_pct能力:%.2f,s稳定性:%.2f,b稳定性%.2f" % (
+                sell_score_total / abilitySize,
+                buy_score_total / abilitySize,
                 p_sell_pct_total / abilitySize, p_buy_pct_total / abilitySize,
-                sell_score_total / abilitySize, buy_score_total / abilitySize,
                 sell_stability_total/abilitySize,buy_stablility_total/abilitySize
         ))
-
+        self.printLog(f"量化数据方面，一般s得分在0.5-0.6之间，所以得分值起码也要增加到0.8以上，这样的化预测能力基本上才能达标！！！");
         self.__modelLoaded = True
         self.printLog(f"创建模型完成", True)
         self.logger = oldLogger
@@ -759,10 +763,17 @@ class CoreEngineImpl(CoreEngine):
 
         sell_center_pct, best_probal1 = self.__findCenterPct(sell_pct_list,sellEncoder.splits[0],sellEncoder.splits[-1],0.0,0.0)
         buy_center_pct, best_probal2 = self.__findCenterPct(buy_pct_list,buyEncoder.splits[0],buyEncoder.splits[-1],0.0,0.0)
-        return QuantData(count=totalCount,sellRange=sellRangeFloat,buyRange=buyRangeFloat,
+
+        quantData =  QuantData(count=totalCount,sellRange=sellRangeFloat,buyRange=buyRangeFloat,
                          sellCenterPct=sell_center_pct,
                          buyCenterPct=buy_center_pct,
                          sellSplits=sellEncoder.splits,buySplits=buyEncoder.splits)
+
+        sell_preidct_pct_list = list(np.full(totalCount,sell_center_pct))
+        buy_preidct_pct_list = list(np.full(totalCount,buy_center_pct))
+        quantData.abilityData = self.computeAlilityData(dataList,sell_preidct_pct_list,buy_preidct_pct_list)
+
+        return quantData;
 
 
     def collect(self, bars: ['BarData']) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:

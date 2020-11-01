@@ -20,6 +20,25 @@ class ModelAbilityData(object):
     biasSellLoss = 0.0
     biasBuyLoss = 0.0
 
+
+    def getBiasSell(self,isWin:bool) -> float:
+        if isWin:
+            return utils.keep_3_float((self.biasSellWin) / 2)
+        return utils.keep_3_float((self.biasSellLoss) / 2)
+
+    def getBiasBuy(self,isWin:bool) -> float:
+        if isWin:
+            return utils.keep_3_float(( self.biasBuyWin) / 2)
+        return utils.keep_3_float(( self.biasBuyLoss) / 2)
+
+
+    def toStr(self)->str:
+        return f"count = {self.count}"\
+                      f",s_得分={self.scoreSell}"\
+                      f",b_得分={self.scoreBuy}"\
+                      f",sell：正方差|负方差={self.getBiasSell(True)}|{self.getBiasSell(True)}"\
+                      f",buy：正方差|负方差={self.getBiasBuy(True)}|{self.getBiasBuy(True)}"
+
     pass
 
 @dataclass
@@ -66,6 +85,16 @@ class PredictAbilityData(object):
         if isWin:
             return utils.keep_3_float((self.trainData.biasBuyWin + self.testData.biasBuyWin) / 2)
         return utils.keep_3_float((self.trainData.biasBuyLoss + self.testData.biasBuyLoss) / 2)
+
+    def toStr(self)->str:
+        return f"count = {self.getCount()}"\
+                      f",s_得分={self.getScoreSell()}"\
+                      f",b_得分={self.getScoreBuy()}"\
+                      f",s_稳定性={self.getStabilitySell()}"\
+                      f",b_稳定性={self.getStabilityBuy()}"\
+                      f",sell：正方差|负方差={self.getBiasSell(True)}|{self.getBiasSell(True)}"\
+                      f",buy：正方差|负方差={self.getBiasBuy(True)}|{self.getBiasBuy(True)}"
+
 
     def __post_init__(self):
         pass
