@@ -224,6 +224,12 @@ class DefaultStrategy(CoreEngineStrategy):
         self.failBuyBar = None
         pass
 
+    def isSupport(self, engine: CoreEngine, dimen:Dimension)->bool:
+        abilityData = engine.queryPredictAbilityData(dimen)
+        if abilityData.getScoreSell() < 0.72:
+            return False
+        return True
+
     """
     根据时间调整策略。
     1、555 : pct_limit = 4,offset = 0, opera_day = 3  = ==> 交易率:11.45%,成功率:25.00%,盈利率:71.15%,单均pct:3.80
@@ -234,6 +240,8 @@ class DefaultStrategy(CoreEngineStrategy):
 
     def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
                             debugParams: {} = None) -> int:
+
+
         first_day_pct_limit = 1
         buy_offset_pct = 0
         min_allow_buy_day = 2  #可以买入的交易天数
@@ -313,12 +321,12 @@ def runBackTest():
 
             # occurBars[-1]最后一天（ 金叉形成后的第2天）形成的收盘价pct，最低价pct（2个）
             lastest1_occurBars: BarData = cData.occurBars[-1]
-            #open_pct = 100 * (lastest1_occurBars.open_price - basePrcie) / basePrcie
-            #high_pct = 100 * (lastest1_occurBars.high_price - basePrcie) / basePrcie
+            open_pct = 100 * (lastest1_occurBars.open_price - basePrcie) / basePrcie
+            high_pct = 100 * (lastest1_occurBars.high_price - basePrcie) / basePrcie
             close_pct = 100 * (lastest1_occurBars.close_price - basePrcie) / basePrcie
             low_pct = 100 * (lastest1_occurBars.low_price - basePrcie) / basePrcie
-            #data.append(open_pct)
-            #data.append(high_pct)
+            data.append(open_pct)
+            data.append(high_pct)
             data.append(close_pct)
             data.append(low_pct)
 
@@ -340,8 +348,8 @@ def runBackTest():
 
             # occurBars[-1]最后一天的震荡因子值：virbute_9,virbute_20
             # occurBars[ -1]最后一天的arron_up,arron_down值
-            data.append(cData.occurExtra.get('verbute9'))
-            data.append(cData.occurExtra.get('verbute20'))
+            #data.append(cData.occurExtra.get('verbute9'))
+            #data.append(cData.occurExtra.get('verbute20'))
             data.append(cData.occurExtra.get('aroon_up'))
             data.append(cData.occurExtra.get('aroon_down'))
             return data
@@ -349,7 +357,7 @@ def runBackTest():
     model = SKDJ_EngineModelV2()
     strategy = DefaultStrategy()
     #strategy = BestStrategy()
-    create = True
+    create = False
     engine = None
     if create:
         engine = CoreEngine.create(_dirName, model,historySource,min_size=200,useSVM=False)

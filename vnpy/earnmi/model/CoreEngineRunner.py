@@ -240,9 +240,12 @@ class CoreEngineRunner():
         for dimen, listData in dataSet.items():
             if run_cnt >= run_limit_size:
                 break
+            if  not self.coreEngine.isSupport(dimen) or not strategy.isSupport(self.coreEngine, dimen):
+                self.coreEngine.printLog(f"不支持的维度:{dimen}")
+                continue
             model = self.coreEngine.loadPredictModel(dimen)
             if model is None:
-                self.coreEngine.printLog(f"不支持的维度:{dimen}")
+                self.coreEngine.printLog(f"维度:{dimen}不含模型数据预测能力")
                 continue
             #abliity = self.coreEngine.queryPredictAbilityData(dimen)
             #if abliity.getScoreSell() < 0.71:
