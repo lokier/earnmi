@@ -7,6 +7,8 @@ from earnmi.model.Dimension import Dimension
 # class Range(object):
 #     min:float
 #     max:float
+from earnmi.model.PredictAbilityData import ModelAbilityData
+
 
 @dataclass
 class QuantData(object):
@@ -37,6 +39,11 @@ class QuantData(object):
     sellSplits:['float']
 
     buySplits:['float']
+
+    """
+    量化预测能力
+    """
+    abilityData: ModelAbilityData = None
 
     def __post_init__(self):
         pass

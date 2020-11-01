@@ -199,76 +199,6 @@ class ClassifierModel(PredictModel):
         raise RuntimeError("unsupport data！！！")
 
 
-    """
-    分数,正偏差，负偏差
-    """
-    def testScore(self,trainSampleDataList:[],sell_pct_list:[],buy_pct_list:[]) -> ModelAbilityData:
-        self.engine.printLog("start PredictModel.selfTest()",True)
-        predictList: Sequence['PredictData'] = self.predict(trainSampleDataList)
-        count = len(predictList);
-
-        abilityData = ModelAbilityData()
-        if count < 1:
-            return abilityData
-        sellOk = 0
-        buyOk = 0
-        bias_loss_sum_sell = 0.0
-        bias_loss_sum_buy = 0.0
-        bias_win_sum_sell = 0.0
-        bias_win_sum_buy = 0.0
-
-
-
-        for predict in predictList:
-            predict.check();
-
-            high_price = -99999999
-            low_price = -high_price
-            for bar in predict.collectData.predictBars:
-                high_price = max(high_price, bar.high_price)
-                low_price = min(low_price, bar.low_price)
-            basePrice = self.engine.getEngineModel().getYBasePrice(predict.collectData)
-            sell_pct = predict.getPredictSellPct(self.engine.getEngineModel())
-            buy_pct = predict.getPredictBuyPct(self.engine.getEngineModel())
-            sell_pct_list.append(sell_pct)
-            buy_pct_list.append(buy_pct)
-
-            predict_sell_price = basePrice * (1 +  sell_pct/ 100)
-            predict_buy_price = basePrice * (1 + buy_pct / 100)
-            ## 预测价格有无到底最高价格
-            sell_ok = high_price >= predict_sell_price
-            buy_ok = low_price <= predict_buy_price
-            if sell_ok:
-                sellOk +=1
-                dist_pct = 100 * (predict_sell_price - high_price) / basePrice
-                bias_win_sum_sell += (dist_pct * dist_pct)
-
-            else:
-                ##所有值用pct，好统一比较。
-                dist_pct = 100 * (predict_sell_price - high_price) / basePrice
-                bias_loss_sum_sell += (dist_pct * dist_pct)
-
-            if buy_ok:
-                buyOk +=1
-                dist_pct = 100 * (low_price - predict_buy_price) / basePrice
-                bias_win_sum_buy += (dist_pct * dist_pct)
-            else:
-                dist_pct = 100 * (low_price - predict_buy_price) / basePrice
-                bias_loss_sum_buy += (dist_pct * dist_pct)
-
-        def keep_3_float(value)->float:
-            return int(value * 1000) / 1000
-
-        abilityData.scoreSell = sellOk / count
-        abilityData.scoreBuy = buyOk / count
-        abilityData.biasSellWin = keep_3_float(bias_win_sum_sell / count)
-        abilityData.biasSellLoss = keep_3_float(bias_loss_sum_sell / count)
-        abilityData.biasBuyWin = keep_3_float(bias_win_sum_buy / count)
-        abilityData.biasBuyLoss = keep_3_float(bias_loss_sum_buy / count)
-        abilityData.count = count
-        return abilityData;
-
-
 
 class CoreEngineImpl(CoreEngine):
 
@@ -611,22 +541,108 @@ class CoreEngineImpl(CoreEngine):
         trainQauntData = self.computeQuantData(trainDataList)
         model = ClassifierModel(self, dimen,useSVM)
         model.build(self, trainDataList,trainQauntData)
-        _sell_pct_value_list =[]
-        _buy_pct_value_list = []
 
-        _trainData =  model.testScore(trainDataList,_sell_pct_value_list,_buy_pct_value_list)  ##训练集验证分数
-        _testData =  model.testScore(testDataList,_sell_pct_value_list,_buy_pct_value_list)  ##测试集验证分数
+        train_sell_pct_value_list =[]
+        train_buy_pct_value_list = []
+        test_sell_pct_value_list = []
+        test_buy_pct_value_list = []
+
+        predictList: Sequence['PredictData'] = model.predict(trainDataList)
+        for predict in predictList:
+            predict.check()
+            sell_pct = predict.getPredictSellPct(self.getEngineModel())
+            buy_pct = predict.getPredictBuyPct(self.getEngineModel())
+            train_sell_pct_value_list.append(sell_pct)
+            train_buy_pct_value_list.append(buy_pct)
+        predictList: Sequence['PredictData'] = model.predict(testDataList)
+        for predict in predictList:
+            predict.check()
+            sell_pct = predict.getPredictSellPct(self.getEngineModel())
+            buy_pct = predict.getPredictBuyPct(self.getEngineModel())
+            test_sell_pct_value_list.append(sell_pct)
+            test_buy_pct_value_list.append(buy_pct)
+
+        _trainData =  self.computeAlilityData(trainDataList,train_sell_pct_value_list,train_buy_pct_value_list)  ##训练集验证分数
+
+        _testData =  self.computeAlilityData(testDataList,test_sell_pct_value_list,test_buy_pct_value_list)  ##测试集验证分数
 
         abilityData = PredictAbilityData()
         abilityData.trainData = _trainData
         abilityData.testData = _testData
         pctEncoder = self.getEngineModel().getPctEncoder1()
-        abilityData.sellPctRnageList = pctEncoder.computeValueDisbustion(_sell_pct_value_list)
-        abilityData.buyPctRnageList = pctEncoder.computeValueDisbustion(_buy_pct_value_list)
+        abilityData.sellPctRnageList = pctEncoder.computeValueDisbustion(train_sell_pct_value_list + test_sell_pct_value_list )
+        abilityData.buyPctRnageList = pctEncoder.computeValueDisbustion(train_buy_pct_value_list + test_buy_pct_value_list )
         abilityData.sellPctRnageList = FloatRange.sort(abilityData.sellPctRnageList)
         abilityData.buyPctRnageList = FloatRange.sort(abilityData.buyPctRnageList)
 
         return abilityData
+
+    """
+    计算预测能力得分。
+    cDataList： ColledataData 收集对象
+    sell_pct_list：预测的sell_pct值
+    sell_pct_list：预测的buy_pct值
+
+    """
+    def computeAlilityData(self,cDataList:[],sell_pct_list:[],buy_pct_list:[]) -> ModelAbilityData:
+        count = len(cDataList);
+        abilityData = ModelAbilityData()
+        if count < 1:
+            return abilityData
+        sellOk = 0
+        buyOk = 0
+        bias_loss_sum_sell = 0.0
+        bias_loss_sum_buy = 0.0
+        bias_win_sum_sell = 0.0
+        bias_win_sum_buy = 0.0
+
+
+
+        for i in range(0,count):
+            collectData:CollectData = cDataList[i]
+            high_price = -99999999
+            low_price = -high_price
+            for bar in collectData.predictBars:
+                high_price = max(high_price, bar.high_price)
+                low_price = min(low_price, bar.low_price)
+            basePrice = self.getEngineModel().getYBasePrice(collectData)
+            sell_pct = sell_pct_list[i]
+            buy_pct = buy_pct_list[i]
+            predict_sell_price = basePrice * (1 +  sell_pct/ 100)
+            predict_buy_price = basePrice * (1 + buy_pct / 100)
+            ## 预测价格有无到底最高价格
+            sell_ok = high_price >= predict_sell_price
+            buy_ok = low_price <= predict_buy_price
+            if sell_ok:
+                sellOk +=1
+                dist_pct = 100 * (predict_sell_price - high_price) / basePrice
+                bias_win_sum_sell += (dist_pct * dist_pct)
+
+            else:
+                ##所有值用pct，好统一比较。
+                dist_pct = 100 * (predict_sell_price - high_price) / basePrice
+                bias_loss_sum_sell += (dist_pct * dist_pct)
+
+            if buy_ok:
+                buyOk +=1
+                dist_pct = 100 * (low_price - predict_buy_price) / basePrice
+                bias_win_sum_buy += (dist_pct * dist_pct)
+            else:
+                dist_pct = 100 * (low_price - predict_buy_price) / basePrice
+                bias_loss_sum_buy += (dist_pct * dist_pct)
+
+        def keep_3_float(value)->float:
+            return int(value * 1000) / 1000
+
+        abilityData.scoreSell = sellOk / count
+        abilityData.scoreBuy = buyOk / count
+        abilityData.biasSellWin = keep_3_float(bias_win_sum_sell / count)
+        abilityData.biasSellLoss = keep_3_float(bias_loss_sum_sell / count)
+        abilityData.biasBuyWin = keep_3_float(bias_win_sum_buy / count)
+        abilityData.biasBuyLoss = keep_3_float(bias_loss_sum_buy / count)
+        abilityData.count = count
+        return abilityData;
+
 
 
     def loadCollectData(self, dimen: Dimension) -> Sequence['CollectData']:
