@@ -224,11 +224,6 @@ class DefaultStrategy(CoreEngineStrategy):
         self.failBuyBar = None
         pass
 
-    def isSupport(self, engine: CoreEngine, dimen:Dimension)->bool:
-        abilityData = engine.queryPredictAbilityData(dimen)
-        if abilityData.getScoreSell() < 0.72:
-            return False
-        return True
 
     """
     根据时间调整策略。
@@ -240,8 +235,6 @@ class DefaultStrategy(CoreEngineStrategy):
 
     def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
                             debugParams: {} = None) -> int:
-
-
         first_day_pct_limit = 1
         buy_offset_pct = 0
         min_allow_buy_day = 2  #可以买入的交易天数
@@ -250,10 +243,10 @@ class DefaultStrategy(CoreEngineStrategy):
         suggestBuyPrice = order.suggestBuyPrice * (1 + buy_offset_pct /100)
         if (order.status == PredictOrderStatus.HOLD):
 
-            if order.isOverHighPrice:
-                ##止损、止盈操作，第二天开盘价卖出
-                order.sellPrice = bar.open_price
-                return 4
+            # if order.isOverHighPrice:
+            #     ##止损、止盈操作，第二天开盘价卖出
+            #     order.sellPrice = bar.open_price
+            #     return 4
             if bar.high_price >= suggestSellPrice:
                 order.sellPrice = suggestSellPrice
                 return 3
@@ -354,9 +347,126 @@ def runBackTest():
             data.append(cData.occurExtra.get('aroon_down'))
             return data
 
+    class BestStrategy(DefaultStrategy):
+
+        def __init__(self):
+            self.dimenMap = {}
+            self.dimenMap['100'] = True
+            self.dimenMap['99'] = True
+            self.dimenMap['57'] = True
+            self.dimenMap['107'] = True
+
+
+        def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
+
+            if self.dimenMap.get(dimen.value.__str__()):
+                return True
+
+            return False
+
+        def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
+                                debugParams: {} = None) -> int:
+
+            cData: CollectData = order.predict.collectData
+            base_price = engine.getEngineModel().getYBasePrice(cData)
+
+            ###if order.suggestSellPrice - cData.occurBars[-1].close_price > 0
+
+            long_space_pct = 100 * (order.suggestSellPrice - cData.occurBars[-1].close_price) / cData.occurBars[
+                -1].close_price
+
+            # if long_space_pct < 0:
+            #     ##开盘价要低于预测价，否则很容易出现交易的时候就到底预测最高点。
+            #     return 5;
+
+            condition_1 = None  ###开始收盘价低于预期卖出价 : 如1.5
+            condition_2 = None ##调整买入价， 3 表示降低3%
+            condition_4 = None  ##调整卖出价，3,表示提高3%
+            condition_3 = None  ##开始收盘价高于预期卖出价
+            cut_win = False;  ##止盈
+            cut_loss_pct = None;  ##止损
+            buy_open_condition = None  ## 开盘价多少才买入
+
+            if order.dimen.value == 99 or order.dimen.value == 107:
+                condition_1 = 1.5  ###开始收盘价低于预期卖出价 : 如1.5
+                condition_2 = 3.5  ##调整买入价， 3 表示降低3%
+                condition_4 = None  ##调整卖出价，3,表示提高3%
+                condition_3 = 4  ##开始收盘价高于预期卖出价
+            elif  order.dimen.value == 100:
+                condition_1 = 1.5  ###开始收盘价低于预期卖出价 : 如1.5
+                condition_2 = 4  ##调整买入价， 3 表示降低3%
+                condition_4 = -1  ##调整卖出价，3,表示提高3%
+                condition_3 = 3  ##开始收盘价高于预期卖出价
+            elif  order.dimen.value == 57:
+                condition_1 = 1.5  ###开始收盘价低于预期卖出价 : 如1.5
+                condition_2 = 3.5  ##调整买入价， 3 表示降低3%
+                condition_4 = -1  ##调整卖出价，3,表示提高3%
+                condition_3 = 5  ##开始收盘价高于预期卖出价
+            else:
+                assert False
+
+            if not condition_1 is None and long_space_pct < condition_1:
+                return 5;
+
+            if not condition_3 is None \
+                    and long_space_pct > condition_3:
+                return 5;
+
+            min_allow_buy_day = 2  # 可以买入的交易天数
+
+            suggestSellPrice = order.suggestSellPrice
+            suggestBuyPrice = order.suggestBuyPrice
+
+            ##调整买入价
+            if not condition_2 is None:
+                buy_offset = condition_2 / 100
+                suggestBuyPrice = suggestSellPrice * (1 - buy_offset)
+
+            if not condition_4 is None:
+                buy_offset = condition_4 / 100
+                suggestSellPrice = suggestSellPrice * (1 + buy_offset)
+
+            if (order.status == PredictOrderStatus.HOLD):
+
+                # 止盈操作
+                if cut_win and order.isOverHighPrice:
+                    order.sellPrice = bar.open_price
+                    return 4
+                # 止损操作
+                if not cut_loss_pct is None and order.isOverClosePct < cut_loss_pct:
+                    order.sellPrice = bar.open_price
+                    return 4
+
+                if bar.high_price >= suggestSellPrice:
+                    order.sellPrice = suggestSellPrice
+                    return 3
+                if order.durationDay >= SKDJ_EngineModel.PREDICT_LENGT:
+                    order.sellPrice = bar.close_price
+                    return 4
+                order.isOverClosePct = 100 * (bar.close_price - suggestBuyPrice) / suggestBuyPrice  ##低价买入，是否想预期走势走高。
+            elif order.status == PredictOrderStatus.READY:
+                if order.durationDay > min_allow_buy_day:
+                    # 超过买入交易时间天数，废弃
+                    return 5
+
+                ##这天观察走势,且当天high_price 不能超过预测卖出价
+                # 这里有个坑，
+                # 1、如果当天是超过卖出价之后再跌到买入价，  这时第二天就要考虑止损
+                # 2、如果是到底买入价之后的当天马上涨到卖出价，这时第二天就要考虑止盈
+                # 不管是那种情况，反正第二天就卖出。
+                if suggestBuyPrice >= bar.low_price:
+                    ##趋势形成的第二天买入。
+                    order.buyPrice = suggestBuyPrice
+                    order.isOverHighPrice = bar.high_price >= suggestSellPrice  ##是否到底盈利点，到底的化下一步应该止盈
+                    order.isOverClosePct = 100 * (
+                                bar.close_price - suggestBuyPrice) / suggestBuyPrice  ##低价买入，是否想预期走势走高。
+
+                    return 1
+            return 0
+
     model = SKDJ_EngineModelV2()
-    strategy = DefaultStrategy()
-    #strategy = BestStrategy()
+    #strategy = DefaultStrategy()
+    strategy = BestStrategy()
     create = False
     engine = None
     if create:

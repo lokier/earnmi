@@ -149,6 +149,7 @@ class ClassifierModel(PredictModel):
             classifier = sklearn.svm.SVC(C=2, kernel='rbf', gamma=10, decision_function_shape='ovr', probability=True)  # ovr:一对多策略
             classifier.fit(x, y)
         else:
+            #max_features = len(x[0])
             classifier = RandomForestClassifier(n_estimators=100, max_depth=None,min_samples_split=50, bootstrap=True)
             classifier.fit(x, y)
         return classifier

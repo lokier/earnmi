@@ -304,7 +304,7 @@ def runBackTest():
 
 
     model = KDJMovementEngineModel()
-    strategy = DefaultStrategy()
+    #strategy = DefaultStrategy()
     #strategy = BestStrategy()
     create = False
     engine = None
