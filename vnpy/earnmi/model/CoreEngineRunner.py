@@ -99,6 +99,8 @@ class BackTestData(object):
     longData:BackTestItemData = None  #做多情况统计
     shortData:BackTestItemData = None #做空情况统计
 
+    debugParam:{} = None  ##用于debugBestParam 模式
+
     def __post_init__(self):
         self.longData = BackTestItemData()
         self.shortData = BackTestItemData()
@@ -110,6 +112,11 @@ class BackTestData(object):
         return 100 * self.buy_ok / self.count
 
 
+    def toStr(self):
+        return f"[{self.dimen.value}]=>count:{self.count}(sScore:{utils.keep_3_float(self.getSellScore())},bScore:{utils.keep_3_float(self.getBuyScore())})," \
+                       f"做多:[{self.longData.toStr(self.count)}]," \
+                       f"做空:[{self.shortData.toStr(self.count)}]"
+
 
 class CoreEngineRunner():
 
@@ -118,13 +125,13 @@ class CoreEngineRunner():
     """
     计算未来两天最有可能涨的股票SW指数。
     """
-    def debugBestParam(self,  soruce: BarDataSource, strategy:CoreEngineStrategy, params:{},min_deal_count = -1, max_run_count = 999999999,printDetail = False):
+    def debugBestParam(self,  soruce: BarDataSource, strategy:CoreEngineStrategy, params:{}):
         bars, code = soruce.nextBars()
         dataSet = {}
         totalCount = 0
         model = self.coreEngine.getEngineModel()
         while not bars is None:
-            # self.coreEngine.getEngineModel().collectBars(bars,code)
+            #self.coreEngine.getEngineModel().collectBars(bars,code)
             finished, stop = model.collectBars(bars, code)
             print(f"[backtest]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             totalCount += len(finished)
@@ -136,86 +143,78 @@ class CoreEngineRunner():
                     listData = []
                     dataSet[data.dimen] = listData
                 listData.append(data)
-
-        max_run_count = min(max_run_count,len(dataSet))
         run_cnt = 0
+        dataSetCount = len(dataSet)
+        retData = {}
+        for dimen, listData in dataSet.items():
+            if  not self.coreEngine.isSupport(dimen) or not strategy.isSupport(self.coreEngine, dimen):
+                self.coreEngine.printLog(f"不支持的维度:{dimen}")
+                continue
+            model = self.coreEngine.loadPredictModel(dimen)
+            if model is None:
+                self.coreEngine.printLog(f"维度:{dimen}不含模型数据预测能力")
+                continue
+            run_cnt +=1
+            self.coreEngine.printLog(f"开始回测维度:{dimen},进度:[{run_cnt}/{dataSetCount}]")
+            data_list = []
+            retData[dimen] = data_list
 
-        __dataDetailSet = {}
-        __dataTotalSet = {}
-        for paramName, paramsList in params.items():
-            # 计算paramName的 value 值。
-            _paramNameSet = {}
-            __dataDetailSet[paramName] = _paramNameSet
+            ##计算所有的参数情况
+            debugParamsList = self.convertMap2List(params)
+            paramSize = len(debugParamsList)
+            paramCnt = 0
+            for debugParam in debugParamsList:
+                paramCnt +=1
+                self.coreEngine.printLog(f"开始回测维度:{dimen},进度:[{run_cnt}/{dataSetCount}]:{paramCnt}/{paramSize}")
+                backtestData = self.__run_backtest(model,strategy, dimen, listData,debug_parms = debugParam);
+                backtestData.debugParam = debugParam
+                data_list.append(backtestData)
+        ###开始打印各个维度的参数情况
+        engine = self.coreEngine
+        engine.printLog("debugBestParam Finished！！各个维度的参数数值情况:")
+        def backtest_data_cmp(o1, o2):
+            return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
+        for dimen, data_list in retData.items():
+            engine.printLog(f"=========== dimen: {dimen.value} ============")
+            ## sort
+            data_list = sorted(data_list, key=cmp_to_key(backtest_data_cmp), reverse=True)
+            for backtestData in data_list:
+                engine.printLog(f"  params:{backtestData.debugParam}")
+                engine.printLog(f"  {backtestData.toStr()}")
 
-            _paramTotalSet = {}
-            __dataTotalSet[paramName] = _paramTotalSet
-            for paramValue in paramsList:
-                _paramTotalSet[paramValue] = []
+    """
+    originParams = {
+        'wwf':[1,None,5],
+        'zx':['sd',None,'dd']
+    }
+    将originParams展开为列表模式。
+    {'wwf': 1, 'zx': 'sd'}
+    {'wwf': 1, 'zx': None}
+    {'wwf': 1, 'zx': 'dd'}
+    {'wwf': None, 'zx': 'sd'}
+    {'wwf': None, 'zx': None}
+    {'wwf': None, 'zx': 'dd'}
+    {'wwf': 5, 'zx': 'sd'}
+    {'wwf': 5, 'zx': None}
+    {'wwf': 5, 'zx': 'dd'}
+    """
+    def convertMap2List(self,params: {})->[]:
+        paramList = []
+        CoreEngineRunner.__convertMapList(paramList, params, {}, list(params.keys()), 0)
+        return paramList
 
-            for dimen, listData in dataSet.items():
-                if run_cnt >= max_run_count:
-                    break
-                model = self.coreEngine.loadPredictModel(dimen)
-                if model is None:
-                    print(f"不支持的维度:{dimen}")
-                    continue
-                run_cnt += 1
-                print(f"开始回测维度:{dimen},进度:[{run_cnt}/{max_run_count}]")
+    def __convertMapList(list: [], originParams: {}, param: {}, keyList: [], index):
+        size = len(keyList)
+        if index >= size:
+            list.append(param.copy())
+            return
+        key = keyList[index]
+        values = originParams[key]
+        for value in values:
+            param[key] = value
+            CoreEngineRunner.__convertMapList(list, originParams, param, keyList, index + 1)
 
-                ##开始计算dimen，在paramName各个参数值的情况。
-                dimenSet = _paramNameSet.get(dimen)
-                if dimenSet is None:
-                    dimenSet = {}
-                    _paramNameSet[dimen] = dimenSet
-                for paramValue in paramsList:
-                    __dataList = []
-                    _testData = BackTestData(dimen=dimen)
-                    _testData.abilityData = self.coreEngine.queryPredictAbilityData(dimen)
-                    _testData.quant = self.coreEngine.queryQuantData(dimen)
-                    __the_param = {paramName:paramValue}
-                    predictList: Sequence['PredictData'] = model.predict(listData)
-                    for predict in predictList:
-                        order = self.__generatePredictOrder(self.coreEngine, predict)
-                        self.__updateOrdres(strategy,order, predict.collectData.predictBars,__the_param);
-                        self.putToStatistics(_testData, order, predict)
-
-                    __dataList.append(_testData)
-                    dimenSet[paramValue] = totalData
-                    _paramTotalSet[paramValue].append(totalData)
-        """
-         for predict in predictList:
-            order = self.__generatePredictOrder(self.coreEngine, predict)
-            __bars = [predict.collectData.occurBars[-1]] + predict.collectData.predictBars
-            self.__updateOrdres(strategy, order, __bars);
-            self.putToStatistics(_testData, order, predict)
-        __dataList[dimen] = _testData
-        self.__PrintStatictis(__dataList, min_deal_count)
-
-        """
-
-
-
-        for paramName, paramsList in params.items():
-            _paramNameSet = __dataDetailSet[paramName]
-            if len(_paramNameSet) < 1:
-                print(f"参数值{paramName}为空数据!!!!")
-            print(f"参数值{paramName}的总体数据情况:")
-            _paramTotalSet = __dataTotalSet[paramName]
-            for paramValue in paramsList:
-                 __dataList = _paramTotalSet.get(paramValue)
-                 totalData = self.__combine(__dataList, min_deal_count)
-                 print(f"    [{paramValue}]: {totalData}")
-            if printDetail:
-                print(f"参数值{paramName}的具体每个维度的情况:")
-                ##每个dimen的维度情况。
-                for dimen,dimenSet in _paramNameSet.items():
-                    print(f"   dimen = {dimen}:")
-                    paramValues = dimenSet.keys()
-                    for paramValue in paramValues:
-                        totalData:BackTestData = dimenSet.get(paramValue)
-                        print(f"          [{paramValue}]: {totalData}")
-
-    def backtest(self, soruce: BarDataSource, strategy:CoreEngineStrategy, min_deal_count = -1):
+    def backtest(self, soruce: BarDataSource, strategy:CoreEngineStrategy):
         bars, code = soruce.nextBars()
         dataSet = {}
         totalCount = 0
@@ -236,10 +235,8 @@ class CoreEngineRunner():
 
         __dataList = {}
         run_cnt = 0
-        run_limit_size = len(dataSet)
+        dataSetCount = len(dataSet)
         for dimen, listData in dataSet.items():
-            if run_cnt >= run_limit_size:
-                break
             if  not self.coreEngine.isSupport(dimen) or not strategy.isSupport(self.coreEngine, dimen):
                 self.coreEngine.printLog(f"不支持的维度:{dimen}")
                 continue
@@ -247,26 +244,26 @@ class CoreEngineRunner():
             if model is None:
                 self.coreEngine.printLog(f"维度:{dimen}不含模型数据预测能力")
                 continue
-            #abliity = self.coreEngine.queryPredictAbilityData(dimen)
-            #if abliity.getScoreSell() < 0.71:
-            #     self.coreEngine.printLog(f"维度分数太低:{dimen}")
-            #     continue
-
             run_cnt +=1
-            self.coreEngine.printLog(f"开始回测维度:{dimen},进度:[{run_cnt}/{run_limit_size}]")
-            predictList: Sequence['PredictData'] = model.predict(listData)
-            _testData = BackTestData(dimen=dimen)
-            _testData.abilityData = self.coreEngine.queryPredictAbilityData(dimen)
-            _testData.quant = self.coreEngine.queryQuantData(dimen)
-
-            for predict in predictList:
-                order = self.__generatePredictOrder(self.coreEngine,predict)
-                self.__updateOrdres(strategy,order,predict.collectData.predictBars);
-                self.putToStatistics(_testData,order,predict)
+            self.coreEngine.printLog(f"开始回测维度:{dimen},进度:[{run_cnt}/{dataSetCount}]")
+            _testData = self.__run_backtest(model,strategy,dimen,listData);
             __dataList[dimen] = _testData
 
-        self.__PrintStatictis(__dataList, min_deal_count)
+        self.__PrintStatictis(__dataList)
 
+    """
+    返回该维度下的回测数据。
+    """
+    def __run_backtest(self,model,strategy,dimen:Dimension,listData:Sequence['CollectData'],debug_parms:{} = None)->BackTestData:
+        predictList: Sequence['PredictData'] = model.predict(listData)
+        _testData = BackTestData(dimen=dimen)  ##某个维度的数据。
+        _testData.abilityData = self.coreEngine.queryPredictAbilityData(dimen)
+        _testData.quant = self.coreEngine.queryQuantData(dimen)
+        for predict in predictList:
+            order = self.__generatePredictOrder(self.coreEngine, predict)
+            self.__updateOrdres(strategy, order, predict.collectData.predictBars,debug_parms = debug_parms);
+            self.putToStatistics(_testData, order, predict)
+        return _testData
 
     def __updateOrdres(self, strategy:CoreEngineStrategy,order,bars:[],debug_parms:{} = None,foce_close_order= True):
         if debug_parms is None:
@@ -331,7 +328,7 @@ class CoreEngineRunner():
 
         return order
 
-    def __PrintStatictis(self, __dataList:{}, min_deal_count:int, debugy_param:[] = None):
+    def __PrintStatictis(self, __dataList:{}, debugy_param:[] = None):
 
         # def diemdata_cmp(v1, v2):
         #     return v1.getEarnRate() - v2.getEarnRate()
@@ -342,16 +339,12 @@ class CoreEngineRunner():
         values = []
         total = BackTestData(None)
         for dimen,d in __dataList.items():
-            if (d.longData.deal_count + d.shortData.deal_count) < min_deal_count:
-                continue
             total.count += d.count
             total.buy_ok +=d.buy_ok
             total.sell_ok += d.sell_ok
             d.longData.addTo(total.longData)
             d.shortData.addTo(total.shortData)
-            self.coreEngine.printLog(f"[{dimen.value}]=>count:{d.count}(sScore:{utils.keep_3_float(d.getSellScore())},bScore:{utils.keep_3_float(d.getBuyScore())})," \
-                       f"做多:[{d.longData.toStr(d.count)}]," \
-                       f"做空:[{d.shortData.toStr(d.count)}]" )
+            self.coreEngine.printLog(f"{d.toStr()}")
 
         ##
         self.coreEngine.printLog("\n注意：预测得分高并一定代表操作成功率应该高，因为很多情况是先到最高点，再到最低点，有个顺序问题")

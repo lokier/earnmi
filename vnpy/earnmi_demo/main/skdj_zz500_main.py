@@ -19,7 +19,7 @@ from earnmi.model.BarDataSource import ZZ500DataSource
 from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.CoreEngineRunner import CoreEngineRunner
-from earnmi.model.CoreEngineStrategy import CoreEngineStrategy
+from earnmi.model.CoreEngineStrategy import CoreEngineStrategy, CommonStrategy
 from earnmi.model.PredictData2 import PredictData
 from earnmi.uitl.BarUtils import BarUtils
 from earnmi.uitl.utils import utils
@@ -148,7 +148,7 @@ class SKDJ_EngineModel(CoreEngineModel):
 
     def getYBasePrice(self, cData: CollectData) -> float:
         ## 金叉形成后的前一天
-        return cData.occurBars[-3].close_price
+        return cData.occurBars[-1].close_price
 
     def getYLabelPct(self, cData:CollectData)->[float, float]:
         if len(cData.predictBars) < SKDJ_EngineModel.PREDICT_LENGT:
@@ -468,7 +468,7 @@ def runBackTest():
 
     model = SKDJ_EngineModelV2()
     #strategy = DefaultStrategy()
-    strategy = BestStrategy()
+    strategy = CommonStrategy()
     create = False
     engine = None
     if create:
@@ -476,18 +476,28 @@ def runBackTest():
     else:
         engine = CoreEngine.load(_dirName,model)
     runner = CoreEngineRunner(engine)
-    runner.backtest(futureSouce, strategy, min_deal_count=-1)
+    #runner.backtest(futureSouce, strategy)
     #params = {'buyDay':[0,1,2,3]}
-    #runner.debugBestParam(futureSouce, MyStrategy(),params, min_deal_count=-1)
-
+    params = {
+        'buy_offset_pct':[None,-5,-4,-3,-2,-1],
+        # 'sell_offset_pct': [None,-2,1,0,1,2],
+        # 'sell_leve_pct_top': [None,0,1,2,3],
+        # 'sell_leve_pct_bottom': [None,-3,-2,-1,1],
+    }
+    # self.buy_offset_pct = None  # 调整买入价格，3表示高于3%的价格买入，-3表示低于3%的价格买入 None表示没有限制。
+    # self.sell_offset_pct = None  # 调整买入价格，3表示高于3%的价格买入，-3表示低于3%的价格买入 None表示没有限制。
+    # self.sell_leve_pct_top = None  # sell_leve_pct的范围None表示没有限制
+    # self.sell_leve_pct_bottom = None
+    runner.debugBestParam(futureSouce, strategy,params)
 
     pass
 
+
 def printLaststTops():
-    _dirName = "models/kdj_movement_lastesd_top"
+    _dirName = "models/skdj_zz500_last_top"
 
     model = SKDJ_EngineModelV2()
-    create = True
+    create = False
     engine = None
     if create:
         start = datetime(2015, 10, 1)
@@ -505,8 +515,8 @@ def printLaststTops():
 
 if __name__ == "__main__":
     #analysicQuantDataOnly()
-    #runBackTest()
-    printLaststTops()
+    runBackTest()
+    #printLaststTops()
 
 
 

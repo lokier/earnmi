@@ -28,6 +28,48 @@ r1=  r1 /100
 ret = talib.CORREL(r1, r2, timeperiod=len(r1))
 print(f"v:{ret[-1]}")
 
+params = {
+    'wwf':[1,None,5],
+    'zx':['sd',None,'dd']
+}
+params.__contains__()
+"""
+params = {
+    'wwf':[1,None,5],
+    'zx':['sd',None,'dd']
+}
+{'wwf': 1, 'zx': 'sd'}
+{'wwf': 1, 'zx': None}
+{'wwf': 1, 'zx': 'dd'}
+{'wwf': None, 'zx': 'sd'}
+{'wwf': None, 'zx': None}
+{'wwf': None, 'zx': 'dd'}
+{'wwf': 5, 'zx': 'sd'}
+{'wwf': 5, 'zx': None}
+{'wwf': 5, 'zx': 'dd'}
+"""
+def __convertMapList(list:[], originParams:{}, param:{},keyList:[],index):
+    size = len(keyList)
+    if index >= size:
+        list.append(param.copy())
+        return
+    key = keyList[index]
+    values = originParams[key]
+    for value in values:
+        param[key] = value
+        __convertMapList(list,originParams,param,keyList,index+1)
+
+paramList = []
+__convertMapList(paramList,params,{},list(params.keys()),0)
+for p in paramList:
+    print(f"{p}")
+
+print(f"\n\n\n\n")
+
+myMap = {}
+myMap['od'] = None
+assert  myMap.__contains__('od') == True
+assert  myMap['od'] == None
 
 
 print(f'%4d,len:{len(r1)},%.4'
