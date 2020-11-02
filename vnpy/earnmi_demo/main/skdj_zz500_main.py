@@ -476,28 +476,43 @@ def runBackTest():
     else:
         engine = CoreEngine.load(_dirName,model)
     runner = CoreEngineRunner(engine)
+
+
     strategy.buy_offset_pct = -1
     strategy.sell_offset_pct = -1
     strategy.sell_leve_pct_top = 3
     strategy.sell_leve_pct_bottom = -3
+    #runner.backtest(futureSouce, strategy)
 
-    runner.backtest(futureSouce, strategy)
-    #params = {'buyDay':[0,1,2,3]}
+    class MyStrategy(CommonStrategy):
+        DIMEN = [107,
+                 93,92,100,64,57,99]
+        def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
+            if dimen.value == 99:
+                return True
+            # abilityData =  engine.queryPredictAbilityData(dimen);
+            # if abilityData.getScoreSell() < 0.72:
+            #     return False
+            return False
+    strategy = MyStrategy()
     params = {
-        'buy_offset_pct':[None,-5,-4,-3,-2,-1],
-         'sell_offset_pct': [None,-2,1,0,1,2],
-         'sell_leve_pct_top': [None,0,1,2,3],
-         'sell_leve_pct_bottom': [None,-3,-2,-1,1],
+        'buy_offset_pct': [None, -5, -4, -3, -2, -1],
+        'sell_offset_pct': [None, -2, 1, 0, 1, 2],
+        'sell_leve_pct_top': [None, -2,-1,0, 1, 2, 3],
+        'sell_leve_pct_bottom': [None, -3, -2, -1, 1,2,3],
     }
-    # strategy = CommonStrategy()
-    # futureSouce = ZZ500DataSource(middle, end)
-    # params = {
-    #     'buy_offset_pct': [-1,],
-    #     'sell_offset_pct': [-1],
-    #     'sell_leve_pct_top': [ 3],
-    #     'sell_leve_pct_bottom': [-3],
-    # }
-    # runner.debugBestParam(futureSouce, strategy,params)
+
+    def data_cmp(o1, o2):
+        deal_rate1 = o1.longData.deal_rate(o1.count)
+        deal_rate2 = o2.longData.deal_rate(o2.count)
+        if deal_rate1 < 0.1 and deal_rate2 < 0.1:
+            return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
+        if deal_rate1 < 0.1:
+            return -1
+        if deal_rate2 < 0.1:
+            return 1
+        return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
+    runner.debugBestParam(futureSouce, strategy,params,backtest_data_cmp=data_cmp)
 
     pass
 

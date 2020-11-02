@@ -125,7 +125,7 @@ class CoreEngineRunner():
     """
     计算未来两天最有可能涨的股票SW指数。
     """
-    def debugBestParam(self,  soruce: BarDataSource, strategy:CoreEngineStrategy, params:{}):
+    def debugBestParam(self,  soruce: BarDataSource, strategy:CoreEngineStrategy, params:{},backtest_data_cmp= None):
         bars, code = soruce.nextBars()
         dataSet = {}
         totalCount = 0
@@ -172,8 +172,11 @@ class CoreEngineRunner():
         ###开始打印各个维度的参数情况
         engine = self.coreEngine
         engine.printLog("debugBestParam Finished！！各个维度的参数数值情况:")
-        def backtest_data_cmp(o1, o2):
-            return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
+        if backtest_data_cmp is None:
+            def default_backtest_data_cmp(o1, o2):
+                return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
+            backtest_data_cmp = default_backtest_data_cmp
+
         for dimen, data_list in retData.items():
             engine.printLog(f"=========== dimen: {dimen.value} ============")
             ## sort

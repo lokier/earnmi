@@ -1,0 +1,102 @@
+=========== dimen: 107 ============
+  params:{'buy_offset_pct': -2, 'sell_offset_pct': None, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+  [107]=>count:291(sScore:84.536,bScore:70.79),做多:[交易率:28.18%,成功率:40.24%,盈利率:57.32%,单均pct:0.39,盈pct:4.43(7.33),亏pct:-5.03(-12.88)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': -2, 'sell_offset_pct': 0, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+  [107]=>count:291(sScore:84.536,bScore:70.79),做多:[交易率:28.18%,成功率:40.24%,盈利率:57.32%,单均pct:0.39,盈pct:4.43(7.33),亏pct:-5.03(-12.88)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': -1, 'sell_offset_pct': None, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+  [107]=>count:291(sScore:84.536,bScore:70.79),做多:[交易率:35.74%,成功率:50.00%,盈利率:63.46%,单均pct:0.29,盈pct:3.64(6.25),亏pct:-5.55(-13.76)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': -1, 'sell_offset_pct': 0, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+  [107]=>count:291(sScore:84.536,bScore:70.79),做多:[交易率:35.74%,成功率:50.00%,盈利率:63.46%,单均pct:0.29,盈pct:3.64(6.25),亏pct:-5.55(-13.76)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 2, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+  [107]=>count:291(sScore:84.536,bScore:70.79),做多:[交易率:46.05%,成功率:41.79%,盈利率:55.22%,单均pct:0.23,盈pct:4.52(7.29),亏pct:-5.07(-14.62)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': -1, 'sell_offset_pct': 2, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+  [107]=>count:291(sScore:84.536,bScore:70.79),做多:[交易率:35.74%,成功率:31.73%,盈利率:53.85%,单均pct:0.19,盈pct:4.63(8.37),亏pct:-4.98(-13.76)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': -2, 'sell_offset_pct': None, 'sell_leve_pct_top': 3, 'sell_leve_pct_bottom': 1}
+  [107]=>count:291(sScore:84.536,bScore:70.79),做多:[交易率:26.80%,成功率:38.46%,盈利率:56.41%,单均pct:0.19,盈pct:4.24(7.33),亏pct:-5.05(-12.88)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': -2, 'sell_offset_pct': 0, 'sell_leve_pct_top': 3, 'sell_leve_pct_bottom': 1}
+  [107]=>count:291(sScore:84.536,bScore:70.79),做多:[交易率:26.80%,成功率:38.46%,盈利率:56.41%,单均pct:0.19,盈pct:4.24(7.33),亏pct:-5.05(-12.88)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': -1, 'sell_offset_pct': None, 'sell_leve_pct_top': 3, 'sell_leve_pct_bottom': 1}
+  [107]=>count:291(sScore:84.536,bScore:70.79),做多:[交易率:34.02%,成功率:49.49%,盈利率:62.63%,单均pct:0.16,盈pct:3.58(6.25),亏pct:-5.55(-13.76)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': -1, 'sell_offset_pct': 0, 'sell_leve_pct_top': 3, 'sell_leve_pct_bottom': 1}
+  [107]=>count:291(sScore:84.536,bScore:70.79),做多:[交易率:34.02%,成功率:49.49%,盈利率:62.63%,单均pct:0.16,盈pct:3.58(6.25),亏pct:-5.55(-13.76)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+  [107]=>count:291(sScore:84.536,bScore:70.79),做多:[交易率:46.05%,成功率:60.45%,盈利率:66.42%,单均pct:0.15,盈pct:3.02(5.21),亏pct:-5.53(-14.62)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 0, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+
+
+ params:{'buy_offset_pct': None, 'sell_offset_pct': 2, 'sell_leve_pct_top': 1, 'sell_leve_pct_bottom': None}
+  [92]=>count:96(sScore:78.125,bScore:71.875),做多:[交易率:20.83%,成功率:55.00%,盈利率:60.00%,单均pct:0.35,盈pct:3.32(4.79),亏pct:-4.12(-9.48)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 2, 'sell_leve_pct_top': 1, 'sell_leve_pct_bottom': -3}
+  [92]=>count:96(sScore:78.125,bScore:71.875),做多:[交易率:20.83%,成功率:55.00%,盈利率:60.00%,单均pct:0.35,盈pct:3.32(4.79),亏pct:-4.12(-9.48)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 2, 'sell_leve_pct_top': 1, 'sell_leve_pct_bottom': -2}
+  [92]=>count:96(sScore:78.125,bScore:71.875),做多:[交易率:20.83%,成功率:55.00%,盈利率:60.00%,单均pct:0.35,盈pct:3.32(4.79),亏pct:-4.12(-9.48)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 2, 'sell_leve_pct_top': 1, 'sell_leve_pct_bottom': -1}
+  [92]=>count:96(sScore:78.125,bScore:71.875),做多:[交易率:20.83%,成功率:55.00%,盈利率:60.00%,单均pct:0.35,盈pct:3.32(4.79),亏pct:-4.12(-9.48)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': 1, 'sell_leve_pct_bottom': None}
+  [92]=>count:96(sScore:78.125,bScore:71.875),做多:[交易率:20.83%,成功率:60.00%,盈利率:65.00%,单均pct:0.01,盈pct:2.48(3.76),亏pct:-4.59(-9.48)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': 1, 'sell_leve_pct_bottom': -3}
+  [92]=>count:96(sScore:78.125,bScore:71.875),做多:[交易率:20.83%,成功率:60.00%,盈利率:65.00%,单均pct:0.01,盈pct:2.48(3.76),亏pct:-4.59(-9.48)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': 1, 'sell_leve_pct_bottom': -2}
+  [92]=>count:96(sScore:78.125,bScore:71.875),做多:[交易率:20.83%,成功率:60.00%,盈利率:65.00%,单均pct:0.01,盈pct:2.48(3.76),亏pct:-4.59(-9.48)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': 1, 'sell_leve_pct_bottom': -1}
+  [92]=>count:96(sScore:78.125,bScore:71.875),做多:[交易率:20.83%,成功率:60.00%,盈利率:65.00%,单均pct:0.01,盈pct:2.48(3.76),亏pct:-4.59(-9.48)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': 1, 'sell_leve_pct_bottom': None}
+
+
+
+  [100]=>count:478(sScore:76.569,bScore:60.878),做多:[交易率:36.19%,成功率:30.06%,盈利率:57.23%,单均pct:0.72,盈pct:3.53(7.30),亏pct:-3.04(-15.90)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+
+
+
+ params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 3}
+  [64]=>count:202(sScore:72.277,bScore:79.207),做多:[交易率:11.88%,成功率:41.67%,盈利率:62.50%,单均pct:1.26,盈pct:4.16(6.08),亏pct:-3.59(-9.14)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 3}
+  [64]=>count:202(sScore:72.277,bScore:79.207),做多:[交易率:11.88%,成功率:41.67%,盈利率:62.50%,单均pct:1.26,盈pct:4.16(6.08),亏pct:-3.59(-9.14)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 2, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 3}
+  [64]=>count:202(sScore:72.277,bScore:79.207),做多:[交易率:11.88%,成功率:25.00%,盈利率:58.33%,单均pct:0.99,盈pct:4.03(7.13),亏pct:-3.27(-9.14)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 3}
+  [64]=>count:202(sScore:72.277,bScore:79.207),做多:[交易率:11.88%,成功率:45.83%,盈利率:62.50%,单均pct:0.97,盈pct:3.70(5.03),亏pct:-3.59(-9.14)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 0, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 3}
+  [64]=>count:202(sScore:72.277,bScore:79.207),做多:[交易率:11.88%,成功率:45.83%,盈利率:62.50%,单均pct:0.97,盈pct:3.70(5.03),亏pct:-3.59(-9.14)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 2}
+  [64]=>count:202(sScore:72.277,bScore:79.207),做多:[交易率:33.66%,成功率:39.71%,盈利率:58.82%,单均pct:0.27,盈pct:3.60(6.08),亏pct:-4.49(-15.24)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 2}
+  [64]=>count:202(sScore:72.277,bScore:79.207),做多:[交易率:33.66%,成功率:39.71%,盈利率:58.82%,单均pct:0.27,盈pct:3.60(6.08),亏pct:-4.49(-15.24)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 2}
+  [64]=>count:202(sScore:72.277,bScore:79.207),做多:[交易率:33.66%,成功率:52.94%,盈利率:64.71%,单均pct:0.25,盈pct:3.10(5.03),亏pct:-4.97(-15.24)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 0, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 2}
+  [64]=>count:202(sScore:72.277,bScore:79.207),做多:[交易率:33.66%,成功率:52.94%,盈利率:64.71%,单均pct:0.25,盈pct:3.10(5.03),亏pct:-4.97(-15.24)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 2, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 2}
+
+
+params:{'buy_offset_pct': None, 'sell_offset_pct': 2, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+  [57]=>count:175(sScore:77.714,bScore:68.0),做多:[交易率:48.57%,成功率:27.06%,盈利率:65.88%,单均pct:0.41,盈pct:3.00(5.84),亏pct:-4.60(-13.99)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 2, 'sell_leve_pct_top': 2, 'sell_leve_pct_bottom': 1}
+  [57]=>count:175(sScore:77.714,bScore:68.0),做多:[交易率:48.57%,成功率:27.06%,盈利率:65.88%,单均pct:0.41,盈pct:3.00(5.84),亏pct:-4.60(-13.99)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 2, 'sell_leve_pct_top': 3, 'sell_leve_pct_bottom': 1}
+  [57]=>count:175(sScore:77.714,bScore:68.0),做多:[交易率:48.57%,成功率:27.06%,盈利率:65.88%,单均pct:0.41,盈pct:3.00(5.84),亏pct:-4.60(-13.99)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+  [57]=>count:175(sScore:77.714,bScore:68.0),做多:[交易率:48.57%,成功率:36.47%,盈利率:67.06%,单均pct:0.34,盈pct:2.65(4.80),亏pct:-4.36(-13.99)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': 2, 'sell_leve_pct_bottom': 1}
+  [57]=>count:175(sScore:77.714,bScore:68.0),做多:[交易率:48.57%,成功率:36.47%,盈利率:67.06%,单均pct:0.34,盈pct:2.65(4.80),亏pct:-4.36(-13.99)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': 3, 'sell_leve_pct_bottom': 1}
+  [57]=>count:175(sScore:77.714,bScore:68.0),做多:[交易率:48.57%,成功率:36.47%,盈利率:67.06%,单均pct:0.34,盈pct:2.65(4.80),亏pct:-4.36(-13.99)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+  [57]=>count:175(sScore:77.714,bScore:68.0),做多:[交易率:48.57%,成功率:36.47%,盈利率:67.06%,单均pct:0.34,盈pct:2.65(4.80),亏pct:-4.36(-13.99)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': 2, 'sell_leve_pct_bottom': 1}
+  [57]=>count:175(sScore:77.714,bScore:68.0),做多:[交易率:48.57%,成功率:36.47%,盈利率:67.06%,单均pct:0.34,盈pct:2.65(4.80),亏pct:-4.36(-13.99)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': 3, 'sell_leve_pct_bottom': 1}
+  [57]=>count:175(sScore:77.714,bScore:68.0),做多:[交易率:48.57%,成功率:36.47%,盈利率:67.06%,单均pct:0.34,盈pct:2.65(4.80),亏pct:-4.36(-13.99)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+  [57]=>count:175(sScore:77.714,bScore:68.0),做多:[交易率:48.57%,成功率:57.65%,盈利率:70.59%,单均pct:0.24,盈pct:2.19(3.76),亏pct:-4.47(-13.99)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_top': 2, 'sell_leve_pct_bottom': 1}
+  [57]=>count:175(sScore:77.714,bScore:68.0),做多:[交易率:48.57%,成功率:57.65%,盈利率:70.59%,单均pct:0.24,盈pct:2.19(3.76),亏pct:-4.47(-13.99)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_top': 3, 'sell_leve_pct_bottom': 1}
+  [57]=>count:175(sScore:77.714,bScore:68.0),做多:[交易率:48.57%,成功率:57.65%,盈利率:70.59%,单均pct:0.24,盈pct:2.19(3.76),亏pct:-4.47(-13.99)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': None, 'sell_offset_pct': 0, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+
+  [99]=>count:153(sScore:86.274,bScore:74.509),做多:[交易率:30.72%,成功率:48.94%,盈利率:59.57%,单均pct:0.43,盈pct:2.71(7.78),亏pct:-2.92(-8.39)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  [99]=>count:153(sScore:86.274,bScore:74.509),做多:[交易率:11.76%,成功率:33.33%,盈利率:61.11%,单均pct:0.79,盈pct:3.33(4.61),亏pct:-3.20(-6.52)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  params:{'buy_offset_pct': -2, 'sell_offset_pct': 0, 'sell_leve_pct_top': 2, 'sell_leve_pct_bottom': 1}
+  [99]=>count:153(sScore:86.274,bScore:74.509),做多:[交易率:11.76%,成功率:33.33%,盈利率:61.11%,单均pct:0.79,盈pct:3.33(4.61),亏pct:-3.20(-6.52)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+  [99]=>count:153(sScore:86.274,bScore:74.509),做多:[交易率:13.73%,成功率:52.38%,盈利率:57.14%,单均pct:0.36,盈pct:2.90(7.79),亏pct:-3.02(-6.52)],做空:[交易率:0.00%,成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
