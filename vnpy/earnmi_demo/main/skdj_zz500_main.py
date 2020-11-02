@@ -476,19 +476,28 @@ def runBackTest():
     else:
         engine = CoreEngine.load(_dirName,model)
     runner = CoreEngineRunner(engine)
-    #runner.backtest(futureSouce, strategy)
+    strategy.buy_offset_pct = -1
+    strategy.sell_offset_pct = -1
+    strategy.sell_leve_pct_top = 3
+    strategy.sell_leve_pct_bottom = -3
+
+    runner.backtest(futureSouce, strategy)
     #params = {'buyDay':[0,1,2,3]}
     params = {
         'buy_offset_pct':[None,-5,-4,-3,-2,-1],
-        # 'sell_offset_pct': [None,-2,1,0,1,2],
-        # 'sell_leve_pct_top': [None,0,1,2,3],
-        # 'sell_leve_pct_bottom': [None,-3,-2,-1,1],
+         'sell_offset_pct': [None,-2,1,0,1,2],
+         'sell_leve_pct_top': [None,0,1,2,3],
+         'sell_leve_pct_bottom': [None,-3,-2,-1,1],
     }
-    # self.buy_offset_pct = None  # 调整买入价格，3表示高于3%的价格买入，-3表示低于3%的价格买入 None表示没有限制。
-    # self.sell_offset_pct = None  # 调整买入价格，3表示高于3%的价格买入，-3表示低于3%的价格买入 None表示没有限制。
-    # self.sell_leve_pct_top = None  # sell_leve_pct的范围None表示没有限制
-    # self.sell_leve_pct_bottom = None
-    runner.debugBestParam(futureSouce, strategy,params)
+    # strategy = CommonStrategy()
+    # futureSouce = ZZ500DataSource(middle, end)
+    # params = {
+    #     'buy_offset_pct': [-1,],
+    #     'sell_offset_pct': [-1],
+    #     'sell_leve_pct_top': [ 3],
+    #     'sell_leve_pct_bottom': [-3],
+    # }
+    # runner.debugBestParam(futureSouce, strategy,params)
 
     pass
 
