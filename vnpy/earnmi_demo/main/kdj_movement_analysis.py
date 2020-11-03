@@ -48,10 +48,7 @@ from earnmi.chart.KPattern import KPattern
 class KDJMovementEngineModel(CoreEngineModel):
 
     def __init__(self):
-        self.lasted15Bar = np.array([None ,None ,None,None,None,None,None,None,None,None,None,None,None,None,None])
-        self.lasted3BarKdj = np.array([None ,None ,None])
-        self.lasted3BarMacd = np.array([None ,None ,None])
-        self.lasted3BarArron = np.array([None ,None ])
+
         self.kdjEncoder = FloatEncoder([15,30,45,60,75,90])
 
     def getPctEncoder1(self)->FloatEncoder:
@@ -64,6 +61,11 @@ class KDJMovementEngineModel(CoreEngineModel):
         from earnmi.chart.Indicator import Indicator
         self.indicator = Indicator(34)
         self.code = code
+        self.lasted15Bar = np.array(
+            [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None])
+        self.lasted3BarKdj = np.array([None, None, None])
+        self.lasted3BarMacd = np.array([None, None, None])
+        self.lasted3BarArron = np.array([None, None])
         return True
 
 

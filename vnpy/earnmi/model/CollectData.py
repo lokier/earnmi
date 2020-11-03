@@ -44,24 +44,21 @@ class CollectData(object):
        """
 
     def isValid(self) -> bool:
-        return self.validFlag >= 0
+        return self.valid
 
     def setValid(self, isValid: bool):
         if self.isFinished():
             raise RuntimeError("can't set valid if is Finished")
-        if isValid:
-            self.validFlag = 0
-        else:
-            self.validFlag = -1
+        self.valid = isValid
 
     """
     是否完成,
     """
     def isFinished(self) -> bool:
-        return self.validFlag == 1
+        return self.finished
 
     def setFinished(self):
-        self.validFlag = 1
+        self.finished = True
 
     def __post_init__(self):
         self.occurBars = []
@@ -69,7 +66,8 @@ class CollectData(object):
         self.occurKdj = []
         self.occurExtra={}
         self.predictExtra={}
-        self.validFlag = 0
+        self.valid = False
+        self.finished = False
 
         pass
 

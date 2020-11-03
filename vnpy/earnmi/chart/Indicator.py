@@ -32,6 +32,19 @@ class Indicator(object):
         self.volume_array: np.ndarray = np.zeros(size)
         self.open_interest_array: np.ndarray = np.zeros(size)
 
+    def clone(self):
+        indicator = Indicator()
+        indicator.count = self.count;
+        indicator.size = self.size
+        indicator.inited = self.inited
+        indicator.open_array = self.open_array
+        indicator.high_array = self.high_array
+        indicator.low_array = self.low_array
+        indicator.close_array = self.close_array
+        indicator.volume_array = self.volume_array
+        indicator.open_interest_array =  self.open_interest_array
+        return indicator
+
     def makeBars(self)->["BarData"]:
         size = len(self.open_array)
         bars = []

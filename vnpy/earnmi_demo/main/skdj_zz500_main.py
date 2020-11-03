@@ -52,10 +52,6 @@ class SKDJ_EngineModel(CoreEngineModel):
     PCT_MAX_LIMIT = 99999999
 
     def __init__(self):
-        self.lasted15Bar = np.full(15,None)
-        self.lasted3BarKdj = np.full(3,None)
-        self.lasted3BarMacd = np.full(3,None)
-        self.lasted3BarArron = np.full(3,None)
         self.kdjEncoder = FloatEncoder([15,30,45,60,75,90])
 
     def getPctEncoder1(self)->FloatEncoder:
@@ -67,6 +63,10 @@ class SKDJ_EngineModel(CoreEngineModel):
     def onCollectStart(self, code: str) -> bool:
         from earnmi.chart.Indicator import Indicator
         self.indicator = Indicator(34)
+        self.lasted15Bar = np.full(15, None)
+        self.lasted3BarKdj = np.full(3, None)
+        self.lasted3BarMacd = np.full(3, None)
+        self.lasted3BarArron = np.full(3, None)
         self.code = code
         return True
 

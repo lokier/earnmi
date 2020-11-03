@@ -196,18 +196,21 @@ class FetcherDailyBar:
 
 
 if __name__ == "__main__":
-    code = "300004"
-    start = datetime.now() - timedelta(days=7000)
+    from earnmi.chart.Chart import Chart
+
+    code = "000050"
+    start = datetime.now() - timedelta(days=200)
     end = datetime.now()
 
-    start_1 = datetime.now() -timedelta(days=1000)
-    end_1 = datetime.now() -timedelta(days=500)
-
+    # start_1 = datetime.now() -timedelta(days=1000)
+    # end_1 = datetime.now() -timedelta(days=500)
+    #
     fetcher = FetcherDailyBar(code)
-    #fetcher.clearAll()
-    bars = fetcher.fetch(start_1,end_1)
+    fetcher.clearAll()
+    # bars = fetcher.fetch(start_1,end_1)
     bars = fetcher.fetch(start,end)
-
+    chart = Chart()
+    chart.show(bars)
     print(f"len:{len(bars)}")
 
 
