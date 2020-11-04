@@ -40,6 +40,7 @@ class Factory:
        参考Arron方式，wave指标统计在一个period周期内的波动率，也就是创新高值的能力。创新高的有create_high个，创新低的有几个create_low。
        返回wave_down,wave_up。[0,100]之间。
     """
+    @jit(nopython=True)  # jit，numba装饰器中的一种
     def wave(period, close: np.ndarray, high: np.ndarray, low: np.ndarray):
         sell = (high + close) / 2
         buy = (low + close) / 2
@@ -79,6 +80,7 @@ class Factory:
         high_cnt = 0
         low_cnt = 0
         high_value = obv[-period]
+        low_value = obv[-period]
         high_index = -period
         low_index = -period
         for i in range(-period + 1, 0):
@@ -86,7 +88,7 @@ class Factory:
                 high_cnt += 1
                 high_index = i
                 high_value = obv[i]
-            if obv[i] <= low_index:
+            if obv[i] <= low_value:
                 low_cnt += 1
                 low_index = i
                 low_value = obv[i]
@@ -101,7 +103,7 @@ class Factory:
         arron_up = 100 * (period - high_day_prirod) / period
         arron_down = 100 * (period - low_day_period) / period
 
-        return  arron_up * obv_wave_up / 100 , arron_down * obv_wave_down /100
+        return  arron_down * obv_wave_down /100, arron_up * obv_wave_up / 100
 
     """
     

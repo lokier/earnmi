@@ -21,14 +21,19 @@ import os
 """
 统计因子值在某个范围，对应未来3天的最大sell_pct和最小buy_pct值。
 """
+"""
+valuesList[0]:, max:48.00,min:0.00,count:196750
+                分布:[[min:0.00)=0.00%,[0.00:9.60)=69.39%,[9.60:19.20)=25.04%,[19.20:28.80)=5.27%,[28.80:38.40)=0.29%,[38.40:48.00)=0.01%,[48.00:max)=0.00%,]
+    valuesList[1]:, max:46.08,min:0.00,count:196750
+                分布:[[min:0.00)=0.00%,[0.00:9.22)=71.59%,[9.22:18.43)=24.26%,[18.43:27.65)=3.87%,[27.65:36.86)=0.27%,[36.86:46.08)=0.00%,[46.08:max)=0.00%,]
+"""
 def parse_wave_ability_disbute():
     start = datetime(2015, 10, 1)
     end = datetime(2020, 9, 30)
     souces = ZZ500DataSource(start, end)
     bars, code = souces.nextBars()
-
     class MyCollectModel(CollectModel):
-        FLOAT_ENCOLDE = FloatEncoder([-1,0,5,10,15,20,30,35,40,60,80,100],minValue=-1,maxValue=100)
+        FLOAT_ENCOLDE = FloatEncoder([-1,0,2,4,6,8,10,20,35,50],minValue=-1,maxValue=100)
         def onCollectStart(self, code: str) -> bool:
             self.indicator = Indicator(24)
             return True
@@ -171,10 +176,10 @@ def parse_wave_disbute():
                     #break
                 #v = indicator.macd_rao(period=30)
                 for p in period_list:
-                    aroon_down, aroon_up = indicator.aroon(p)
-                    if aroon_down > 0  or aroon_up < 100:
-                        continue
-                    wave_down, wave_up = Factory.wave(p, indicator.close,indicator.high,indicator.low)
+                    #aroon_down, aroon_up = indicator.aroon(p)
+                    # if aroon_down > 0  or aroon_up < 100:
+                    #     continue
+                    wave_down, wave_up = Factory.obv_wave(p, indicator.close,indicator.high,indicator.low,indicator.volume)
                     value_list_map[p][0].append(wave_down)
                     value_list_map[p][1].append(wave_up)
                     # value_list_map[p].append(v)
