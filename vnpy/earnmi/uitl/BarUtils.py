@@ -67,3 +67,14 @@ class BarUtils:
             if _day > max_day:
                 max_day = _day
         return max_day
+
+    def getMaxSellBuyPct(bars:Sequence['BarData'],basePrice):
+        sell_pct = 100 * ((bars[0].high_price + bars[0].close_price) / 2 - basePrice) / basePrice
+        buy_pct = 100 * ((bars[0].low_price + bars[0].close_price) / 2 - basePrice) / basePrice
+        for i in range(1,len(bars)):
+            bar = bars[i]
+            _s_pct = 100 * ((bar.high_price + bar.close_price) / 2 - basePrice) / basePrice
+            _b_pct = 100 * ((bar.low_price + bar.close_price) / 2 - basePrice) / basePrice
+            sell_pct = max(_s_pct, sell_pct)
+            buy_pct = min(_b_pct, buy_pct)
+        return  sell_pct,buy_pct

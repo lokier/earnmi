@@ -12,35 +12,15 @@ from typing import Tuple, Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.model.CollectData import CollectData
+from earnmi.model.CollectModel import CollectModel
 from earnmi.model.PredictData import PredictData
 from earnmi.model.PredictOrder import PredictOrder
 from earnmi.uitl.BarUtils import BarUtils
 from vnpy.trader.object import BarData
 
 
-class CoreEngineModel:
+class CoreEngineModel(CollectModel):
 
-    """
-    开始新的股票遍历,如果需要忽略该code，返回false。
-    """
-    def onCollectStart(self, code: str) -> bool:
-        return True
-
-    """
-    最终bar，如果需要开始收集，返回一个CollectData对象。
-    """
-    @abstractmethod
-    def onCollectTrace(self, bar: BarData) -> CollectData:
-        pass
-    """
-    收集对象。如果收集完成返回True
-    """
-    @abstractmethod
-    def onCollect(self, data: CollectData, newBar: BarData):
-        pass
-
-    def onCollectEnd(self, code: str):
-        pass
 
     def getPctEncoder1(self)->FloatEncoder:
         return FloatEncoder([-7, -5, -3, -2, -1, 0, 1, 2, 3, 5, 7], minValue=-10, maxValue=10)
@@ -75,46 +55,17 @@ class CoreEngineModel:
     def getYBasePrice(self, cData:CollectData)->float:
         pass
 
+    """
+    收集完成,isFinished表示是否正常结束
+    """
+    def onCollectFinished(self,data:CollectData,isFinished:bool):
+        if isFinished is True:
+            _s,_b = self.getYLabelPct(data)
+            assert not _s is None
+            assert not _b is None
+        else:
+            xFeature = self.generateXFeature(data)
+            assert not xFeature is None
+
     def collectBars(self,barList: ['BarData'],symbol:str,dimensValue:[] = None) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
-        collector = self
-        collector.onCollectStart(symbol)
-        traceItems = []
-        finishedData = []
-        validData = []
-        dimenValueMap = None
-        if not dimensValue is None and len(dimensValue) > 0:
-            dimenValueMap = {}
-            for _v in dimensValue:
-                dimenValueMap[_v] = True
-
-        for bar in barList:
-            toDeleteList = []
-            newObject = collector.onCollectTrace(bar)
-            for collectData in traceItems:
-                collector.onCollect(collectData, bar)
-                if collectData.isFinished():
-                    toDeleteList.append(collectData)
-                    if collectData.isValid():
-                        finishedData.append(collectData)
-                        _s,_b = self.getYLabelPct(collectData)
-                        assert not _s is None
-                        assert not _b is None
-                elif not collectData.isValid():
-                    toDeleteList.append(collectData)
-            for collectData in toDeleteList:
-                traceItems.remove(collectData)
-
-            if newObject is None:
-                continue
-            if not dimenValueMap is None and dimenValueMap.get(newObject.dimen.value) != True:
-                continue
-            traceItems.append(newObject)
-
-        ###将要结束，剩下的作为validData
-        for traceObject in traceItems:
-            if traceObject.isValid():
-                xFeature = self.generateXFeature(traceObject)
-                assert not xFeature is None
-                validData.append(traceObject)
-        collector.onCollectEnd(symbol)
-        return finishedData,validData
+        return CollectModel.collect(self,barList,symbol,dimensValue)

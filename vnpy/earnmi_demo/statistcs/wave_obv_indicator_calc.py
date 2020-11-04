@@ -28,7 +28,7 @@ def parse_wave_ability_disbute():
     bars, code = souces.nextBars()
 
     class MyCollectModel(CollectModel):
-        FLOAT_ENCOLDE = FloatEncoder([-1,0,10,20,30,40,50,60,70,80,90,100],minValue=-1,maxValue=100)
+        FLOAT_ENCOLDE = FloatEncoder([-1,0,5,10,15,20,30,35,40,60,80,100],minValue=-1,maxValue=100)
         def onCollectStart(self, code: str) -> bool:
             self.indicator = Indicator(24)
             return True
@@ -38,7 +38,7 @@ def parse_wave_ability_disbute():
             self.indicator.update_bar(bar)
             if not self.indicator.inited:
                 return None
-            wave_down, wave_up = Factory.wave(20, self.indicator.close, self.indicator.high, self.indicator.low)
+            wave_down, wave_up = Factory.obv_wave(20, self.indicator.close, self.indicator.high, self.indicator.low,self.indicator.volume)
             ##编码
             down_encode = MyCollectModel.FLOAT_ENCOLDE.encode(wave_down)
             up_encode = MyCollectModel.FLOAT_ENCOLDE.encode(wave_up)
@@ -90,6 +90,8 @@ def parse_wave_ability_disbute():
     dist_list = []
     sell_pct_result = []
     buy_pct_result = []
+    up_list = []
+    down_list = []
 
     for key in dimen_list:
         down_encode = (int(key / MyCollectModel.FLOAT_ENCOLDE.mask())) % MyCollectModel.FLOAT_ENCOLDE.mask()
@@ -104,6 +106,8 @@ def parse_wave_ability_disbute():
         print(f"{desc}，sell_pct={sell_value_list.mean()},buy_pct={buy_value_list.mean()}")
 
         if count > 500:
+            up_list.append((_min1 + _max1) / 2 )
+            down_list.append((_min2 + _max2) / 2 )
             dist_list.append(dist)
             sell_pct_result.append(sell_value_list.mean())
             buy_pct_result.append(buy_value_list.mean())
@@ -113,12 +117,20 @@ def parse_wave_ability_disbute():
     dist_list = np.array(dist_list)
     sell_pct_result = np.array(sell_pct_result)
     buy_pct_result = np.array(buy_pct_result)
+    up_list = np.array(up_list)
+    down_list = np.array(down_list)
+
     r1 = talib.CORREL(dist_list, sell_pct_result, timeperiod=len(dist_list))
     r2 = talib.CORREL(dist_list, buy_pct_result, timeperiod=len(dist_list))
+    r3 = talib.CORREL(up_list, sell_pct_result, timeperiod=len(dist_list))
+    r4 = talib.CORREL(down_list, buy_pct_result, timeperiod=len(dist_list))
 
     print(f"size:{len(dist_list)},{dist_list}" )
-    print(f"sell与dist的相关性:{r1[-1]}" )
-    print(f"buy与dist的相关性:{r2[-1]}" )
+    print(f"sell与dist的相关性:{r1[-1]}")
+    print(f"buy与dist的相关性:{r2[-1]}")
+    print(f"sell与up_list的相关性:{r3[-1]}" )
+    print(f"buy与down_list的相关性:{r4[-1]}" )
+
 
     pass
 

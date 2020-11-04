@@ -60,6 +60,50 @@ class Factory:
         return wave_down, wave_up
 
     """
+     能量波动潮因子。
+     wave+obv结合。
+    """
+
+    @jit(nopython=True)  # jit，numba装饰器中的一种
+    def obv_wave(period, close: np.ndarray, high: np.ndarray, low: np.ndarray,volumn:np.ndarray):
+
+        # assert abs(_high - _low) > 0.008
+        # print("why")
+        assert  len(close) > period
+        obv = np.zeros(period)
+        for i in range(-period,0):
+            _low = min(close[i-1], low[i])
+            _high = max(close[i-1], high[i])
+            obv[i] = ((close[i] - _low) - (_high - close[i])) / (_high - _low) * volumn[i]
+        ##统计obv创新高和创新低的个数
+        high_cnt = 0
+        low_cnt = 0
+        high_value = obv[-period]
+        high_index = -period
+        low_index = -period
+        for i in range(-period + 1, 0):
+            if obv[i] >= high_value:
+                high_cnt += 1
+                high_index = i
+                high_value = obv[i]
+            if obv[i] <= low_index:
+                low_cnt += 1
+                low_index = i
+                low_value = obv[i]
+
+        obv_wave_down = 100 * low_cnt / period
+        obv_wave_up = 100 * high_cnt / period
+        #Aroon(上升) = [(计算期天数 - 最高价后的天数) / 计算期天数] * 100
+        #Aroon(下降) = [(计算期天数 - 最低价后的天数) / 计算期天数] * 100
+
+        high_day_prirod = abs(high_index) - 1
+        low_day_period = abs(low_index) -1
+        arron_up = 100 * (period - high_day_prirod) / period
+        arron_down = 100 * (period - low_day_period) / period
+
+        return  arron_up * obv_wave_up / 100 , arron_down * obv_wave_down /100
+
+    """
     
     价格与成交量偏离因子值。(-1到1） 没有验证过。
     """

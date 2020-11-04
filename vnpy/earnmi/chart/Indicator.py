@@ -597,7 +597,7 @@ class Indicator(object):
         _high = max(self.close[-2], self.high[-1])
         assert abs(_high - _low) > 0.008
         # print("why")
-        return (((self.close[-1] - _low) - (_high - self.close[-1])) / (_high - _low)) / self.volume[-1]
+        return (((self.close[-1] - _low) - (_high - self.close[-1])) / (_high - _low)) * self.volume[-1]
 
         #return ret
 

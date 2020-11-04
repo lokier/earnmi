@@ -66,7 +66,7 @@ class CollectData(object):
         self.occurKdj = []
         self.occurExtra={}
         self.predictExtra={}
-        self.valid = False
+        self.valid = True
         self.finished = False
 
         pass

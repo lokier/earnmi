@@ -139,6 +139,7 @@ if __name__ == "__main__":
     pctEncoder = FloatEncoder(pct_split)
 
 
+
     print(f"pctEncoder.encode(-6.2) : {pctEncoder.descriptEncdoe(pctEncoder.encode(-6.2))}")
     print(f"pctEncoder.encode(2.2) : {pctEncoder.descriptEncdoe(pctEncoder.encode(2.2))}")
     print(f"pctEncoder.encode(-7.1) : {pctEncoder.descriptEncdoe(pctEncoder.encode(-7.1))}")
