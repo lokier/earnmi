@@ -28,8 +28,40 @@ class Factory:
         return 100 * np.sqrt(total) / base_price
 
     """
+      改进后的arron指标。 以买方、卖方力量为准
+    """
+    def arron(period,close:np.ndarray, high: np.ndarray,low:np.ndarray):
+        sell = (high + close) / 2
+        buy =  (low+ close) / 2
+        aroon_down, aroon_up = talib.AROON(sell, buy, period)
+        return aroon_down,aroon_up
+
+    """
+       参考Arron方式，wave指标统计在一个period周期内的波动率，也就是创新高值的能力。创新高的有create_high个，创新低的有几个create_low。
+       返回wave_down,wave_up。[0,100]之间。
+    """
+    def wave(period, close: np.ndarray, high: np.ndarray, low: np.ndarray):
+        sell = (high + close) / 2
+        buy = (low + close) / 2
+
+        high_cnt = 0
+        low_cnt = 0
+        high_value = sell[-period]
+        low_value = buy[-period]
+        for i in range(-period+1,0):
+            if sell[i] >= high_value:
+                high_cnt +=1
+                high_value = sell[i]
+            if buy[i] <= low_value:
+                low_cnt+=1
+                low_value = buy[i]
+        wave_down = 100 * low_cnt / period
+        wave_up = 100 * high_cnt / period
+        return wave_down, wave_up
+
+    """
     
-    价格与成交量偏离因子值。(-1到1） 
+    价格与成交量偏离因子值。(-1到1） 没有验证过。
     """
     def pvb(close: np.ndarray, high: np.ndarray,low:np.ndarray,volumn:np.ndarray, period: int32 = 20)->float:
         ##涨幅与多空成交量对比的相关系数。

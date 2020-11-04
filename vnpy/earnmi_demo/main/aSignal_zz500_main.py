@@ -250,17 +250,17 @@ def analysicQuantDataOnly():
         cData:CollectData = cDataList[i];
         day_value.append(len(cData.predictBars))
         sell_day_value.append(cData.sell_day)
-        chart_count +=1
 
-        bars = cData.occurBars + cData.predictBars + cData.extraBars
-        bar = bars[-1]
-        if bars[-1].symbol == '000028.XSHE':
-            print("wwhy")
-        chart.show(bars, item = aSignalAroon(),savefig=f'models/files/{bars[-1].symbol}_{bar.datetime.year}_{bar.datetime.month}_{bar.datetime.day}.png')
-
-        if chart_count > 50:
-            print(f"wwhy")
-            break
+        # bars = cData.occurBars + cData.predictBars + cData.extraBars
+        # bar = bars[-1]
+        # if bars[-1].symbol == '000028.XSHE':
+        #     print("wwhy")
+        # chart.show(bars, item = aSignalAroon(),savefig=f'models/files/{bars[-1].symbol}_{bar.datetime.year}_{bar.datetime.month}_{bar.datetime.day}.png')
+        #
+        # chart_count +=1
+        # if chart_count > 50:
+        #     print(f"wwhy")
+        #     break
 
     dayEncoder = FloatEncoder(list(np.arange(0,15,2)))
     print(f"    分布:{FloatRange.toStr(dayEncoder.computeValueDisbustion(day_value), dayEncoder)}")

@@ -42,8 +42,10 @@ if __name__ == "__main__":
         indicator = Indicator(40)
         prebar = None
         for bar in bars:
+            if not BarUtils.isOpen(bar):
+                continue
             indicator.update_bar(bar)
-            if indicator.count > 33 and BarUtils.isOpen(bar):
+            if indicator.count > 33 :
                 lsosc_v = lsosc(prebar.close_price,bar.close_price,bar.high_price,bar.low_price)
                 if abs(lsosc_v - 1) < 0.05:
                     collect_bars_1.append(bar)
