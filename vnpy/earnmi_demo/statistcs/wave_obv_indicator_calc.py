@@ -35,7 +35,7 @@ def parse_wave_ability_disbute():
     class MyCollectModel(CollectModel):
         FLOAT_ENCOLDE = FloatEncoder([-1,0,2,4,6,8,10,20,35,50],minValue=-1,maxValue=100)
         def onCollectStart(self, code: str) -> bool:
-            self.indicator = Indicator(24)
+            self.indicator = Indicator(54)
             return True
         def onCollectTrace(self, bar: BarData) -> CollectData:
             if not BarUtils.isOpen(bar):
@@ -43,7 +43,7 @@ def parse_wave_ability_disbute():
             self.indicator.update_bar(bar)
             if not self.indicator.inited:
                 return None
-            wave_down, wave_up = Factory.obv_wave(20, self.indicator.close, self.indicator.high, self.indicator.low,self.indicator.volume)
+            wave_down, wave_up = Factory.obv_wave(37, self.indicator.close, self.indicator.high, self.indicator.low,self.indicator.volume)
             ##编码
             down_encode = MyCollectModel.FLOAT_ENCOLDE.encode(wave_down)
             up_encode = MyCollectModel.FLOAT_ENCOLDE.encode(wave_up)
@@ -98,6 +98,8 @@ def parse_wave_ability_disbute():
     up_list = []
     down_list = []
 
+    maxSell = 0
+    minBuy = 0
     for key in dimen_list:
         down_encode = (int(key / MyCollectModel.FLOAT_ENCOLDE.mask())) % MyCollectModel.FLOAT_ENCOLDE.mask()
         up_encode = key % MyCollectModel.FLOAT_ENCOLDE.mask()
@@ -107,16 +109,23 @@ def parse_wave_ability_disbute():
         _min2,_max2 = MyCollectModel.FLOAT_ENCOLDE.parseEncode(down_encode)
         dist = (_min1 + _max1) / 2 - (_min2 + _max2) / 2
         count = len(sell_value_list)
-        desc = f"wave_up[{_min1},{_max1})-wave_down[{_min2},{_max2}), count:{count},dist=%.2f" % dist
-        print(f"{desc}，sell_pct={sell_value_list.mean()},buy_pct={buy_value_list.mean()}")
-
         if count > 500:
+            sell_pct = sell_value_list.mean()
+            buy_pct = buy_value_list.mean()
+            if sell_pct > maxSell:
+                maxSell = sell_pct
+            if minBuy > buy_pct:
+                minBuy = buy_pct
+            desc = f"wave_up[{_min1},{_max1})-wave_down[{_min2},{_max2}), count:{count},dist=%.2f" % dist
+            print(f"{desc}，sell_pct={sell_pct},buy_pct={buy_pct}")
             up_list.append((_min1 + _max1) / 2 )
             down_list.append((_min2 + _max2) / 2 )
             dist_list.append(dist)
             sell_pct_result.append(sell_value_list.mean())
             buy_pct_result.append(buy_value_list.mean())
             pass
+
+    print(f"maxSell={maxSell},minBuy={minBuy}")
 
     import talib
     dist_list = np.array(dist_list)
@@ -152,7 +161,7 @@ def parse_wave_disbute():
         os.makedirs(imgeDir)
 
     chart = Chart()
-    period_list = [9,12,20,25]
+    period_list = [33]
     value_list_map = {}
     for p in period_list:
         value_list_map[p] = [
@@ -209,5 +218,5 @@ def parse_wave_disbute():
 
 
 if __name__ == "__main__":
-    #parse_wave_disbute()
-    parse_wave_ability_disbute()
+    parse_wave_disbute()
+    #parse_wave_ability_disbute()

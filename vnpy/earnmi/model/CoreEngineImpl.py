@@ -366,7 +366,7 @@ class CoreEngineImpl(CoreEngine):
 
     def buildPredictModel(self,split_rate=0.7,useSVM=True):
         self.__buildAndSaveModelData(split_rate,useSVM)
-        self.__ouptBuildDataToFiles()
+        ##self.__ouptBuildDataToFiles()
 
     def buildQuantData(self):
         dataSet = {}
@@ -465,6 +465,8 @@ class CoreEngineImpl(CoreEngine):
         for dimen in dimen_list:
             run_count +=1
             self.printLog(f"正在计算并保存模型数据：dime={dimen},progress={run_count}/{count}", True)
+            if not self.getEngineModel().isSupportBuildPredictModel(self,dimen):
+                continue
             dataList = self.loadCollectData(dimen)
             size = len(dataList)
             trainSize = int( size* split_rate)

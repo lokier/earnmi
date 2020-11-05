@@ -93,6 +93,8 @@ class CoreEngine():
     @abstractmethod
     def isSupport(self,dimen:Dimension) ->bool:
         pass
+
+
     """
     加载所有的维度
     """

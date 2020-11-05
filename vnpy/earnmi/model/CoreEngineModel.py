@@ -13,6 +13,7 @@ from typing import Tuple, Sequence
 from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.model.CollectData import CollectData
 from earnmi.model.CollectModel import CollectModel
+from earnmi.model.Dimension import Dimension
 from earnmi.model.PredictData import PredictData
 from earnmi.model.PredictOrder import PredictOrder
 from earnmi.uitl.BarUtils import BarUtils
@@ -54,6 +55,9 @@ class CoreEngineModel(CollectModel):
     @abstractmethod
     def getYBasePrice(self, cData:CollectData)->float:
         pass
+
+    def isSupportBuildPredictModel(self, engine, dimen: Dimension) -> bool:
+        return True
 
     """
     收集完成,isFinished表示是否正常结束
