@@ -78,3 +78,11 @@ class BarUtils:
             sell_pct = max(_s_pct, sell_pct)
             buy_pct = min(_b_pct, buy_pct)
         return  sell_pct,buy_pct
+
+    def getAvgClosePct(bars:Sequence['BarData'],basePrice):
+        close_price = 0
+        size = len(bars)
+        for i in range(0,size):
+            bar = bars[i]
+            close_price += bar.close_price
+        return  100 * (close_price / size - basePrice) / basePrice
