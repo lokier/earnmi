@@ -174,14 +174,33 @@ class CoreEngineRunner():
         engine.printLog("debugBestParam Finished！！各个维度的参数数值情况:")
         if backtest_data_cmp is None:
             def default_backtest_data_cmp(o1, o2):
-                return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
+                rate1 = o1.longData.deal_rate(o1.count)
+                rate2 = o2.longData.deal_rate(o2.count)
+                v = 0.1
+                if rate1 < v and rate2 < v:
+                    return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
+                if rate1 < v:
+                    return -1
+                if rate2 < v:
+                    return 1
+                rate1 = o1.longData.suc_rate()
+                rate2 = o2.longData.suc_rate()
+                v = 0.5
+                if rate1 < v and rate2 < v:
+                    return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
+                if rate1 < v:
+                    return -1
+                if rate2 < v:
+                    return 1
+                return (rate1 + o1.longData.total_pct_avg())- (rate2 + o2.longData.total_pct_avg())
             backtest_data_cmp = default_backtest_data_cmp
 
         for dimen, data_list in retData.items():
-            engine.printLog(f"=========== dimen: {dimen.value} ============")
+            engine.printLog(f"=========== dimen: {dimen.value} , top10 list ============")
             ## sort
             data_list = sorted(data_list, key=cmp_to_key(backtest_data_cmp), reverse=True)
-            for backtestData in data_list:
+            for i in range(0, min(10,len(data_list))):
+                backtestData = data_list[i]
                 engine.printLog(f"  params:{backtestData.debugParam}")
                 engine.printLog(f"  {backtestData.toStr()}")
 
@@ -421,10 +440,16 @@ class CoreEngineRunner():
     def printZZ500Tops(self, strategy:CoreEngineStrategy,level = 1):
         today = datetime.now()
         end = utils.to_end_date(today - timedelta(days=1))
+        today_tarde_over = today.hour > 18
+        if today_tarde_over:
+            print(f"[getTops]: 今天已经收市")
+            end = today + timedelta(days=1)
         start = end - timedelta(days=90)
         soruce = ZZ500DataSource(start, end)
         from earnmi.uitl.jqSdk import jqSdk
-        todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
+        todayBarsMap = {}
+        if not today_tarde_over :
+            todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
         bars, code = soruce.nextBars()
         dataSet = {}
         totalCount = 0
@@ -433,7 +458,7 @@ class CoreEngineRunner():
         while not bars is None:
 
             ##去除今天的数据
-            if utils.is_same_day(bars[-1].datetime,today):
+            if not today_tarde_over and utils.is_same_day(bars[-1].datetime,today):
                 del bars[-1]
 
             if latestDay is None or bars[-1].datetime > latestDay:
@@ -444,6 +469,9 @@ class CoreEngineRunner():
             totalCount += len(stop)
             bars, code = soruce.nextBars()
             for data in stop:
+                if not utils.is_same_day(data.occurBars[-1].datetime,latestDay):
+                    ##不是今天最新
+                    continue
                 ##因为是实盘操作，所以未完成的stop收集对象应该包含今天的bar
                 # todayBar = todayBarsMap.get(code)
                 # if not todayBar is None:
@@ -460,6 +488,8 @@ class CoreEngineRunner():
         today_order_list = []
         done_order_list = []
         for dimen, listData in dataSet.items():
+            if not strategy.isSupport(self.coreEngine,dimen):
+                continue
             model = self.coreEngine.loadPredictModel(dimen)
             if model is None:
                 self.coreEngine.printLog(f"不支持的维度:{dimen}")
@@ -472,11 +502,8 @@ class CoreEngineRunner():
             for predict in predictList:
                 order = self.__generatePredictOrder(self.coreEngine,predict)
                 todayOpration = self.__updateOrdres(strategy,order,predict.collectData.predictBars,foce_close_order=False);
-                if not todayOpration is None:
-                    order.todayOpration = todayOpration
-                    today_order_list.append(order)
-                else:
-                    done_order_list.append(order)
+                today_order_list.append(order)
+
 
 
 
@@ -495,33 +522,13 @@ class CoreEngineRunner():
                5：废弃单
         """
         def order_cmp_today(o1, o2):
-            if o1.todayOpration == o2.todayOpration:
-                return order_cmp_by_time(o1,o2)
             return o1.todayOpration - o2.todayOpration
         self.coreEngine.printLog(f"=========今天关注订单：{len(today_order_list)}个,date:{latestDay}")
-        today_order_list = sorted(today_order_list, key=cmp_to_key(order_cmp_today), reverse=False)
+        ##today_order_list = sorted(today_order_list, key=cmp_to_key(order_cmp_today), reverse=False)
         for order in today_order_list:
-            desc = "unkonw"
-            if order.todayOpration == 2:
-                desc = "做空完成"
-            if order.todayOpration == 1:
-                desc = "买入完成"
-            if order.todayOpration == 0:
-                desc = "待关注"
-                if order.durationDay == 1:
-                    desc ="观望"
-                if order.durationDay == 2:
-                    desc ="下单买入"
-                if order.durationDay > 2:
-                    desc ="关注卖出"
-            if order.todayOpration == 3:
-                desc = "成功卖出"
-            if order.todayOpration == 4:
-                desc = "失败卖出"
-            if order.todayOpration == 5:
-                desc = "废弃单"
 
-            self.coreEngine.printLog(f"【{desc}】{order.getStr()}")
+
+            self.coreEngine.printLog(f"{order.getStr()}")
             bar: BarData = todayBarsMap.get(order.code)
             if bar is None:
                 info = f"    当前价格未知！"

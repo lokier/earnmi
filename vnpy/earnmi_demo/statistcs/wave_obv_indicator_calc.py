@@ -3,6 +3,7 @@ from future.backports.datetime import datetime
 
 from earnmi.model.CollectData import CollectData
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
+from earnmi_demo.statistcs.FactorAnalysis import FactoryAnalysis
 from earnmi_demo.statistcs.FactoryParser import FactoryParser
 from vnpy.trader.object import BarData
 
@@ -29,7 +30,7 @@ valuesList[0]:, max:48.00,min:0.00,count:196750
                 分布:[[min:0.00)=0.00%,[0.00:9.22)=71.59%,[9.22:18.43)=24.26%,[18.43:27.65)=3.87%,[27.65:36.86)=0.27%,[36.86:46.08)=0.00%,[46.08:max)=0.00%,]
 """
 def parse_wave_ability_disbute():
-    start = datetime(2015, 10, 1)
+    start = datetime(2017, 10, 1)
     end = datetime(2020, 9, 30)
     souces = ZZ500DataSource(start, end)
     bars, code = souces.nextBars()
@@ -44,8 +45,8 @@ def parse_wave_ability_disbute():
             self.indicator.update_bar(bar)
             if not self.indicator.inited:
                 return None
-            wave_down, wave_up = Factory.obv_wave(24, self.indicator.close, self.indicator.high, self.indicator.low,self.indicator.volume)
-            #wave_down, wave_up = self.indicator.aroon(24)
+            ##wave_down, wave_up = Factory.obv_wave(33, self.indicator.close, self.indicator.high, self.indicator.low,self.indicator.volume)
+            wave_down, wave_up = self.indicator.aroon(24)
 
             ##编码
             down_encode = MyCollectModel.FLOAT_ENCOLDE.encode(wave_down)
@@ -67,13 +68,13 @@ def parse_wave_ability_disbute():
             if not BarUtils.isOpen(newBar):
                 return
             data.predictBars.append(newBar)
-            if len(data.predictBars) >= 3:
+            if len(data.predictBars) >= 15:
                 data.setFinished()
     dimen_sell_pct_list_map = {}
     dimen_buy_pct_list_map = {}
     collectModel = MyCollectModel()
     fParser = FactoryParser()
-
+    fAnaylsis = FactoryAnalysis("obv_wave_p24")
     while not bars is None:
         indicator = Indicator(40)
         last_33bars = np.full(33, None)
@@ -97,7 +98,9 @@ def parse_wave_ability_disbute():
             buy_pct_list.append(buy_pct)
             wave_up = cData.occurExtra['wave_up']
             assert not wave_up is None
+            __the_pct_list = BarUtils.getPctList(cData.predictBars,basePrice)
             fParser.put("wave_up", wave_up, sell_pct)
+            fAnaylsis.put(wave_up,__the_pct_list)
         bars,code = souces.nextBars()
 
     ##打印因子分布的后面几天的sell_pct和buy_pct的分布情况
@@ -157,6 +160,7 @@ def parse_wave_ability_disbute():
     # print(f"buy与down_list的相关性:{r4[-1]}" )
 
     fParser.savePng()
+    fAnaylsis.printLast(1)
     pass
 
 """

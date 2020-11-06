@@ -799,7 +799,9 @@ class CoreEngineImpl(CoreEngine):
         return not self.queryQuantData(dimen) is None
 
     def loadPredictModel(self, dimen: Dimension) -> PredictModel:
-        if self.__modelLoaded and self.isSupport(dimen):
+        if self.__modelLoaded :
+            if self.queryPredictAbilityData(dimen) is None:
+                return None
             model = ClassifierModel(self, dimen)
             model.load(self.__getModelFilePath(dimen))
             return model

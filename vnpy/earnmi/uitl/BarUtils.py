@@ -3,6 +3,7 @@ from typing import Sequence
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
 
+import numpy as np
 
 class BarUtils:
 
@@ -86,3 +87,14 @@ class BarUtils:
             bar = bars[i]
             close_price += bar.close_price
         return  100 * (close_price / size - basePrice) / basePrice
+
+    """
+    在各个天的涨幅情况。
+    """
+    def getPctList(bars:Sequence['BarData'],basePrice)->np.ndarray:
+        size = len(bars)
+        pct_list = np.full(len(bars),size)
+        for i in range(0,size):
+            bar = bars[i]
+            pct_list[i] = 100 * (bar.close_price - basePrice) / basePrice
+        return  pct_list

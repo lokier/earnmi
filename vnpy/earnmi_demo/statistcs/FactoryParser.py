@@ -86,7 +86,7 @@ class FactoryParser:
             print( f"      相关性:%.4f    相关性ListSize:{CORRELLen}"  % (r1[-1]))
 
 
-    def savePng(self,minValue=20,maxValue = None):
+    def savePng(self,minValue=16.6655555,maxValue = None):
         for factory_elemen_name, factory_item in self.factorMap.items():
             value_list = factory_item.value_list
             pct_list = factory_item.pct_list
@@ -114,5 +114,5 @@ class FactoryParser:
             print(f"name:{factory_elemen_name} , size:{size}, maxFactory:%.2f,minFactory:%.2f,avgPct:%.2f" % (_max, _min, pct_list.mean()))
             print( f"      pct值分布:{FloatRange.toStr(dif_encoder.computeValueDisbustion(pct_list), dif_encoder)}")
 
-            plt.scatter(value_list, pct_list, alpha=0.15,marker='.')  #
-            plt.show()
+            # plt.scatter(value_list, pct_list, alpha=0.15,marker='.')  #
+            # plt.show()

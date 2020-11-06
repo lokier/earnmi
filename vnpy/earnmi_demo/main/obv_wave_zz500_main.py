@@ -153,6 +153,8 @@ class ObvWave_EngineModel(CoreEngineModel):
             return False
         if qData.count >5000:
             return False
+        if qData.count < 500:
+            return False
         return True
 
     def generateXFeature(self, cData: CollectData) -> []:
@@ -206,10 +208,10 @@ def runBackTest():
     class MyStrategy(CommonStrategy):
         DIMEN = [37,
                  66, 36, 46, 26, 55, 27,77]
-        def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
-            if dimen.value == 37:
-                return True
-            return False
+        # def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
+        #     if dimen.value == 37:
+        #         return True
+        #     return False
 
     strategy = MyStrategy()
     create = False
@@ -221,23 +223,12 @@ def runBackTest():
     runner = CoreEngineRunner(engine)
     #runner.backtest(futureSouce, strategy)
     params = {
-        'buy_offset_pct': [None, -3, -2, -1],
+        'buy_offset_pct': [None, -2,-1,1],
         'sell_offset_pct': [None,  -1,1],
-        'sell_leve_pct_top': [None,  1, 2,],
-        'sell_leve_pct_bottom': [None,  -1, 1,2],
+        #'sell_leve_pct_top': [None,  1, 2,],
+        'sell_leve_pct_bottom': [0,   1,2,3],
     }
-
-    def data_cmp(o1, o2):
-        deal_rate1 = o1.longData.deal_rate(o1.count)
-        deal_rate2 = o2.longData.deal_rate(o2.count)
-        if deal_rate1 < 0.1 and deal_rate2 < 0.1:
-            return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
-        if deal_rate1 < 0.1:
-            return -1
-        if deal_rate2 < 0.1:
-            return 1
-        return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
-    runner.debugBestParam(futureSouce, strategy,params,backtest_data_cmp=data_cmp)
+    runner.debugBestParam(futureSouce, strategy,params)
     pass
 
 
@@ -245,7 +236,7 @@ def printLaststTops():
     _dirName = "models/obv_wave_zz500_last_top"
 
     model = ObvWave_EngineModel()
-    create = True
+    create = False
     engine = None
     if create:
         start = datetime(2015, 10, 1)
@@ -255,15 +246,30 @@ def printLaststTops():
     else:
         engine = CoreEngine.load(_dirName, model)
     runner = CoreEngineRunner(engine)
-    ##runner.printZZ500Tops(TheBestStrategy());
 
+    # params: {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_top': 2, 'sell_leve_pct_bottom': 1}
+    # [27] = > count: 418(sScore:77.511, bScore: 68.181), 做多: [
+    #     交易率:37.08 %, 成功率: 62.58 %, 盈利率: 76.77 %, 单均pct: 0.91, 盈pct: 2.40(8.02), 亏pct: -4.01(-10.00)], 做空: [
+    #     交易率:0.00 %, 成功率: 0.00 %, 盈利率: 0.00 %, 单均pct: 0.00, 盈pct: 0.00(0.00), 亏pct: 0.00(0.00)]
+    class MyStrategy(CommonStrategy):
+        def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
+            if dimen.value == 27:
+                return True
+            return False
+    strategy = MyStrategy()
+    strategy.sell_leve_pct_top =2
+    strategy.sell_leve_pct_bottom = 1
+
+    runner.printZZ500Tops(strategy)
 
     pass
 
 if __name__ == "__main__":
     #analysicQuantDataOnly()
-    runBackTest()
-    #printLaststTops()
+    #runBackTest()
+
+
+    printLaststTops()
 
 
 
