@@ -44,7 +44,9 @@ def parse_wave_ability_disbute():
             self.indicator.update_bar(bar)
             if not self.indicator.inited:
                 return None
-            wave_down, wave_up = Factory.obv_wave(30, self.indicator.close, self.indicator.high, self.indicator.low,self.indicator.volume)
+            wave_down, wave_up = Factory.obv_wave(24, self.indicator.close, self.indicator.high, self.indicator.low,self.indicator.volume)
+            #wave_down, wave_up = self.indicator.aroon(24)
+
             ##编码
             down_encode = MyCollectModel.FLOAT_ENCOLDE.encode(wave_down)
             up_encode = MyCollectModel.FLOAT_ENCOLDE.encode(wave_up)
@@ -65,7 +67,7 @@ def parse_wave_ability_disbute():
             if not BarUtils.isOpen(newBar):
                 return
             data.predictBars.append(newBar)
-            if len(data.predictBars) >= 7:
+            if len(data.predictBars) >= 3:
                 data.setFinished()
     dimen_sell_pct_list_map = {}
     dimen_buy_pct_list_map = {}
