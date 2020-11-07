@@ -233,5 +233,7 @@ def parse_wave_disbute():
 
 
 if __name__ == "__main__":
-    #parse_wave_disbute()
+    #
+
+    ()
     parse_wave_ability_disbute()

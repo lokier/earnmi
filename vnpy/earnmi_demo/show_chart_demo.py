@@ -92,7 +92,7 @@ class kdj(IndicatorItem):
 
 code = "600196"
 
-start = datetime(2018, 1, 8)
+start = datetime(2018, 6, 8)
 end =datetime(2018, 10, 1)
 #end = datetime(2020, 8, 17)
 

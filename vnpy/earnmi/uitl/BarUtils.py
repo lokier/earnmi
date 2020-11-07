@@ -98,3 +98,11 @@ class BarUtils:
             bar = bars[i]
             pct_list[i] = 100 * (bar.close_price - basePrice) / basePrice
         return  pct_list
+
+    @classmethod
+    def filterNoOpen(cls, bars):
+        new_bars = []
+        for bar in bars:
+            if BarUtils.isOpen(bar):
+                new_bars.append(bar)
+        return new_bars

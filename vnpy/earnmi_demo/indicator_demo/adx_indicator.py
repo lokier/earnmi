@@ -11,20 +11,36 @@ from vnpy.trader.object import BarData
 
 class Item(IndicatorItem):
 
+    def __init__(self):
+        self.names = [
+            "adx",
+            "-di","+di",
+            "adxr"]
+        self.colors = ['b','g','r','black']
+
     def getNames(self) -> List:
-        return ["adx"]
+        return self.names
 
 
     def getValues(self, indicator: Indicator,bar:BarData,signal:Signal) -> Map:
         values = {}
-        n = 14
+        n = 20
         if indicator.count >= n:
-            values["adx"] = indicator.adxr(14)
+            values["adx"] = indicator.adx(14)
+            values["-di"] = indicator.minus_di(14)
+            values["+di"] = indicator.plus_di(14)
+            values["adxr"] = indicator.adxr(14)
         else:
-            values["adx"] = 0.0
+            values["adx"] = 0
+            values["-di"] = 0
+            values["+di"] = 0
+            values["adxr"] =0
         return values
 
     def getColor(self, name: str):
+        index = self.names.index(name)
+        if index >= 0:
+            return self.colors[index]
         return 'r'
 
 code = "600155"
