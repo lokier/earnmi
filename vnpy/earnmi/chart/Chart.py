@@ -114,12 +114,14 @@ class HoldBarMaker:
 
         self.__current_hold_bar = holdBar
         self.onHoldUpdate(bar)
-        self._hold_bars.append(holdBar)
         return holdBar
 
     def onHoldEnd(self):
         if (self.__current_hold_bar is None):
             raise RuntimeError("you must call onHoldStart first()")
+        else:
+            self._hold_bars.append(self.__current_hold_bar)
+
         self.__current_hold_bar  = None
 
     def onHoldUpdate(self,bar:BarData):

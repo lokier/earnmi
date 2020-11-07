@@ -22,10 +22,10 @@ class IndicatorMeasure:
         self.holdBarMapList = {}
         self.holdingBarMap = {}
 
-    def newSession(self):
-        for name,holdbar in self.holdingBarMap.items():
-            if not holdbar is None:
-                self.__put_holdBar(name,holdbar)
+    def startSession(self):
+        pass
+
+    def endSession(self):
         self.holdingBarMap.clear()
     """
     是否持有。
@@ -113,7 +113,8 @@ if __name__ == "__main__":
     bars, code = souces.nextBars()
     while not bars is None:
         print(f"new session=>code:{code},bar.size = {len(bars)}")
-        indicator = Indicator(34)
+        measure.startSession()
+        indicator = Indicator()
         latesBars = []
         for bar in bars:
             if not BarUtils.isOpen(bar):
@@ -124,10 +125,17 @@ if __name__ == "__main__":
                 continue
             m_di = indicator.minus_di(14)
             p_di = indicator.plus_di(14)
-            buy_proid = p_di - m_di > 30 and p_di - m_di < 40
-            hold_peroid = buy_proid or p_di - m_di > 30 and p_di < 75
-            measure.measure("di指标因子_p14",bar,hold_peroid)
-        measure.newSession()
+            m10 = indicator.sma(10)
+            m5 = indicator.sma(5)
+            hold =  p_di  - m_di > 30 and p_di < 75
+            hold2 =  p_di  - m_di > 30 and p_di < 70
+            hold3 =  p_di  - m_di > 40 and p_di < 70
+            #hold3 =  p_di  - m_di > 40 and p_di < 70
+
+            measure.measure("di指标因子_p14( p_di  - m_di > 30 and p_di < 70)",bar,hold2)
+            measure.measure("di指标因子_p14( hold3)",bar,hold3)
+            measure.measure("di指标因子_p14",bar,hold)
+        measure.endSession()
         bars, code = souces.nextBars()
     ##打印因子策略结果
     measure.printAll()

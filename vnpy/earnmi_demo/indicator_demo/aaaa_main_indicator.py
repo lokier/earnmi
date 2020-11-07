@@ -37,18 +37,15 @@ class AroonItem(IndicatorItem):
             #need_hold = aroon_up > 50  and  aroon_up > aroon_down
            # need_hold = aroon_up > 16.67 and dea > 0 and p_di > m_di
             #need_hold = aroon_up > 16.67  and p_di > m_di
-            buy_proid = p_di  - m_di > 30 and p_di - m_di < 40
-            hold_peroid = buy_proid or  p_di  - m_di > 30 and p_di < 75
+            #buy_proid = p_di  - m_di > 30 and p_di - m_di < 40
+            hold =  p_di  - m_di > 30 and p_di < 75
             #need_hold =    and p_di < 75
 
-            if buy_proid and not signal.hasBuy:
+            if hold and not signal.hasBuy:
                 signal.buy = True
-                self.hold_day = 1
-            elif not hold_peroid and signal.hasBuy:
+            elif not hold and signal.hasBuy:
                 signal.sell = True
-                self.hold_day = 0
-            elif hold_peroid:
-                self.hold_day +=1
+
 
         else:
             values["arron_up_25"] = 10
