@@ -48,9 +48,6 @@ class HoldBar():
         self.bars = []
 
     def getCostPct(self):
-        """
-        真正的盈利开始算是从第一天收盘价作为买入点。
-        """
         start_price = self.open_price
         return (self.close_price- start_price) / start_price
 
@@ -107,7 +104,10 @@ class HoldBarMaker:
             raise RuntimeError("you must call onHoldEnd first()")
 
         holdBar = HoldBar(code=bar.symbol, start_time=bar.datetime, end_time=bar.datetime)
-        holdBar.open_price = bar.close_price;
+        """
+             真正的盈利开始算是从第一天收盘价作为买入点,这里于
+         """
+        holdBar.open_price = (bar.open_price + bar.close_price) / 2;
         holdBar.high_price = bar.high_price;
         holdBar.close_price = bar.close_price;
         holdBar.low_price = min(bar.low_price,bar.open_price)
