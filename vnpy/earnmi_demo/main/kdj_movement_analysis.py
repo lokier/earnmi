@@ -256,7 +256,7 @@ def runBackTest():
         engine = CoreEngine.load(_dirName,model)
 
     runner = CoreEngineRunner(engine)
-    runner.backtest(futureSouce, MyStrategy(), min_deal_count=-1)
+    runner.backtest(futureSouce, MyStrategy())
 
     pass
 

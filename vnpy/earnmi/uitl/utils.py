@@ -115,4 +115,35 @@ class utils:
     def to_end_date(d: datetime) -> datetime:
         return datetime(year=d.year, month=d.month, day=d.day, hour=23, minute=59, second=59)
 
+    """
+    展开参数map，如下
+      originParams = {
+          'wwf':[1,None,5],
+          'zx':['sd',None,'dd']
+      }
+      将originParams展开为列表模式。
+      {'wwf': 1, 'zx': 'sd'}
+      {'wwf': 1, 'zx': None}
+      {'wwf': 1, 'zx': 'dd'}
+      {'wwf': None, 'zx': 'sd'}
+      {'wwf': None, 'zx': None}
+      {'wwf': None, 'zx': 'dd'}
+      {'wwf': 5, 'zx': 'sd'}
+      {'wwf': 5, 'zx': None}
+      {'wwf': 5, 'zx': 'dd'}
+      """
+    def expandParamsMap(params: {})->[]:
+        paramList = []
+        utils.__expandParamMapList(paramList, params, {}, list(params.keys()), 0)
+        return paramList
 
+    def __expandParamMapList(list: [], originParams: {}, param: {}, keyList: [], index):
+        size = len(keyList)
+        if index >= size:
+            list.append(param.copy())
+            return
+        key = keyList[index]
+        values = originParams[key]
+        for value in values:
+            param[key] = value
+            utils.__expandParamMapList(list, originParams, param, keyList, index + 1)

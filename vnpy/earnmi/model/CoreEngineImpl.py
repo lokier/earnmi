@@ -527,16 +527,16 @@ class CoreEngineImpl(CoreEngine):
             self.printLog(f"    预测SellPct值分布情况:{FloatRange.toStr(abilityData.sellPctRnageList,pctEncoder)}")
             self.printLog(f"    预测Buy_Pct值分布情况:{FloatRange.toStr(abilityData.buyPctRnageList,pctEncoder)}")
         abilitySize = len(abilityDataMap)
-        sell_extra = 100 * (sell_score_total - sell_score_total_quant) / sell_score_total_quant
-        buy_extra  = 100 *  (buy_score_total - buy_score_total_quant) / buy_score_total_quant
+        sell_extra = 100 * (sell_score_total - sell_score_total_quant) / sell_score_total_quant if sell_score_total_quant > 0 else 0
+        buy_extra  = 100 *  (buy_score_total - buy_score_total_quant) / buy_score_total_quant if buy_score_total_quant > 0 else 0
         sell_extra_dec:str = f"+%.2f%%%%" % sell_extra  if sell_extra > 0  else f"-%.2f%%%%" % sell_extra
         buy_extra_dec:str = f"+%.2f%%%%" % buy_extra  if buy_extra > 0 else f"-%.2f%%%%" % buy_extra
 
         self.printLog(f"【总体】: s得分:%.2f[{sell_extra_dec}],b得分:%.2f[{buy_extra_dec}],s_pct能力:%.2f,b_pct能力:%.2f,s稳定性:%.2f,b稳定性%.2f" % (
-                sell_score_total / abilitySize,
-                buy_score_total / abilitySize,
-                p_sell_pct_total / abilitySize, p_buy_pct_total / abilitySize,
-                sell_stability_total/abilitySize,buy_stablility_total/abilitySize
+                sell_score_total / abilitySize if abilitySize > 0 else 0,
+                buy_score_total / abilitySize if abilitySize > 0 else 0,
+                p_sell_pct_total / abilitySize if abilitySize > 0 else 0, p_buy_pct_total / abilitySize if abilitySize > 0 else 0,
+                sell_stability_total/abilitySize if abilitySize > 0 else 0,buy_stablility_total/abilitySize if abilitySize > 0 else 0
         ))
         self.printLog(f"量化数据方面，一般s得分在0.5-0.6之间，所以得分值起码也要增加到0.8以上，这样的化预测能力基本上才能达标！！！");
         self.__modelLoaded = True

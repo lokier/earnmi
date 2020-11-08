@@ -45,6 +45,7 @@ def parse_wave_disbute():
                     p_di = indicator.plus_di(p)
                     fPraser.put(f"period[{p}]+id",p_di,0)
                     fPraser.put(f"period[{p}]-id", m_di, 0)
+                    fPraser.put(f"period[{p}]_dist", p_di - m_di, 0)
 
         bars, code = souces.nextBars()
     fPraser.printRange()

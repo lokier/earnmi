@@ -19,7 +19,7 @@ from earnmi.model.BarDataSource import ZZ500DataSource
 from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.CoreEngineRunner import CoreEngineRunner
-from earnmi.model.CoreEngineStrategy import CoreEngineStrategy
+from earnmi.model.CoreEngineStrategy import CoreEngineStrategy, CommonStrategy
 from earnmi.model.PredictData2 import PredictData
 from earnmi.uitl.BarUtils import BarUtils
 from earnmi.uitl.utils import utils
@@ -136,7 +136,6 @@ class KDJMovementEngineModel(CoreEngineModel):
     def onCollect(self, data: CollectData, newBar: BarData) :
         #不含停牌数据
         if not BarUtils.isOpen(newBar):
-            data.setValid(False)
             return
         data.predictBars.append(newBar)
         data.setValid(True)
@@ -174,7 +173,7 @@ class KDJMovementEngineModel(CoreEngineModel):
 
     def getYBasePrice(self, cData:CollectData)->float:
         ##以金叉发生的当前收盘价作为基准值。
-        return cData.occurBars[-2].close_price
+        return cData.occurBars[-1].close_price
 
     def generateXFeature(self, cData: CollectData) -> []:
         # 保证len等于三，要不然就不能作为生成特征值。
@@ -308,14 +307,14 @@ def runBackTest():
     model = KDJMovementEngineModel()
     #strategy = DefaultStrategy()
     #strategy = BestStrategy()
-    create = False
+    create = True
     engine = None
     if create:
         engine = CoreEngine.create(_dirName, model,historySource,min_size=200,useSVM=False)
     else:
         engine = CoreEngine.load(_dirName,model)
     runner = CoreEngineRunner(engine)
-    runner.backtest(futureSouce, strategy, min_deal_count=-1)
+    runner.backtest(futureSouce, CommonStrategy())
     #params = {'buyDay':[0,1,2,3]}
     #runner.debugBestParam(futureSouce, MyStrategy(),params, min_deal_count=-1)
 
@@ -353,16 +352,6 @@ if __name__ == "__main__":
 [255]=>count:239(sScore:73.221,bScore:55.648),做多:[交易率:44.77%,预测成功率:39.25%,盈利率:47.66%,单均pct:0.61,盈pct:3.68(15.10),亏pct:-2.18(-9.44)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
 
     """
-
-    # from earnmi.uitl.jqSdk import jqSdk
-    #
-    # jq = jqSdk.get()
-    #
-    # todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
-    #
-    # for code,bar in todayBarsMap.items():
-    #     print(f"code:{code},price:{bar.close_price}")
-    # print(f"todayBars:{len(todayBarsMap)}")
     """
     动量指标：
     

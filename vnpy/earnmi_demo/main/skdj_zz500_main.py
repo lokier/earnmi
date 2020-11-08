@@ -570,8 +570,8 @@ params:
 
 if __name__ == "__main__":
     #analysicQuantDataOnly()
-    runBackTest()
-    #printLaststTops()
+    #runBackTest()
+    printLaststTops()
 
 
 
