@@ -18,7 +18,7 @@ from earnmi.model.PredictData import PredictData
 from earnmi.model.PredictOrder import PredictOrder
 from earnmi.uitl.BarUtils import BarUtils
 from vnpy.trader.object import BarData
-
+import numpy as np
 
 class CoreEngineModel(CollectModel):
 
@@ -55,6 +55,12 @@ class CoreEngineModel(CollectModel):
     @abstractmethod
     def getYBasePrice(self, cData:CollectData)->float:
         pass
+
+    """
+    优化特征。（主要去重）
+    """
+    def optimize(self, x: [], y_sell_1: [], y_buy_1: [], y_sell_2: [], y_buy_2: []):
+        return np.array(x),np.array(y_sell_1),np.array(y_buy_1),np.array(y_sell_2),np.array(y_buy_2)
 
     def isSupportBuildPredictModel(self, engine, dimen: Dimension) -> bool:
         return True

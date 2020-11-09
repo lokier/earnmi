@@ -140,8 +140,13 @@ class ClassifierModel(PredictModel):
             y_buy_1.append(label_buy_1)
             y_sell_2.append(label_sell_2)
             y_buy_2.append(label_buy_2)
+        origin_size = len(x_features)
+        x_features,y_sell_1,y_buy_1,y_sell_2,y_buy_2 = self.engine.getEngineModel().optimize(x_features,y_sell_1,y_buy_1,y_sell_2,y_buy_2)
+        optimize_size = len(x_features)
+        self.engine.printLog(f"优化X特征: origin_size = {origin_size},optimize_size={optimize_size} ")
 
-        return np.array(x_features),np.array(y_sell_1),np.array(y_buy_1),np.array(y_sell_2),np.array(y_buy_2)
+        return x_features,y_sell_1,y_buy_1,y_sell_2,y_buy_2
+
 
     def __createClassifier(self,x,y):
         classifier = None
@@ -376,8 +381,6 @@ class CoreEngineImpl(CoreEngine):
             dataSet[dimen] = cDatas
         self.__saveDimeenAndQuantData(dataSet)
         self.__ouptBuildDataToFiles()
-
-
 
     def __ouptBuildDataToFiles(self):
         _outputfileName = f"{self.__file_dir}/build.xlsx"
