@@ -18,7 +18,7 @@ from earnmi.model.BarDataSource import ZZ500DataSource
 from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.CoreEngineRunner import CoreEngineRunner
-from earnmi.model.CoreEngineStrategy import CoreEngineStrategy
+from earnmi.model.CoreEngineStrategy import CoreEngineStrategy, CommonStrategy
 from earnmi.model.PredictData2 import PredictData
 from earnmi.uitl.BarUtils import BarUtils
 from earnmi.uitl.utils import utils
@@ -94,6 +94,7 @@ class KDJMovementEngineModel(CoreEngineModel):
         if BarUtils.getMaxIntervalDay(self.lasted15Bar) >= 5:
             return None
 
+
         if self.indicator.count >=30:
             k0,d0,j0 = self.lasted3BarKdj[-2]
             k1,d1,j1 = self.lasted3BarKdj[-1]
@@ -151,7 +152,7 @@ class KDJMovementEngineModel(CoreEngineModel):
 
     def getYBasePrice(self, cData:CollectData)->float:
         ##以金叉发生的当前收盘价作为基准值。
-        return cData.occurBars[-2].close_price
+        return cData.occurBars[-1].close_price
 
     def generateXFeature(self, cData: CollectData) -> []:
         #保证len小于三，要不然就不能作为生成特征值。
@@ -256,7 +257,9 @@ def runBackTest():
         engine = CoreEngine.load(_dirName,model)
 
     runner = CoreEngineRunner(engine)
-    runner.backtest(futureSouce, MyStrategy())
+    strategy = CommonStrategy()
+    #strategy = MyStrategy()
+    runner.backtest(futureSouce, strategy)
 
     """
 2020-11-09 20:02:03,800 - build - INFO - [dime:885]: count=220,pow_rate=0.059,sCenterPct=1.16,bCenterPct=-1.48

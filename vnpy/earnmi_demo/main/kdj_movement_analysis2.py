@@ -60,82 +60,65 @@ class KDJMovementEngineModel(CoreEngineModel):
 
     def onCollectStart(self, code: str) -> bool:
         from earnmi.chart.Indicator import Indicator
-        self.indicator = Indicator(34)
+        self.indicator = Indicator(40)
         self.code = code
-        self.lasted15Bar = np.array(
-            [None, None, None, None, None, None, None, None, None, None, None, None, None, None, None])
-        self.lasted3BarKdj = np.array([None, None, None])
-        self.lasted3BarMacd = np.array([None, None, None])
-        self.lasted3BarArron = np.array([None, None])
+        self.lasted15Bar = np.full(15,None)
+        self.lasted3BarKdj = np.full(3,None)
+
         return True
 
+    def getKdjHoldDay(self):
+        k, d, j = self.indicator.kdj(fast_period=9, slow_period=3, array=True)
+        assert abs(k[-2] - self.lasted3BarKdj[-2][0]) < 0.01
+        assert abs(d[-3] -self.lasted3BarKdj[-3][1]) < 0.01
+        holdDay = 0
+        for i in range(-1, -6, -1):
+            isHold = k[i] >= d[i]
+            if not isHold:
+                break
+            holdDay += 1
+        return holdDay
 
     def onCollectTrace(self, bar: BarData) -> CollectData:
         self.indicator.update_bar(bar)
         self.lasted15Bar[:-1] = self.lasted15Bar[1:]
         self.lasted3BarKdj[:-1] = self.lasted3BarKdj[1:]
-        self.lasted3BarMacd[:-1] = self.lasted3BarMacd[1:]
-        self.lasted3BarArron[:-1] = self.lasted3BarArron[1:]
         k, d, j = self.indicator.kdj(fast_period=9, slow_period=3)
-        dif, dea, mBar = self.indicator.macd( fast_period=12,slow_period = 26,signal_period = 9)
-        aroon_down,aroon_up = self.indicator.aroon( n=14)
+        dif, dea, macdBar = self.indicator.macd( fast_period=12,slow_period = 26,signal_period = 9,array=True)
 
         self.lasted15Bar[-1] = bar
         self.lasted3BarKdj[-1] = [k, d, j]
-        self.lasted3BarMacd[-1] = [dif, dea, mBar]
-        self.lasted3BarArron[-1] = [aroon_down,aroon_up]
 
-        if self.indicator.count <=34:
-            return None
-
-        if dif < 0 or dea < 0:
+        if self.indicator.count <37:
             return None
 
         #最近15天之内不含停牌数据
         if not BarUtils.isAllOpen(self.lasted15Bar):
             return None
-        #交易日天数间隔超过5天的数据
-        # if BarUtils.getMaxIntervalDay(self.lasted15Bar) >= 5:
-        #     return None
-        k0, d0, j0 = self.lasted3BarKdj[-2]
-        k1, d1, j1 = self.lasted3BarKdj[-1]
-        # 金叉产生
-        goldCross = k0 < d0 and k1 >= d1
-        if not goldCross:
+        # 交易日天数间隔超过5天的数据
+        if BarUtils.getMaxIntervalDay(self.lasted15Bar) >= 5:
             return None
 
-        verbute = Factory.vibrate(self.indicator.close,self.indicator.open,period=12)
-        kPatternValue = self.makePatthernValue(verbute,dif/bar.close_price,dea/bar.close_price);
-        dimen = Dimension(type=TYPE_2KAGO1, value=kPatternValue)
-        collectData = CollectData(dimen=dimen)
-        collectData.occurBars = list(self.lasted15Bar[-3:])
-        collectData.occurKdj = list(self.lasted3BarKdj)
-        collectData.occurExtra['lasted3BarMacd'] = self.lasted3BarMacd
-        collectData.occurExtra['lasted3BarArron'] = self.lasted3BarArron
+        kdjHoldDay = self.getKdjHoldDay();
 
-        verbute9 =Factory.vibrate(self.indicator.close,self.indicator.open,period=9)
-        verbute20 =Factory.vibrate(self.indicator.close,self.indicator.open,period=20)
-        collectData.occurExtra['verbute9'] = verbute9
-        collectData.occurExtra['verbute20'] = verbute20
-        collectData.occurExtra['aroon_up'] = self.lasted3BarArron[-1][1];
-        collectData.occurExtra['aroon_down'] =  self.lasted3BarArron[-1][0]
-        collectData.setValid(False)
-        return collectData
+        if kdjHoldDay !=1:
+            return None
 
-    ENCODE1 = FloatEncoder([0,1,5,10,20,50,80]);
-    ENCODE2 = FloatEncoder([-5,-3,-2,-1,0,1,2,3,5]);
-
-    def makePatthernValue(self,verbute, dif,dea):
-        #mask1 = KDJMovementEngineModel.ENCODE1.mask()
-        mask2 = KDJMovementEngineModel.ENCODE2.mask()
-        v1 = KDJMovementEngineModel.ENCODE1.encode(verbute)
-        v2 = KDJMovementEngineModel.ENCODE2.encode(dif)
-        v3 = KDJMovementEngineModel.ENCODE2.encode(dea)
-        return v1 * mask2 * mask2 + v2 * mask2 +v3;
+        kPatternValue = KPattern.encode2KAgo1(self.indicator)
+        if not kPatternValue is None:
+            dimen = Dimension(type=TYPE_2KAGO1, value=kPatternValue)
+            collectData = CollectData(dimen=dimen)
+            collectData.occurBars = list(self.lasted15Bar[-3:])
+            collectData.occurKdj = list(self.lasted3BarKdj)
+            collectData.occurExtra['before_gold_corss_macd'] = [dif[-2],dea[-2],macdBar[-2]]
+            return collectData
+        return None
 
     def onCollect(self, data: CollectData, newBar: BarData) :
         #不含停牌数据
         if not BarUtils.isOpen(newBar):
+            data.setValid(False)
+            data.setFinished()
             return
         data.predictBars.append(newBar)
         data.setValid(True)
@@ -145,30 +128,23 @@ class KDJMovementEngineModel(CoreEngineModel):
 
     def getYLabelPct(self, cData:CollectData)->[float, float]:
         if len(cData.predictBars) < 5:
-            #不能作为y标签。
+            # 不能作为y标签。
             return None, None
-        bars: ['BarData'] = cData.predictBars
 
-        basePrice = self.getYBasePrice(cData)
+        basePrice = self.getYBasePrice(cData)  ###为什么这里不同，给出的回测结果也不同，
+        highBar = cData.predictBars[0];
+        lowBar = cData.predictBars[0]
+        sell_pct = 100 * ((highBar.high_price + highBar.close_price) / 2 - basePrice) / basePrice
+        buy_pct = 100 * ((lowBar.low_price + lowBar.close_price) / 2 - basePrice) / basePrice
 
-        highIndex = 1
-        lowIndex = 1
-        ##跳过第一天观察
-        highBar = cData.predictBars[1];
-        lowBar = cData.predictBars[1]
-        sell_pct =  100 * ((highBar.high_price + highBar.close_price) / 2 - basePrice) / basePrice
-        buy_pct =  100 * ((lowBar.low_price + lowBar.close_price) / 2 - basePrice) / basePrice
-
-        for i in range(1,len(cData.predictBars)):
-            bar:BarData = cData.predictBars[i]
+        for i in range(1, len(cData.predictBars)):
+            bar: BarData = cData.predictBars[i]
             _s_pct = 100 * ((bar.high_price + bar.close_price) / 2 - basePrice) / basePrice
             _b_pct = 100 * ((bar.low_price + bar.close_price) / 2 - basePrice) / basePrice
             if _s_pct > sell_pct:
                 sell_pct = _s_pct
-                highIndex = i
             if _b_pct < buy_pct:
                 buy_pct = _b_pct
-                lowIndex = i
         return sell_pct, buy_pct
 
     def getYBasePrice(self, cData:CollectData)->float:
@@ -179,103 +155,37 @@ class KDJMovementEngineModel(CoreEngineModel):
         # 保证len等于三，要不然就不能作为生成特征值。
         if (len(cData.occurBars) < 3):
             return None
+        ##金叉前一天作为basePrice
         basePrcie = self.getYBasePrice(cData)
-
+        assert basePrcie > 1
         ##使用随机森林，所以不需要标准化和归一化
-        god_cross_dif, god_cross_dea, god_cross_macd = cData.occurExtra.get('lasted3BarMacd')[-1]
-        god_cross_dif = 100 * god_cross_dif / cData.occurBars[-1].close_price
-        god_cross_dea = 100 * god_cross_dea / cData.occurBars[-1].close_price
-        k, d, j = cData.occurKdj[-2]
+        ##金叉前一天的macd值
+        god_cross_dif, god_cross_dea, god_cross_macd = cData.occurExtra.get('before_gold_corss_macd')
 
+        god_cross_dif = 100 * god_cross_dif / basePrcie
+        god_cross_dea = 100 * god_cross_dea / basePrcie
+        ##金叉前一天的k，d，j
+        k, d, j = cData.occurKdj[-2]
         def getSellBuyPct(bar: BarData):
             s_pct = 100 * ((bar.high_price + bar.close_price) / 2 - basePrcie) / basePrcie
             b_pct = 100 * ((bar.low_price + bar.close_price) / 2 - basePrcie) / basePrcie
             return s_pct, b_pct
-
-        s_pct, b_pc = getSellBuyPct(cData.occurBars[-1])
-
-
-        assert len(cData.predictBars) > 0
-        _bar: BarData = cData.predictBars[0]
-        d1_low_pct = 100 * (_bar.low_price - basePrcie) / basePrcie
-        d1_close_pct = 100 * (_bar.close_price - basePrcie) / basePrcie
+        s_pct_1, b_pct_1 = getSellBuyPct(cData.occurBars[-3])  #金叉前两天
+        s_pct_2, b_pct_2 = getSellBuyPct(cData.occurBars[-2])  #金叉前一天
+        s_pct_3, b_pct_3 = getSellBuyPct(cData.occurBars[-1]) #金叉
 
         data = []
-        #最后一天的low_pct,close_pct。相对于 （2个）
-
-        data.append(d1_low_pct)
-        data.append(d1_close_pct)
-        data.append(s_pct)
-        data.append(b_pc)
         data.append(god_cross_dif)
         data.append(god_cross_dea)
-        data.append(cData.occurExtra.get('verbute9'))
-        data.append(cData.occurExtra.get('verbute20'))
-        data.append(cData.occurExtra.get('aroon_up'))
-        data.append(cData.occurExtra.get('aroon_down'))
+        data.append(k)
+        data.append(d)
+        data.append(s_pct_1)
+        data.append(b_pct_1)
+        data.append(s_pct_2)
+        data.append(b_pct_2)
+        data.append(s_pct_3)
+        data.append(b_pct_3)
         return data
-
-
-class DefaultStrategy(CoreEngineStrategy):
-
-    def __init__(self):
-        self.failBuyBar = None
-        pass
-
-    """
-    根据时间调整策略。
-    1、555 : pct_limit = 4,offset = 0, opera_day = 3  = ==> 交易率:11.45%,成功率:25.00%,盈利率:71.15%,单均pct:3.80
-       455 : pct_llimi = 2,offset = -1%，opera_day= 2   =》[交易率:13.26%,成功率:41.32%,盈利率:76.05%,单均pct:3.50
-    """
-    def getParams(self):
-        pass
-
-    def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
-                            debugParams: {} = None) -> int:
-        first_day_pct_limit = 1
-        buy_offset = -1
-        opera_day = 2
-        cut_loss = False ##减损
-
-        # if order.dimen == 555:
-        #     buy_offset = 0
-        #     first_day_pct_limit = 2
-        #     opera_day = 3
-
-
-        suggestSellPrice = order.suggestSellPrice
-        suggestBuyPrice = order.suggestBuyPrice * (1 + buy_offset /100)
-        if (order.status == PredictOrderStatus.HOLD):
-            if bar.high_price >= suggestSellPrice:
-                order.sellPrice = suggestSellPrice
-                return 3
-            if cut_loss and bar.close_price  < suggestBuyPrice:
-                order.sellPrice = bar.close_price
-                return 4
-            if order.durationDay >= 5:
-                order.sellPrice = bar.close_price
-                return 4
-        elif order.status == PredictOrderStatus.READY:
-            if order.durationDay > opera_day:
-                return 5
-            quantData = engine.queryQuantData(order.dimen)
-            targetPrice = bar.low_price
-            if order.durationDay == 0:  # 生成的那天
-                targetPrice = bar.close_price
-                return 0
-            if order.durationDay == 1:  # 生成的那天
-                ##这天观察走势,且最高价不能超过预测价
-                __pct = 100 * (suggestSellPrice - bar.close_price) / bar.close_price
-                if __pct < first_day_pct_limit:
-                     return 5
-                return 0
-            if suggestBuyPrice >= targetPrice and order.durationDay <=opera_day:
-                ##趋势形成的第二天买入。
-                order.buyPrice = suggestBuyPrice
-                return 1
-        return 0
-
-
 
 def analysicQuantDataOnly():
     dirName = "models/kdj_movement_analysis2"
@@ -303,10 +213,7 @@ def runBackTest():
     historySource = ZZ500DataSource(start, middle)
     futureSouce = ZZ500DataSource(middle, end)
 
-
     model = KDJMovementEngineModel()
-    #strategy = DefaultStrategy()
-    #strategy = BestStrategy()
     create = True
     engine = None
     if create:
@@ -336,7 +243,7 @@ def printLaststTops():
         engine = CoreEngine.load(_dirName, model)
     runner = CoreEngineRunner(engine)
 
-    runner.printZZ500Tops(DefaultStrategy());
+    runner.printZZ500Tops(CommonStrategy());
 
 
     pass
@@ -345,19 +252,7 @@ if __name__ == "__main__":
     #analysicQuantDataOnly()
     runBackTest()
     #printLaststTops()
-    """
-[555]=>count:454(sScore:76.651,bScore:63.876),做多:[交易率:44.05%,预测成功率:45.00%,盈利率:54.50%,单均pct:2.12,盈pct:6.37(17.15),亏pct:-2.98(-10.02)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
-[455]=>count:1259(sScore:79.189,bScore:61.318),做多:[交易率:45.35%,预测成功率:46.06%,盈利率:57.97%,单均pct:2.10,盈pct:5.22(19.42),亏pct:-2.20(-11.45)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
-[355]=>count:965(sScore:80.103,bScore:66.528),做多:[交易率:54.92%,预测成功率:50.38%,盈利率:58.30%,单均pct:1.52,盈pct:3.99(17.19),亏pct:-1.93(-9.98)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
-[255]=>count:239(sScore:73.221,bScore:55.648),做多:[交易率:44.77%,预测成功率:39.25%,盈利率:47.66%,单均pct:0.61,盈pct:3.68(15.10),亏pct:-2.18(-9.44)],做空:[交易率:0.00%,预测成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
 
-    """
-    """
-    动量指标：
-    
-    策略：
-        收集arron_up>arron_down,且arron_up大于50的数据对象。
-    """
 
 
 
