@@ -51,14 +51,20 @@ class DI_ZZ500_EngineModel(CoreEngineModel):
     PREDICT_LENGT = 4
     PCT_MAX_LIMIT = 99999999
 
+
     def __init__(self):
         self.kdjEncoder = FloatEncoder([15,30,45,60,75,90])
+        ##预测值在 -1.5,1.5之间是没有意义的,如果是在这区间的，则去掉。
+        self.pctEncoder1 = FloatEncoder([-15,-10,-7,-4,-3,-1.5,1.5,2.5,3.5,4.5,5.5,7,9,12,15,20], minValue=-15, maxValue=20);
+        self.pctEncoder2 = FloatEncoder([-15.5,-10.5,-7.5,-4.5,-3.5,-1.5,1.5,3,4,5,6,7.5,9.5,12.5,15.5,20.5], minValue=-15.5, maxValue=20.5);
+        self.Y_LABLE_ENCOD_NO_MEAN =  self.pctEncoder1.encode(0)
+        assert self.Y_LABLE_ENCOD_NO_MEAN == self.pctEncoder2.encode(0)
 
     def getPctEncoder1(self)->FloatEncoder:
-        return FloatEncoder(list(np.arange(-15,25.5, 40/20)), minValue=-26, maxValue=26)
+        return self.pctEncoder1
 
     def getPctEncoder2(self)->FloatEncoder:
-        return FloatEncoder(list(np.arange(-14.5, 26, 40 / 20)), minValue=-25, maxValue=27)
+        return self.pctEncoder2
 
     def onCollectStart(self, code: str) -> bool:
         from earnmi.chart.Indicator import Indicator
@@ -182,102 +188,22 @@ class DI_ZZ500_EngineModel(CoreEngineModel):
         data.append(b_pc)
         return data
 
-    """
-        优化特征。（主要去重）
-        """
-
-    """
-    优化特征。（主要去重）
-    """
-
-    def optimize(self, x_feature: [], y_sell_1: [], y_buy_1: [], y_sell_2: [], y_buy_2: []):
-
-        x_size = len(x_feature)
-        y_list = []
-        for i in range(0,len(x_feature[0])):
-            y = np.full(x_size,None)
-            for j in range(0,x_size):
-                y[j] = x_feature[j][i]
-            y_list.append(y)
-
-        ##给每个特征编码。
-        y_Encoder_list = np.full(len(y_list),None)
-        for i in range(0,len(y_list)):
-            y = y_list[i]
-            _min = y.min()
-            _max = y.max()
-            split_size = (_max - _min) / 10
-            y_Encoder_list[i] = FloatEncoder(list(np.arange(_min,_max, split_size)), minValue=_min, maxValue=_max)
-
-        @dataclass()
-        class Y_FEATURE:
-            x_feature: []  ##X特征值
-            def __eq__(self, o: object) -> bool:
-                return self.x_feature.__eq__(o.x_feature)
-
-            def __hash__(self) -> int:
-                h = 1
-                for x in self.x_feature:
-                    h = h * x
-                return hash(h)
-
-        @dataclass()
-        class Y_LABEL:
-            y_sell_1:int
-            y_buy_1:int
-            y_sell_2:int
-            y_buy_2:int
-            y:int
-
-        featureMap = {}
-        for i in range(0,x_size):
-            y = x_feature[i]
-            for j in range(0,len(y)):
-                y[j] = y_Encoder_list[j].encode(y[j])
-            y_feature = Y_FEATURE(x_feature=y)
-            y_label =  Y_LABEL(y_sell_1= y_sell_1[i],y_buy_1=y_buy_1[i],y_sell_2=y_buy_1[i],y_buy_2 = y_buy_2[i],y = y_sell_1[i])
-            y_label_list = featureMap.get(y_feature)
-            if y_label_list is None:
-                y_label_list = []
-                featureMap[y_feature] = y_label_list
-            y_label_list.append(y_label)
-
-        ##开始去重:多个相同的x特征对应多个y
-        x_feature_new = []
-        y_sell_1_new = []
-        y_buy_1_new = []
-        y_sell_2_new = []
-        y_buy_2_new = []
-        for y_feature,y_label_list in featureMap.items():
-           y_label:Y_LABEL = self.unique_y_label(y_label_list)
-           x_feature_new.append(y_feature.x_feature)
-           y_sell_1_new.append(y_label.y_sell_1)
-           y_buy_1_new.append(y_label.y_buy_1)
-           y_sell_2_new.append(y_label.y_sell_2)
-           y_buy_2_new.append(y_label.y_buy_2)
-        return np.array(x_feature_new), np.array(y_sell_1_new), np.array(y_buy_1_new), np.array(y_sell_2_new), np.array(y_buy_2_new)
-
-    def unique_y_label(self,y_label_list):
-        ###每次删除差异最大的那个
-        while len(y_label_list) > 2:
-            y_list = []
-            for i in range(0, len(y_label_list)):
-                y_list.append(y_label_list[i].y)
-            y = np.array(y_list)
-            avg = y.mean()
-            max_index = 0
-            max_dist = abs(y[0]-avg)
-            for i in range(1,len(y_list)):
-                dist = abs(y[i]-avg)
-                if dist > max_dist:
-                    max_dist = dist
-                    max_index = i
-            del y_label_list[max_index]
-        assert len(y_label_list) < 3
-        return y_label_list[0]
-
-
-
+    # def optimize(self, old_x: [], old_y_sell_1: [], old_y_buy_1: [], old_y_sell_2: [], old_y_buy_2: []):
+    #     x = []
+    #     y_sell_1 = []
+    #     y_sell_2 = []
+    #     y_buy_1 = []
+    #     y_buy_2 = []
+    #     for i in range(0,len(old_x)):
+    #         if self.Y_LABLE_ENCOD_NO_MEAN == old_y_sell_1[i] or self.Y_LABLE_ENCOD_NO_MEAN == old_y_sell_2[i]:
+    #             continue
+    #         x.append(old_x[i])
+    #         y_sell_1.append(old_y_sell_1[i])
+    #         y_sell_2.append(old_y_sell_2[i])
+    #         y_buy_1.append(old_y_buy_1[i])
+    #         y_buy_2.append(old_y_buy_2[i])
+    #
+    #     return np.array(x),np.array(y_sell_1),np.array(y_buy_1),np.array(y_sell_2),np.array(y_buy_2)
 
 def analysicQuantDataOnly():
     dirName = "models/skdj_analysic_quantdata"
@@ -312,7 +238,7 @@ def runBackTest():
     model = DI_ZZ500_EngineModel()
     #strategy = DefaultStrategy()
     strategy = CommonStrategy()
-    create = False
+    create = True
     engine = None
     if create:
         engine = CoreEngine.create(_dirName, model,historySource,min_size=200,useSVM=False)
