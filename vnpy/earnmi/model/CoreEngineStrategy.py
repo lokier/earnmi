@@ -108,6 +108,6 @@ class CommonStrategy(CoreEngineStrategy):
                 ##趋势形成的第二天买入。
                 order.buyPrice = suggestBuyPrice
                 ##当天是否盈利欺骗
-                order.isWinCheat = bar.high_price >= suggestSellPrice
+                order.isWinCheatBuy = bar.high_price >= suggestSellPrice
                 return 1
         return 0

@@ -38,6 +38,7 @@ class BackTestItemData(object):
     eran_count = 0  #盈利次数
     earn_pct_max = 0
     loss_pct_max = 0
+    win_cheat_deal_count = 0 ##盈利欺骗次数
 
     def addTo(self,total):
         total.deal_count += self.deal_count
@@ -83,8 +84,11 @@ class BackTestItemData(object):
         return self.loss_pct_total / self.loss_cout()
 
     def toStr(self,totolCount) -> str:
-       return f"交易率:%.2f%%,成功率:%.2f%%,盈利率:%.2f%%,单均pct:%.2f,盈pct:%.2f(%.2f),亏pct:%.2f(%.2f)" % \
-         ( 100 * self.deal_rate(totolCount), 100 * self.suc_rate(), 100 * self.earn_rate(),
+        win_cheat_buy_pct = 0
+        if self.win_cheat_deal_count > 0:
+            win_cheat_buy_pct = 100 * self.win_cheat_deal_count / self.deal_count
+        return f"交易率:%.2f%%(盈利欺骗占%.2f%%),成功率:%.2f%%,盈利率:%.2f%%,单均pct:%.2f,盈pct:%.2f(%.2f),亏pct:%.2f(%.2f)" % \
+         ( 100 * self.deal_rate(totolCount),win_cheat_buy_pct, 100 * self.suc_rate(), 100 * self.earn_rate(),
           self.total_pct_avg(),self.earn_pct_avg(),self.earn_pct_max,
           self.loss_pct_avg(),self.loss_pct_max)
 
@@ -311,7 +315,8 @@ class CoreEngineRunner():
                2：做空
                3: 预测成功交割单
                4：预测失败交割单
-               5：废弃单              """
+               5：废弃单              
+               """
             if operation == 1 or operation == 2:
                 assert order.type is None and  not order.buyPrice is None
                 order.type = operation
@@ -416,6 +421,8 @@ class CoreEngineRunner():
             elif order.type == 1:
                 #做多
                 data.longData.deal_count += 1
+                if order.isWinCheatBuy:
+                    data.longData.win_cheat_deal_count+=1
                 if order.status == PredictOrderStatus.SUC:
                     data.longData.suc_count += 1
                 if pct > 0.0:

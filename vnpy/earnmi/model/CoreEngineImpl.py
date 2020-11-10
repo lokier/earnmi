@@ -543,9 +543,9 @@ class CoreEngineImpl(CoreEngine):
                 sell_stability_total/abilitySize if abilitySize > 0 else 0,buy_stablility_total/abilitySize if abilitySize > 0 else 0
         ))
         self.printLog(f"量化数据方面，衡量好坏看两个指标：")
-        self.printLog(f"    1、s得分（对应策略的盈利率上限）：一般s得分在0.5-0.6之间，所以得分值起码也要增加到0.7以上，这样的化预测能力基本上才能达标！！！");
+        self.printLog(f"    1、（基本条件）s得分（对应策略的盈利率上限）：一般s得分在0.5-0.6之间，所以得分值起码也要增加到0.75以上，这样的化预测能力基本上才能达标！！！");
         self.printLog(f"    2、预测SellPct值：分布情况只要不集中在pct的0上下左右，如果占据了50%以上就不是好的预测模型，可操作性比较差");
-        self.printLog(f"    3、sellPct能力,buyPct能力,对做多来说，越大越好且sellPct>buy_pct，说明策略的盈利空间越大！");
+        self.printLog(f"    3、(不一定！！)sellPct能力,buyPct能力,对做多来说，越大越好且sellPct>buy_pct，说明策略的盈利空间越大！不一定");
 
         self.__modelLoaded = True
         self.printLog(f"创建模型完成", True)

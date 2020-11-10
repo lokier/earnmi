@@ -52,6 +52,7 @@ class PredictOrder(object):
 
     sellPrice:float =None
 
+    isWinCheatBuy = False  ##盈利欺骗买入
 
     durationDay = 0
 

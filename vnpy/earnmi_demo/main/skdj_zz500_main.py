@@ -469,7 +469,7 @@ def runBackTest():
     model = SKDJ_EngineModelV2()
     #strategy = DefaultStrategy()
     strategy = CommonStrategy()
-    create = True
+    create = False
     engine = None
     if create:
         engine = CoreEngine.create(_dirName, model,historySource,min_size=200,useSVM=False)
@@ -477,8 +477,8 @@ def runBackTest():
         engine = CoreEngine.load(_dirName,model)
     runner = CoreEngineRunner(engine)
 
-
-    runner.backtest(futureSouce, strategy)
+    #strategy.sell_leve_pct_bottom = 1
+   # runner.backtest(futureSouce, strategy)
 
     # class MyStrategy(CommonStrategy):
     #     DIMEN = [107,
@@ -490,25 +490,25 @@ def runBackTest():
     #         # if abilityData.getScoreSell() < 0.72:
     #         #     return False
     #         return False
-    # strategy = MyStrategy()
-    # params = {
-    #     'buy_offset_pct': [None, -5, -4, -3, -2, -1],
-    #     'sell_offset_pct': [None, -2, 1, 0, 1, 2],
-    #     'sell_leve_pct_top': [None, -2,-1,0, 1, 2, 3],
-    #     'sell_leve_pct_bottom': [None, -3, -2, -1, 1,2,3],
-    # }
+    strategy = CommonStrategy()
+    params = {
+        'buy_offset_pct': [None, -2, -1,1],
+        'sell_offset_pct': [None, -1, 1],
+        #'sell_leve_pct_top': [None, -2,-1,0, 1, 2, 3],
+        'sell_leve_pct_bottom': [None,  1,2,3],
+    }
     #
-    # def data_cmp(o1, o2):
-    #     deal_rate1 = o1.longData.deal_rate(o1.count)
-    #     deal_rate2 = o2.longData.deal_rate(o2.count)
-    #     if deal_rate1 < 0.1 and deal_rate2 < 0.1:
-    #         return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
-    #     if deal_rate1 < 0.1:
-    #         return -1
-    #     if deal_rate2 < 0.1:
-    #         return 1
-    #     return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
-    # runner.debugBestParam(futureSouce, strategy,params,backtest_data_cmp=data_cmp)
+    def data_cmp(o1, o2):
+        deal_rate1 = o1.longData.deal_rate(o1.count)
+        deal_rate2 = o2.longData.deal_rate(o2.count)
+        if deal_rate1 < 0.1 and deal_rate2 < 0.1:
+            return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
+        if deal_rate1 < 0.1:
+            return -1
+        if deal_rate2 < 0.1:
+            return 1
+        return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
+    runner.debugBestParam(futureSouce, strategy,params,backtest_data_cmp=data_cmp)
 
     pass
 
