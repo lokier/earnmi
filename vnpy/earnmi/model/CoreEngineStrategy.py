@@ -41,9 +41,14 @@ class CommonStrategy(CoreEngineStrategy):
         self.buy_leve_pct_top = None  #buy_leve_pct的范围None表示没有限制
         self.buy_leve_pct_bottom = None
 
-    def initPrams(self,debugParams: {}):
+    def getParams(self,dimen_value:int):
+        return None
+
+    def initPrams(self,dimen: Dimension,debugParams: {}):
         if debugParams is None:
-            return
+            debugParams = self.getParams(dimen.value)
+        if debugParams is None:
+            debugParams = {}
         if debugParams.__contains__('buy_day_max'):
             self.buy_day_max = debugParams['buy_day_max']
         if debugParams.__contains__('max_day'):
@@ -66,7 +71,7 @@ class CommonStrategy(CoreEngineStrategy):
     @abstractmethod
     def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
                             debugParams: {} = None) -> int:
-        self.initPrams(debugParams)
+        self.initPrams(order.dimen,debugParams)
         suggestSellPrice = order.suggestSellPrice
         suggestBuyPrice = order.suggestBuyPrice
         ocurrBar_close_price = order.predict.collectData.occurBars[-1].close_price

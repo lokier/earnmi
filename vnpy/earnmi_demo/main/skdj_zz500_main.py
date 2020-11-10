@@ -477,38 +477,46 @@ def runBackTest():
         engine = CoreEngine.load(_dirName,model)
     runner = CoreEngineRunner(engine)
 
-    #strategy.sell_leve_pct_bottom = 1
-   # runner.backtest(futureSouce, strategy)
+    class MyStrategy(CommonStrategy):
+        DIMEN = [107, 93, 92, 100, 64, 57, 99]
 
-    # class MyStrategy(CommonStrategy):
-    #     DIMEN = [107,
-    #              93,92,100,64,57,99]
-    #     def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
-    #         if dimen.value == 99:
-    #             return True
-    #         # abilityData =  engine.queryPredictAbilityData(dimen);
-    #         # if abilityData.getScoreSell() < 0.72:
-    #         #     return False
-    #         return False
-    strategy = CommonStrategy()
-    params = {
-        'buy_offset_pct': [None, -2, -1,1],
-        'sell_offset_pct': [None, -1, 1],
-        #'sell_leve_pct_top': [None, -2,-1,0, 1, 2, 3],
-        'sell_leve_pct_bottom': [None,  1,2,3],
-    }
-    #
-    def data_cmp(o1, o2):
-        deal_rate1 = o1.longData.deal_rate(o1.count)
-        deal_rate2 = o2.longData.deal_rate(o2.count)
-        if deal_rate1 < 0.1 and deal_rate2 < 0.1:
-            return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
-        if deal_rate1 < 0.1:
-            return -1
-        if deal_rate2 < 0.1:
-            return 1
-        return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
-    runner.debugBestParam(futureSouce, strategy,params,backtest_data_cmp=data_cmp)
+        def __init__(self):
+            super().__init__()
+            self.paramMap = {}
+            self.paramMap[99] = {'buy_offset_pct': -2, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': None}
+            self.paramMap[100] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
+            self.paramMap[94] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
+            self.paramMap[58] = {'buy_offset_pct': -2, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
+
+        def getParams(self, dimen_value: int):
+            return self.paramMap.get(dimen_value)
+
+        def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
+            return not self.paramMap.get(dimen.value) is None
+    strategy = MyStrategy()
+    runner.backtest(futureSouce, strategy)
+
+
+
+    # strategy = CommonStrategy()
+    # params = {
+    #     'buy_offset_pct': [None, -2, -1,1],
+    #     'sell_offset_pct': [None, -1, 1],
+    #     #'sell_leve_pct_top': [None, -2,-1,0, 1, 2, 3],
+    #     'sell_leve_pct_bottom': [None,  1,2,3],
+    # }
+    # #
+    # def data_cmp(o1, o2):
+    #     deal_rate1 = o1.longData.deal_rate(o1.count)
+    #     deal_rate2 = o2.longData.deal_rate(o2.count)
+    #     if deal_rate1 < 0.1 and deal_rate2 < 0.1:
+    #         return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
+    #     if deal_rate1 < 0.1:
+    #         return -1
+    #     if deal_rate2 < 0.1:
+    #         return 1
+    #     return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
+    # runner.debugBestParam(futureSouce, strategy,params,backtest_data_cmp=data_cmp)
 
     pass
 
@@ -517,7 +525,7 @@ def printLaststTops():
     _dirName = "models/skdj_zz500_last_top"
 
     model = SKDJ_EngineModelV2()
-    create = True
+    create = False
     engine = None
     if create:
         start = datetime(2015, 10, 1)
@@ -526,52 +534,35 @@ def printLaststTops():
         engine = CoreEngine.create(_dirName, model, historySource, min_size=200,useSVM=False)
     else:
         engine = CoreEngine.load(_dirName, model)
-    """
-    107:
-params:{'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
-92:
-params:
-64:
-params:
-57:
-  params:
-99:
-params:
-    """
+
 
     runner = CoreEngineRunner(engine)
 
+    class MyStrategy(CommonStrategy):
+        DIMEN = [107, 93, 92, 100, 64, 57, 99]
 
-    class TheBestStrategy(CommonStrategy):
         def __init__(self):
             super().__init__()
             self.paramMap = {}
-            self.paramMap[107] = {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
-            self.paramMap[92] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_top': 1, 'sell_leve_pct_bottom': None}
-            self.paramMap[64] = {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 2}
-            self.paramMap[57] = {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
-            self.paramMap[99] = {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_top': None, 'sell_leve_pct_bottom': 1}
+            self.paramMap[99] = {'buy_offset_pct': -2, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': None}
+            self.paramMap[100] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
+            self.paramMap[94] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
+            self.paramMap[58] = {'buy_offset_pct': -2, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
+
+        def getParams(self, dimen_value: int):
+            return self.paramMap.get(dimen_value)
 
         def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
-            if  self.paramMap.__contains__(dimen.value):
-                return True
-            return False
-
-        def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
-                                debugParams: {} = None) -> int:
-            param = self.paramMap[order.dimen.value]
-            assert  not param is None
-            return super().operatePredictOrder(engine,order,bar,isTodayLastBar,param)
-
-    runner.printZZ500Tops(TheBestStrategy());
+            return not self.paramMap.get(dimen.value) is None
+    runner.printZZ500Tops(MyStrategy());
 
 
     pass
 
 if __name__ == "__main__":
     #analysicQuantDataOnly()
-    runBackTest()
-    #printLaststTops()
+    #runBackTest()
+    printLaststTops()
 
 
 

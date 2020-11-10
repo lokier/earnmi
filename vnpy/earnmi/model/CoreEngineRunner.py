@@ -292,8 +292,6 @@ class CoreEngineRunner():
         return _testData
 
     def __updateOrdres(self, strategy:CoreEngineStrategy,order,bars:[],debug_parms:{} = None,foce_close_order= True):
-        if debug_parms is None:
-            debug_parms = {}
         order.durationDay = 0
         todayOperaion = None
         for bar in bars:
