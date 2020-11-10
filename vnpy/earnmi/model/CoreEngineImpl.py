@@ -541,7 +541,10 @@ class CoreEngineImpl(CoreEngine):
                 p_sell_pct_total / abilitySize if abilitySize > 0 else 0, p_buy_pct_total / abilitySize if abilitySize > 0 else 0,
                 sell_stability_total/abilitySize if abilitySize > 0 else 0,buy_stablility_total/abilitySize if abilitySize > 0 else 0
         ))
-        self.printLog(f"量化数据方面，一般s得分在0.5-0.6之间，所以得分值起码也要增加到0.8以上，这样的化预测能力基本上才能达标！！！");
+        self.printLog(f"量化数据方面，衡量好坏看两个指标：")
+        self.printLog(f"    1、s得分：一般s得分在0.5-0.6之间，所以得分值起码也要增加到0.7以上，这样的化预测能力基本上才能达标！！！");
+        self.printLog(f"    2、预测SellPct值：分布情况只要不集中在pct的0上下左右，如果占据了50%以上就不是好的预测模型，可操作性比较差");
+
         self.__modelLoaded = True
         self.printLog(f"创建模型完成", True)
         self.logger = oldLogger

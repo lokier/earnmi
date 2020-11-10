@@ -106,11 +106,17 @@ class KDJMovementEngineModel(CoreEngineModel):
 
         kPatternValue = KPattern.encode2KAgo1(self.indicator)
         if not kPatternValue is None:
+            p_di = self.indicator.plus_di(14, array=True)
+            m_di = self.indicator.minus_di(14, array=True)
+
             dimen = Dimension(type=TYPE_2KAGO1, value=kPatternValue)
             collectData = CollectData(dimen=dimen)
             collectData.occurBars = list(self.lasted15Bar[-3:])
             collectData.occurKdj = list(self.lasted3BarKdj)
             collectData.occurExtra['before_gold_corss_macd'] = [dif[-2],dea[-2],macdBar[-2]]
+
+            collectData.occurExtra['p_di'] = p_di[-1]
+            collectData.occurExtra['m_di'] = m_di[-1]
             return collectData
         return None
 
@@ -156,35 +162,30 @@ class KDJMovementEngineModel(CoreEngineModel):
         if (len(cData.occurBars) < 3):
             return None
         ##金叉前一天作为basePrice
-        basePrcie = self.getYBasePrice(cData)
-        assert basePrcie > 1
         ##使用随机森林，所以不需要标准化和归一化
         ##金叉前一天的macd值
         god_cross_dif, god_cross_dea, god_cross_macd = cData.occurExtra.get('before_gold_corss_macd')
 
-        god_cross_dif = 100 * god_cross_dif / basePrcie
-        god_cross_dea = 100 * god_cross_dea / basePrcie
+        god_cross_dif = 100 * god_cross_dif / cData.occurBars[-2].close_price
+        god_cross_dea = 100 * god_cross_dea / cData.occurBars[-2].close_price
         ##金叉前一天的k，d，j
         k, d, j = cData.occurKdj[-2]
+        basePrcie = self.getYBasePrice(cData)
         def getSellBuyPct(bar: BarData):
             s_pct = 100 * ((bar.high_price + bar.close_price) / 2 - basePrcie) / basePrcie
             b_pct = 100 * ((bar.low_price + bar.close_price) / 2 - basePrcie) / basePrcie
             return s_pct, b_pct
-        s_pct_1, b_pct_1 = getSellBuyPct(cData.occurBars[-3])  #金叉前两天
-        s_pct_2, b_pct_2 = getSellBuyPct(cData.occurBars[-2])  #金叉前一天
-        s_pct_3, b_pct_3 = getSellBuyPct(cData.occurBars[-1]) #金叉
+        # s_pct_1, b_pct_1 = getSellBuyPct(cData.occurBars[-3])  #金叉前两天
+        # s_pct_2, b_pct_2 = getSellBuyPct(cData.occurBars[-2])  #金叉前一天
+        # s_pct_3, b_pct_3 = getSellBuyPct(cData.occurBars[-1]) #金叉
 
         data = []
         data.append(god_cross_dif)
         data.append(god_cross_dea)
         data.append(k)
         data.append(d)
-        data.append(s_pct_1)
-        data.append(b_pct_1)
-        data.append(s_pct_2)
-        data.append(b_pct_2)
-        data.append(s_pct_3)
-        data.append(b_pct_3)
+        data.append(cData.occurExtra['p_di'])
+        data.append(cData.occurExtra['m_di'])
         return data
 
 def analysicQuantDataOnly():
@@ -214,16 +215,21 @@ def runBackTest():
     futureSouce = ZZ500DataSource(middle, end)
 
     model = KDJMovementEngineModel()
-    create = True
+    create = False
     engine = None
     if create:
         engine = CoreEngine.create(_dirName, model,historySource,min_size=200,useSVM=False)
     else:
         engine = CoreEngine.load(_dirName,model)
     runner = CoreEngineRunner(engine)
-    runner.backtest(futureSouce, CommonStrategy())
-    #params = {'buyDay':[0,1,2,3]}
-    #runner.debugBestParam(futureSouce, MyStrategy(),params, min_deal_count=-1)
+    #runner.backtest(futureSouce, CommonStrategy())
+
+    params = {
+        'buy_offset_pct': [None, 1, -1],
+        'sell_offset_pct': [None, -2,-1],
+        'sell_leve_pct_bottom': [None,  -1, 1,2],
+    }
+    runner.debugBestParam(futureSouce, CommonStrategy(),params)
 
 
     pass
@@ -253,7 +259,23 @@ if __name__ == "__main__":
     runBackTest()
     #printLaststTops()
 
-
+    """
+    2020-11-10 10:41:51,130 - buidModel - INFO - dimen:885 => count = 218,s_得分=0.842,b_得分=0.712,s_稳定性=9.05090606331294,b_稳定性=1.413763513681615,sell：正方差|负方差=17.244|17.244,buy：正方差|负方差=7.186|7.186
+2020-11-10 10:41:51,130 - buidModel - INFO -     量化数据情况：count = 218,s_得分=0.6009174311926605,b_得分=0.6100917431192661,sell：正方差|负方差=5.517|5.517,buy：正方差|负方差=3.155|3.155
+2020-11-10 10:41:51,130 - buidModel - INFO -     预测SellPct值分布情况:[[-1.67:1.67)=96.33%,[1.67:5.00)=3.67%,[-26.00:-25.00)=0.00%,[-25.00:-21.67)=0.00%,[-21.67:-18.33)=0.00%,[-18.33:-15.00)=0.00%,[-15.00:-11.67)=0.00%,[-11.67:-8.33)=0.00%,[-8.33:-5.00)=0.00%,[-5.00:-1.67)=0.00%,[5.00:8.33)=0.00%,[8.33:11.67)=0.00%,[11.67:15.00)=0.00%,[15.00:18.33)=0.00%,[18.33:21.67)=0.00%,[21.67:25.00)=0.00%,[25.00:26.00)=0.00%,]
+2020-11-10 10:41:51,130 - buidModel - INFO -     预测Buy_Pct值分布情况:[[-1.67:1.67)=62.84%,[-5.00:-1.67)=37.16%,[-26.00:-25.00)=0.00%,[-25.00:-21.67)=0.00%,[-21.67:-18.33)=0.00%,[-18.33:-15.00)=0.00%,[-15.00:-11.67)=0.00%,[-11.67:-8.33)=0.00%,[-8.33:-5.00)=0.00%,[1.67:5.00)=0.00%,[5.00:8.33)=0.00%,[8.33:11.67)=0.00%,[11.67:15.00)=0.00%,[15.00:18.33)=0.00%,[18.33:21.67)=0.00%,[21.67:25.00)=0.00%,[25.00:26.00)=0.00%,]
+2020-11-10 10:41:51,131 - buidModel - INFO - dimen:886 => count = 289,s_得分=0.811,b_得分=0.831,s_稳定性=1.3871142826722345,b_稳定性=1.0919967441952236,sell：正方差|负方差=13.373|13.373,buy：正方差|负方差=12.925|12.925
+2020-11-10 10:41:51,131 - buidModel - INFO -     量化数据情况：count = 289,s_得分=0.5986159169550173,b_得分=0.5778546712802768,sell：正方差|负方差=5.074|5.074,buy：正方差|负方差=4.027|4.027
+2020-11-10 10:41:51,131 - buidModel - INFO -     预测SellPct值分布情况:[[-1.67:1.67)=79.24%,[1.67:5.00)=20.76%,[-26.00:-25.00)=0.00%,[-25.00:-21.67)=0.00%,[-21.67:-18.33)=0.00%,[-18.33:-15.00)=0.00%,[-15.00:-11.67)=0.00%,[-11.67:-8.33)=0.00%,[-8.33:-5.00)=0.00%,[-5.00:-1.67)=0.00%,[5.00:8.33)=0.00%,[8.33:11.67)=0.00%,[11.67:15.00)=0.00%,[15.00:18.33)=0.00%,[18.33:21.67)=0.00%,[21.67:25.00)=0.00%,[25.00:26.00)=0.00%,]
+2020-11-10 10:41:51,131 - buidModel - INFO -     预测Buy_Pct值分布情况:[[-1.67:1.67)=74.39%,[-5.00:-1.67)=25.61%,[-26.00:-25.00)=0.00%,[-25.00:-21.67)=0.00%,[-21.67:-18.33)=0.00%,[-18.33:-15.00)=0.00%,[-15.00:-11.67)=0.00%,[-11.67:-8.33)=0.00%,[-8.33:-5.00)=0.00%,[1.67:5.00)=0.00%,[5.00:8.33)=0.00%,[8.33:11.67)=0.00%,[11.67:15.00)=0.00%,[15.00:18.33)=0.00%,[18.33:21.67)=0.00%,[21.67:25.00)=0.00%,[25.00:26.00)=0.00%,]
+2020-11-10 10:41:51,131 - buidModel - INFO - dimen:887 => count = 215,s_得分=0.778,b_得分=0.763,s_稳定性=1.7518109544651468,b_稳定性=0.6168316175784481,sell：正方差|负方差=12.586|12.586,buy：正方差|负方差=16.209|16.209
+2020-11-10 10:41:51,131 - buidModel - INFO -     量化数据情况：count = 215,s_得分=0.6186046511627907,b_得分=0.5767441860465117,sell：正方差|负方差=4.922|4.922,buy：正方差|负方差=5.18|5.18
+2020-11-10 10:41:51,131 - buidModel - INFO -     预测SellPct值分布情况:[[-1.67:1.67)=73.02%,[1.67:5.00)=26.98%,[-26.00:-25.00)=0.00%,[-25.00:-21.67)=0.00%,[-21.67:-18.33)=0.00%,[-18.33:-15.00)=0.00%,[-15.00:-11.67)=0.00%,[-11.67:-8.33)=0.00%,[-8.33:-5.00)=0.00%,[-5.00:-1.67)=0.00%,[5.00:8.33)=0.00%,[8.33:11.67)=0.00%,[11.67:15.00)=0.00%,[15.00:18.33)=0.00%,[18.33:21.67)=0.00%,[21.67:25.00)=0.00%,[25.00:26.00)=0.00%,]
+2020-11-10 10:41:51,131 - buidModel - INFO -     预测Buy_Pct值分布情况:[[-1.67:1.67)=71.63%,[-5.00:-1.67)=28.37%,[-26.00:-25.00)=0.00%,[-25.00:-21.67)=0.00%,[-21.67:-18.33)=0.00%,[-18.33:-15.00)=0.00%,[-15.00:-11.67)=0.00%,[-11.67:-8.33)=0.00%,[-8.33:-5.00)=0.00%,[1.67:5.00)=0.00%,[5.00:8.33)=0.00%,[8.33:11.67)=0.00%,[11.67:15.00)=0.00%,[15.00:18.33)=0.00%,[18.33:21.67)=0.00%,[21.67:25.00)=0.00%,[25.00:26.00)=0.00%,]
+2020-11-10 10:41:51,132 - buidModel - INFO - 【总体】: s得分:0.81[+33.71%],b得分:0.77[+30.67%],s_pct能力:1.10,b_pct能力:0.65,s稳定性:4.06,b稳定性1.04
+2020-11-10 10:41
+    
+    """
 
 
 
