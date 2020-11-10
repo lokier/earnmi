@@ -55,10 +55,10 @@ class SKDJ_EngineModel(CoreEngineModel):
         self.kdjEncoder = FloatEncoder([15,30,45,60,75,90])
 
     def getPctEncoder1(self)->FloatEncoder:
-        return FloatEncoder(list(np.arange(-25,25.5, 50/20)), minValue=-26, maxValue=26)
+        return FloatEncoder(list(np.arange(-25,25.5, 50/30)), minValue=-26, maxValue=26)
 
     def getPctEncoder2(self)->FloatEncoder:
-        return FloatEncoder(list(np.arange(-24.5, 27, 50 /20)), minValue=-25, maxValue=27)
+        return FloatEncoder(list(np.arange(-24.5, 27, 50 /30)), minValue=-25, maxValue=27)
 
     def onCollectStart(self, code: str) -> bool:
         from earnmi.chart.Indicator import Indicator
@@ -469,7 +469,7 @@ def runBackTest():
     model = SKDJ_EngineModelV2()
     #strategy = DefaultStrategy()
     strategy = CommonStrategy()
-    create = False
+    create = True
     engine = None
     if create:
         engine = CoreEngine.create(_dirName, model,historySource,min_size=200,useSVM=False)
@@ -570,8 +570,8 @@ params:
 
 if __name__ == "__main__":
     #analysicQuantDataOnly()
-    #runBackTest()
-    printLaststTops()
+    runBackTest()
+    #printLaststTops()
 
 
 

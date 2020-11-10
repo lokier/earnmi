@@ -53,6 +53,35 @@ class PredictAbilityData(object):
     sellPctRnageList: Sequence["FloatRange"] = None
     buyPctRnageList: Sequence["FloatRange"] = None
 
+    """
+    返回卖方的预测能力值，对做多来说，越大越好。
+    """
+    def getSellAbility(self,encoder):
+        ability = 0
+        for i in range(0, len(self.sellPctRnageList)):
+            r: FloatRange = self.sellPctRnageList[i]
+            _min, _max = encoder.parseEncode(r.encode)
+            if _min is None:
+                _min = _max
+            if _max is None:
+                _max = _min
+            ability += (_min + _max) / 2 * r.probal
+        return ability
+
+    """
+       返回买方的预测能力值，对做多来说，越大越好。
+    """
+    def getBuyAbility(self,encoder):
+        ability = 0
+        for i in range(0, len(self.buyPctRnageList)):
+            r: FloatRange = self.buyPctRnageList[i]
+            _min, _max = encoder.parseEncode(r.encode)
+            if _min is None:
+                _min = _max
+            if _max is None:
+                _max = _min
+            ability += (_min + _max) / 2 * r.probal
+        return ability
 
     def getCount(self)->int:
         return int(self.trainData.count + self.testData.count)
