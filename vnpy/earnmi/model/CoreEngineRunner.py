@@ -474,9 +474,6 @@ class CoreEngineRunner():
             totalCount += len(stop)
             bars, code = soruce.nextBars()
             for data in stop:
-                if not utils.is_same_day(data.occurBars[-1].datetime,latestDay):
-                    ##不是今天最新
-                    continue
                 ##因为是实盘操作，所以未完成的stop收集对象应该包含今天的bar
                 # todayBar = todayBarsMap.get(code)
                 # if not todayBar is None:

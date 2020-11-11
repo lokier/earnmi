@@ -63,7 +63,7 @@ class SKDJ_EngineModel(CoreEngineModel):
     def onCollectStart(self, code: str) -> bool:
         from earnmi.chart.Indicator import Indicator
         self.indicator = Indicator(34)
-        self.lasted15Bar = np.full(15, None)
+        self.lastedBars = np.full(3, None)
         self.lasted3BarKdj = np.full(3, None)
         self.lasted3BarMacd = np.full(3, None)
         self.lasted3BarArron = np.full(3, None)
@@ -73,14 +73,14 @@ class SKDJ_EngineModel(CoreEngineModel):
 
     def onCollectTrace(self, bar: BarData) -> CollectData:
         self.indicator.update_bar(bar)
-        self.lasted15Bar[:-1] = self.lasted15Bar[1:]
+        self.lastedBars[:-1] = self.lastedBars[1:]
         self.lasted3BarKdj[:-1] = self.lasted3BarKdj[1:]
         self.lasted3BarMacd[:-1] = self.lasted3BarMacd[1:]
         self.lasted3BarArron[:-1] = self.lasted3BarArron[1:]
         k, d, j = self.indicator.kdj(fast_period=9, slow_period=3)
         dif, dea, mBar = self.indicator.macd( fast_period=12,slow_period = 26,signal_period = 9)
         aroon_down,aroon_up = self.indicator.aroon( n=14)
-        self.lasted15Bar[-1] = bar
+        self.lastedBars[-1] = bar
         self.lasted3BarKdj[-1] = [k, d, j]
         self.lasted3BarMacd[-1] = [dif, dea, mBar]
         self.lasted3BarArron[-1] = [aroon_down,aroon_up]
@@ -89,7 +89,7 @@ class SKDJ_EngineModel(CoreEngineModel):
             return None
 
         # 最近15天之内不含停牌数据
-        if not BarUtils.isAllOpen(self.lasted15Bar):
+        if not BarUtils.isAllOpen(self.lastedBars):
             return None
 
         if dif < 0 or dea < 0:
@@ -102,7 +102,7 @@ class SKDJ_EngineModel(CoreEngineModel):
         if not goldCross:
             return None
         #最近12天的震荡因子和金叉当前的dea和dif因子组合作为维度值
-        goldBar:BarData = self.lasted15Bar[-2]
+        goldBar:BarData = self.lastedBars[-2]
         goldBarMacd = self.lasted3BarMacd[2];
         gold_dif_factory,gold_dea_factory = [ 100*goldBarMacd[0]/goldBar.close_price, 100*goldBarMacd[1]/goldBar.close_price]
 
@@ -112,7 +112,7 @@ class SKDJ_EngineModel(CoreEngineModel):
 
         dimen = Dimension(type=TYPE_2KAGO1, value=kPatternValue)
         collectData = CollectData(dimen=dimen)
-        collectData.occurBars = list(self.lasted15Bar[-3:])
+        collectData.occurBars = list(self.lastedBars)
         collectData.occurKdj = list(self.lasted3BarKdj)
         collectData.occurExtra['lasted3BarMacd'] = self.lasted3BarMacd
         collectData.occurExtra['lasted3BarArron'] = self.lasted3BarArron
@@ -218,59 +218,6 @@ class SKDJ_EngineModel(CoreEngineModel):
         return data
 
 
-class DefaultStrategy(CoreEngineStrategy):
-
-    def __init__(self):
-        self.failBuyBar = None
-        pass
-
-
-    """
-    根据时间调整策略。
-    1、555 : pct_limit = 4,offset = 0, opera_day = 3  = ==> 交易率:11.45%,成功率:25.00%,盈利率:71.15%,单均pct:3.80
-       455 : pct_llimi = 2,offset = -1%，opera_day= 2   =》[交易率:13.26%,成功率:41.32%,盈利率:76.05%,单均pct:3.50
-    """
-    def getParams(self):
-        pass
-
-    def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
-                            debugParams: {} = None) -> int:
-        first_day_pct_limit = 1
-        buy_offset_pct = 0
-        min_allow_buy_day = 2  #可以买入的交易天数
-
-        suggestSellPrice = order.suggestSellPrice
-        suggestBuyPrice = order.suggestBuyPrice * (1 + buy_offset_pct /100)
-        if (order.status == PredictOrderStatus.HOLD):
-
-            # if order.isOverHighPrice:
-            #     ##止损、止盈操作，第二天开盘价卖出
-            #     order.sellPrice = bar.open_price
-            #     return 4
-            if bar.high_price >= suggestSellPrice:
-                order.sellPrice = suggestSellPrice
-                return 3
-            if order.durationDay >= SKDJ_EngineModel.PREDICT_LENGT:
-                order.sellPrice = bar.close_price
-                return 4
-        elif order.status == PredictOrderStatus.READY:
-            if order.durationDay > min_allow_buy_day:
-                #超过买入交易时间天数，废弃
-                return 5
-            ##这天观察走势,且当天high_price 不能超过预测卖出价
-            #这里有个坑，
-            # 1、如果当天是超过卖出价之后再跌到买入价，  这时第二天就要考虑止损
-            # 2、如果是到底买入价之后的当天马上涨到卖出价，这时第二天就要考虑止盈
-            #不管是那种情况，反正第二天就卖出。
-            if suggestBuyPrice >= bar.low_price :
-                ##趋势形成的第二天买入。
-                order.buyPrice = suggestBuyPrice
-                order.isOverHighPrice = bar.high_price >= suggestSellPrice
-                return 1
-        return 0
-
-
-
 def analysicQuantDataOnly():
     dirName = "models/skdj_analysic_quantdata"
     start = datetime(2015, 10, 1)
@@ -288,122 +235,6 @@ def analysicQuantDataOnly():
     engine.buildPredictModel(useSVM=False)
     pass
 
-
-class BestStrategy(DefaultStrategy):
-
-    def __init__(self):
-        self.dimenMap = {}
-        self.dimenMap['100'] = True
-        self.dimenMap['99'] = True
-        self.dimenMap['57'] = True
-        self.dimenMap['107'] = True
-
-    def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
-
-        if self.dimenMap.get(dimen.value.__str__()):
-            return True
-
-        return False
-
-    def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
-                            debugParams: {} = None) -> int:
-
-        cData: CollectData = order.predict.collectData
-        base_price = engine.getEngineModel().getYBasePrice(cData)
-
-        ###if order.suggestSellPrice - cData.occurBars[-1].close_price > 0
-
-        long_space_pct = 100 * (order.suggestSellPrice - cData.occurBars[-1].close_price) / cData.occurBars[
-            -1].close_price
-
-        # if long_space_pct < 0:
-        #     ##开盘价要低于预测价，否则很容易出现交易的时候就到底预测最高点。
-        #     return 5;
-
-        condition_1 = None  ###开始收盘价低于预期卖出价 : 如1.5
-        condition_2 = None  ##调整买入价， 3 表示降低3%
-        condition_4 = None  ##调整卖出价，3,表示提高3%
-        condition_3 = None  ##开始收盘价高于预期卖出价
-        cut_win = False;  ##止盈
-        cut_loss_pct = None;  ##止损
-        buy_open_condition = None  ## 开盘价多少才买入
-
-        if order.dimen.value == 99 or order.dimen.value == 107:
-            condition_1 = 1.5  ###开始收盘价低于预期卖出价 : 如1.5
-            condition_2 = 3.5  ##调整买入价， 3 表示降低3%
-            condition_4 = None  ##调整卖出价，3,表示提高3%
-            condition_3 = 4  ##开始收盘价高于预期卖出价
-        elif order.dimen.value == 100:
-            condition_1 = 1.5  ###开始收盘价低于预期卖出价 : 如1.5
-            condition_2 = 4  ##调整买入价， 3 表示降低3%
-            condition_4 = -1  ##调整卖出价，3,表示提高3%
-            condition_3 = 3  ##开始收盘价高于预期卖出价
-        elif order.dimen.value == 57:
-            condition_1 = 1.5  ###开始收盘价低于预期卖出价 : 如1.5
-            condition_2 = 3.5  ##调整买入价， 3 表示降低3%
-            condition_4 = -1  ##调整卖出价，3,表示提高3%
-            condition_3 = 5  ##开始收盘价高于预期卖出价
-        else:
-            assert False
-
-        if not condition_1 is None and long_space_pct < condition_1:
-            return 5;
-
-        if not condition_3 is None \
-                and long_space_pct > condition_3:
-            return 5;
-
-        min_allow_buy_day = 2  # 可以买入的交易天数
-
-        suggestSellPrice = order.suggestSellPrice
-        suggestBuyPrice = order.suggestBuyPrice
-
-        ##调整买入价
-        if not condition_2 is None:
-            buy_offset = condition_2 / 100
-            suggestBuyPrice = suggestSellPrice * (1 - buy_offset)
-
-        if not condition_4 is None:
-            buy_offset = condition_4 / 100
-            suggestSellPrice = suggestSellPrice * (1 + buy_offset)
-
-        if (order.status == PredictOrderStatus.HOLD):
-
-            # 止盈操作
-            if cut_win and order.isOverHighPrice:
-                order.sellPrice = bar.open_price
-                return 4
-            # 止损操作
-            if not cut_loss_pct is None and order.isOverClosePct < cut_loss_pct:
-                order.sellPrice = bar.open_price
-                return 4
-
-            if bar.high_price >= suggestSellPrice:
-                order.sellPrice = suggestSellPrice
-                return 3
-            if order.durationDay >= SKDJ_EngineModel.PREDICT_LENGT:
-                order.sellPrice = bar.close_price
-                return 4
-            order.isOverClosePct = 100 * (bar.close_price - suggestBuyPrice) / suggestBuyPrice  ##低价买入，是否想预期走势走高。
-        elif order.status == PredictOrderStatus.READY:
-            if order.durationDay > min_allow_buy_day:
-                # 超过买入交易时间天数，废弃
-                return 5
-
-            ##这天观察走势,且当天high_price 不能超过预测卖出价
-            # 这里有个坑，
-            # 1、如果当天是超过卖出价之后再跌到买入价，  这时第二天就要考虑止损
-            # 2、如果是到底买入价之后的当天马上涨到卖出价，这时第二天就要考虑止盈
-            # 不管是那种情况，反正第二天就卖出。
-            if suggestBuyPrice >= bar.low_price:
-                ##趋势形成的第二天买入。
-                order.buyPrice = suggestBuyPrice
-                order.isOverHighPrice = bar.high_price >= suggestSellPrice  ##是否到底盈利点，到底的化下一步应该止盈
-                order.isOverClosePct = 100 * (
-                        bar.close_price - suggestBuyPrice) / suggestBuyPrice  ##低价买入，是否想预期走势走高。
-
-                return 1
-        return 0
 
 class SKDJ_EngineModelV2(SKDJ_EngineModel):
 
@@ -483,10 +314,10 @@ def runBackTest():
         def __init__(self):
             super().__init__()
             self.paramMap = {}
-            self.paramMap[99] = {'buy_offset_pct': -2, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': None}
+            self.paramMap[99] = {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_bottom': 2}
             self.paramMap[100] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
             self.paramMap[94] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
-            self.paramMap[58] = {'buy_offset_pct': -2, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
+            self.paramMap[58] = {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_bottom': 1}
 
         def getParams(self, dimen_value: int):
             return self.paramMap.get(dimen_value)
@@ -544,10 +375,10 @@ def printLaststTops():
         def __init__(self):
             super().__init__()
             self.paramMap = {}
-            self.paramMap[99] = {'buy_offset_pct': -2, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': None}
+            self.paramMap[99] = {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_bottom': 2}
             self.paramMap[100] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
             self.paramMap[94] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
-            self.paramMap[58] = {'buy_offset_pct': -2, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
+            self.paramMap[58] = {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_bottom': 1}
 
         def getParams(self, dimen_value: int):
             return self.paramMap.get(dimen_value)
