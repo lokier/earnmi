@@ -71,6 +71,15 @@ class OpOrderDataBase:
     def LoadLatest(self):
         pass
 
+    def loadLatest(self,count:int)-> Sequence["OpOrder"]:
+        s = (
+            self.dao.select()
+                .order_by(self.dao.finished.asc(),self.dao.update_time.desc())
+                .limit(count)
+        )
+        data = [db_bar.to_data() for db_bar in s]
+        return data
+
     def load(self,start: datetime,end: datetime) -> Sequence["OpOrder"]:
         s = (
             self.dao.select()

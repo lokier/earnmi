@@ -469,7 +469,7 @@ class CoreEngineRunner():
             finished, stop = model.collectBars(bars, code)
             engine.printLog(f"[getTops]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
             bars, code = soruce.nextBars()
-            all_data_list = finished + stop
+            all_data_list = list(finished) + list(stop)
             for data in all_data_list:
                 listData: [] = dataSet.get(data.dimen)
                 if listData is None:
@@ -479,6 +479,7 @@ class CoreEngineRunner():
         if len(dataSet) < 1:
             self.coreEngine.printLog("当前没有出现特征数据！！")
 
+        unfinished_order_list :Sequence['PredictOrder']= []
         for dimen, listData in dataSet.items():
             if not strategy.isSupport(self.coreEngine, dimen):
                 continue
@@ -504,17 +505,45 @@ class CoreEngineRunner():
                 else:
                     order.update_time = opData.update_time
                 predictBarLen = len(predict.collectData.predictBars)
-                if predictBarLen > 0:
+                if  not opData.finished and predictBarLen > 0 :
                     self.__updateOrdres(strategy, order, predict.collectData.predictBars,
                                                     foce_close_order=False);
                 ##将该order的最新状态保存到数据库。
                 order.updateOpOrder(opData)
                 opDb.save(opData)
+                if not opData.finished:
+                    unfinished_order_list.append(order)
                 if isNewOpData:
                     self.coreEngine.printLog(f"产生新的操作单: code={opData.code},create_time:{opData.create_time}")
 
         engine.printLog(f"load historyfinished！！")
 
+
+        today = datetime.now()
+        todayBarsMap = {}
+        from earnmi.uitl.jqSdk import jqSdk
+
+        if today.hour >= 16 or today.hour == 15 and today.minute > 30:
+            print(f"[getTops]: 今天已经收市")
+        elif today.hour < 9:
+            print(f"[getTops]: 今天还没开市")
+
+        todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
+
+        for predictOreder in unfinished_order_list:
+            pass
+
+        opList =  opDb.loadLatest(50)
+        for op in opList:
+            print(f"code:{op.code},finished:{op.finished},buy:%.2f, sell:%.2f,duration:{op.duration},create_time:{op.create_time}"  % (op.buy_price,op.sell_price))
+            bar: BarData = todayBarsMap.get(op.code)
+            if bar is None:
+                info = f"    当前价格未知！"
+            else:
+                target_pct = utils.keep_3_float(100 * (op.sell_price - bar.close_price) / bar.close_price);
+                buy_pct = utils.keep_3_float(100 * (bar.close_price - op.buy_price) / bar.close_price);
+                info = f"                   当前价格:{bar.close_price},离卖出:{target_pct}%,离买入:{buy_pct}%"
+            print(f"{info}")
 
 
     ###中证500的数据
