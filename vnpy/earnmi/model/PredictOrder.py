@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from earnmi.model.Dimension import Dimension
+from earnmi.model.OpOrder import OpOrder
 from earnmi.model.PredictData import PredictData
 from earnmi.uitl.utils import utils
 
@@ -25,6 +26,8 @@ class PredictOrder(object):
     name:str
 
     create_time:datetime;
+
+    update_time:datetime =None
 
     """
     1为买入做多单：
@@ -62,6 +65,16 @@ class PredictOrder(object):
     
     """
     trace_status = 0
+
+    def updateOpOrder(self,opOrder:OpOrder):
+        opOrder.duration = self.durationDay
+        opOrder.update_time = self.update_time
+        if not self.sellPrice is None:
+            opOrder.sell_price = self.sellPrice
+        if not self.buyPrice is None:
+            opOrder.buy_price = self.buyPrice
+        opOrder.finished = self.status != PredictOrderStatus.READY and self.status!= PredictOrderStatus.HOLD
+
 
     def getStr(self):
         return f"dimen:{self.dimen.value},code:{self.code},建议卖出价:{utils.keep_3_float(self.suggestSellPrice)},买入价:{utils.keep_3_float(self.suggestBuyPrice)}," \

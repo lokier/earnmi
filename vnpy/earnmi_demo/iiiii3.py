@@ -9,15 +9,20 @@ code = "600155"
 #code = '000300'
 #801161.XSHG
 
-dt = datetime.now()
-order = OpOrder(code='test',sell_price='34',buy_price='sf',create_time=datetime.now())
+dt = datetime.now() - timedelta(minutes=1)
+order = OpOrder(code='test',sell_price='34',buy_price='sf',create_time=dt)
 
 db = OpOrderDataBase("opdata.db")
 
 db.cleanAll()
+assert db.loadAtDay('test',datetime.now()) is None
 assert db.count() == 0
 db.save(order)
 assert db.count() == 1
+
+orederAtNow = db.loadAtDay('test',datetime.now())
+assert  not orederAtNow is None
+assert  orederAtNow.code =='test'
 
 dataList = db.load(dt,dt)
 order1 = dataList[0]

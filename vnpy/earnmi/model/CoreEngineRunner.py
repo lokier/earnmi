@@ -19,6 +19,7 @@ from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.CoreEngineStrategy import CoreEngineStrategy
 from earnmi.model.Dimension import Dimension
+from earnmi.model.OpOrder import OpOrderDataBase, OpOrder
 from earnmi.model.PredictAbilityData import PredictAbilityData
 from earnmi.model.PredictData import PredictData
 from earnmi.model.PredictOrder import PredictOrderStatus, PredictOrder
@@ -299,11 +300,16 @@ class CoreEngineRunner():
                     order.status == PredictOrderStatus.SUC or \
                     order.status == PredictOrderStatus.FAIL:
                 break
+
+            if not order.update_time is None and bar.datetime <= order.update_time:
+                self.coreEngine.printLog(f"updateOrder[{bar.symbol}] at date: {bar.datetime}, skip!!!")
+                continue
             oldStatus = order.status
             _oldType = order.type
             order.durationDay +=1
             last_today_bar = bar == bars[-1]
             operation = strategy.operatePredictOrder(self.coreEngine, order, bar, last_today_bar, debug_parms)
+            order.update_time = bar.datetime
             if oldStatus != order.status or _oldType != order.type:
                 raise RuntimeError("cant changed PredictOrder status or type！！")
             """
@@ -332,6 +338,8 @@ class CoreEngineRunner():
                 assert operation == 0
             if last_today_bar:
                 todayOperaion = operation
+            self.coreEngine.printLog(f"updateOrder[{bar.symbol}] at date: {bar.datetime}, final operation:{operation}")
+
         ##强制清单
         if foce_close_order and order.status == PredictOrderStatus.HOLD:
             order.sellPrice = bars[-1].close_price
@@ -339,6 +347,9 @@ class CoreEngineRunner():
         # elif order.status == PredictOrderStatus.READY:
         #     order.status = PredictOrderStatus.ABANDON
         return todayOperaion
+
+
+
     def __generatePredictOrder(self, engine: CoreEngine, predict: PredictData) -> PredictOrder:
         code = predict.collectData.occurBars[-1].symbol
         crateDate = predict.collectData.occurBars[-1].datetime
@@ -440,6 +451,71 @@ class CoreEngineRunner():
     def computeBuyPrice(self):
 
         return None
+
+        ###中证500的数据
+
+    def runZZ500Now(self, opFileName:str, strategy: CoreEngineStrategy):
+        engine = self.coreEngine
+        opDb = OpOrderDataBase(opFileName)
+        today = datetime.now()
+        end = utils.to_end_date(today - timedelta(days=1))
+        start = end - timedelta(days=90)
+        engine.printLog(f"load history barData, start:{start},end:{end}")
+        soruce = ZZ500DataSource(start, end)
+        bars, code = soruce.nextBars()
+        model = self.coreEngine.getEngineModel()
+        dataSet = {}
+        while not bars is None:
+            finished, stop = model.collectBars(bars, code)
+            engine.printLog(f"[getTops]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
+            bars, code = soruce.nextBars()
+            all_data_list = finished + stop
+            for data in all_data_list:
+                listData: [] = dataSet.get(data.dimen)
+                if listData is None:
+                    listData = []
+                    dataSet[data.dimen] = listData
+                listData.append(data)
+        if len(dataSet) < 1:
+            self.coreEngine.printLog("当前没有出现特征数据！！")
+
+        for dimen, listData in dataSet.items():
+            if not strategy.isSupport(self.coreEngine, dimen):
+                continue
+            model = self.coreEngine.loadPredictModel(dimen)
+            if model is None:
+                self.coreEngine.printLog(f"不支持的维度:{dimen}")
+                continue
+            self.coreEngine.printLog(f"开始实盘计算维度:{dimen}]")
+            predictList: Sequence['PredictData'] = model.predict(listData)
+            for predict in predictList:
+                ##产生一个预测单,
+                order = self.__generatePredictOrder(self.coreEngine, predict)
+                occurBar = order.predict.collectData.occurBars[-1]
+                opData = opDb.loadAtDay(occurBar.symbol,occurBar.datetime)
+                isNewOpData = False
+                if opData is None:
+                    isNewOpData = True
+                    opData = OpOrder(code=occurBar.symbol,
+                                     create_time=occurBar.datetime,
+                                     sell_price=order.suggestSellPrice,
+                                     buy_price=order.suggestBuyPrice
+                                     )
+                else:
+                    order.update_time = opData.update_time
+                predictBarLen = len(predict.collectData.predictBars)
+                if predictBarLen > 0:
+                    self.__updateOrdres(strategy, order, predict.collectData.predictBars,
+                                                    foce_close_order=False);
+                ##将该order的最新状态保存到数据库。
+                order.updateOpOrder(opData)
+                opDb.save(opData)
+                if isNewOpData:
+                    self.coreEngine.printLog(f"产生新的操作单: code={opData.code},create_time:{opData.create_time}")
+
+        engine.printLog(f"load historyfinished！！")
+
+
 
     ###中证500的数据
     def printZZ500Tops(self, strategy:CoreEngineStrategy,level = 1):

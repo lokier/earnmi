@@ -385,7 +385,7 @@ def printLaststTops():
 
         def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
             return not self.paramMap.get(dimen.value) is None
-    runner.printZZ500Tops(MyStrategy());
+    runner.runZZ500Now("pbData.db",MyStrategy());
 
 
     pass

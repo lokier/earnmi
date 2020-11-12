@@ -110,7 +110,7 @@ class utils:
         return int(value * 1000) / 1000
 
     def to_start_date(d: datetime) -> datetime:
-        return datetime(year=d.year, month=d.month, day=d.day, hour=00, minute=00, second=1)
+        return datetime(year=d.year, month=d.month, day=d.day, hour=00, minute=00, second=00)
 
     def to_end_date(d: datetime) -> datetime:
         return datetime(year=d.year, month=d.month, day=d.day, hour=23, minute=59, second=59)
