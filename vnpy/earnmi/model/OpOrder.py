@@ -61,7 +61,11 @@ class OpOrder:
         self.opLogs = []
 
     def convertOpLogToJsonText(self):
-        pass
+        size = len(self.opLogs)
+        if size == 0:
+            return None
+        opList = [op.to_dict() for op in self.opLogs]
+        return json.dumps(obj=opList,cls=_DateEncoder)
 
     def loadOpLogFromJsonText(self,jsonText:str):
         op_log_list = []
@@ -168,7 +172,7 @@ class OpOrderDataBase:
             create_time = DateTimeField()
             buy_price = FloatField()
             sell_price = FloatField()
-            opLogs = TextField(null=True)
+            opLogsJsonText = TextField(null=True)
 
             buy_time = DateTimeField(null=True)
             sell_time = DateTimeField(null=True)
@@ -203,12 +207,7 @@ class OpOrderDataBase:
                 db_bar.sell_time = bar.sell_time
                 db_bar.buy_time = bar.buy_time
                 db_bar.strategy_name = bar.strategy_name
-
-                opLogLen = len(bar.opLogs)
-                if opLogLen < 1:
-                    db_bar.opLogs = None
-                else:
-                    ddd
+                db_bar.opLogsJsonText = bar.convertOpLogToJsonText()
 
                 return db_bar
 
@@ -231,6 +230,7 @@ class OpOrderDataBase:
                 bar.source = self.source
                 bar.sell_time = self.sell_time
                 bar.buy_time = self.buy_time
+                bar.loadOpLogFromJsonText(self.opLogsJsonText)
 
                 return bar
 
@@ -255,8 +255,8 @@ class OpOrderDataBase:
 if __name__ == "__main__":
 
     dt = datetime.now() - timedelta(minutes=1)
-    order = OpOrder(code='test', sell_price='34', buy_price='sf', create_time=dt)
-    sameOrder = OpOrder(code='test', sell_price='34', buy_price='sf', create_time=dt)
+    order = OpOrder(strategy_name="1",code='test', sell_price='34', buy_price='sf', create_time=dt)
+    sameOrder = OpOrder(strategy_name="1",code='test', sell_price='34', buy_price='sf', create_time=dt)
 
     db = OpOrderDataBase("opdata.db")
 
@@ -267,14 +267,21 @@ if __name__ == "__main__":
     db.save(sameOrder)
     assert db.count() == 1
     orederAtNow = db.loadAtDay('test', datetime.now())
+
     assert not orederAtNow is None
     assert orederAtNow.code == 'test'
     assert orederAtNow.update_time == dt
     orederAtNow.update_time = datetime.now()
+    log1 = OpLog(type=1, info="sdfksf", time=datetime.now())
+    orederAtNow.opLogs.append(log1)
+    orederAtNow.opLogs.append(log1)
     db.save(orederAtNow)
     assert db.count() == 1
     orederAtNow = db.loadAtDay('test', datetime.now())
     assert orederAtNow.update_time != dt
+    assert len(orederAtNow.opLogs) == 2
+    assert orederAtNow.opLogs[-1].info == "sdfksf"
+
 
 
 
