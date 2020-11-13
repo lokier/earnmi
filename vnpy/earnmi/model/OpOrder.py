@@ -1,3 +1,4 @@
+import json
 from abc import ABC
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -8,6 +9,32 @@ from peewee import *
 from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 
+"""
+操作日志。
+"""
+@dataclass
+class OpLog():
+    type:int
+    time:datetime
+    info:str
+
+    def to_dict(self):
+        return {
+            'type':self.type,
+            'time':self.time,
+            'info':self.info
+        }
+    def form_dict(self,dict:{}):
+        self.type = dict.get('type')
+        self.time = dict.get('time')
+        self.info = dict.get('info')
+
+class _DateEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj,datetime):
+            return obj.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            return json.JSONEncoder.default(self,obj)
 
 @dataclass
 class OpOrder:
@@ -27,12 +54,25 @@ class OpOrder:
 
     buy_actual_price: float = -1  #实际买入价
     sell_actual_price: float = -1
+    opLogs:[]=None
 
     def __post_init__(self):
         self.update_time = self.create_time
+        self.opLogs = []
 
-    pass
+    def convertOpLogToJsonText(self):
+        pass
 
+    def loadOpLogFromJsonText(self,jsonText:str):
+        op_log_list = []
+        if not jsonText is None:
+            dictList = json.loads(s=jsonText)
+            if not dictList is None:
+                for the_dict in dictList:
+                    opLog = OpLog(time=None, info=None, type=None)
+                    opLog.form_dict(the_dict)
+                    op_log_list.append(opLog)
+        self.opLogs = op_log_list
 
 
 class OpOrderDataBase:
@@ -128,6 +168,7 @@ class OpOrderDataBase:
             create_time = DateTimeField()
             buy_price = FloatField()
             sell_price = FloatField()
+            opLogs = TextField(null=True)
 
             buy_time = DateTimeField(null=True)
             sell_time = DateTimeField(null=True)
@@ -162,6 +203,13 @@ class OpOrderDataBase:
                 db_bar.sell_time = bar.sell_time
                 db_bar.buy_time = bar.buy_time
                 db_bar.strategy_name = bar.strategy_name
+
+                opLogLen = len(bar.opLogs)
+                if opLogLen < 1:
+                    db_bar.opLogs = None
+                else:
+                    ddd
+
                 return db_bar
 
             def to_data(self):

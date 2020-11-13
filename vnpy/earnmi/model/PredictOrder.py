@@ -57,7 +57,10 @@ class PredictOrder(object):
 
     isWinCheatBuy = False  ##盈利欺骗买入
 
-    durationDay = 0
+    durationDay = 0  ##生成经过的交易日
+
+    opLog:[] = None  ##操作日志。
+
 
     """
     今天操作状态：

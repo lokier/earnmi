@@ -1,35 +1,44 @@
+import json
+
+from playhouse.shortcuts import dict_to_model, model_to_dict
+
 from earnmi.chart.Indicator import Indicator
 from earnmi.data.MarketImpl import MarketImpl
 from datetime import datetime, timedelta
 import talib
 
-from earnmi.model.OpOrder import OpOrderDataBase,OpOrder
+from earnmi.model.OpOrder import OpOrderDataBase, OpOrder, OpLog
 
 code = "600155"
 #code = '000300'
 #801161.XSHG
 
+class DateEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj,datetime):
+            return obj.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            return json.JSONEncoder.default(self,obj)
+
 dt = datetime.now() - timedelta(minutes=1)
-order = OpOrder(code='test',sell_price='34',buy_price='sf',create_time=dt)
+opLog1 = OpLog(time=dt,info="test1",type = 1)
+opLog2 = OpLog(time=datetime.now(), info="test1",type = 1)
 
-db = OpOrderDataBase("opdata.db")
+opList = [opLog1.to_dict(),opLog2.to_dict()]
 
-db.cleanAll()
-assert db.loadAtDay('test',datetime.now()) is None
-assert db.count() == 0
-db.save(order)
-assert db.count() == 1
 
-orederAtNow = db.loadAtDay('test',datetime.now())
-assert  not orederAtNow is None
-assert  orederAtNow.code =='test'
+j = json.dumps(opLog1.to_dict(),cls=DateEncoder)
+print(j)  # {"id": "007", "name": "007", "age": 28, "sex": "male", "phone": "13000000000", "email": "123@qq.com"}
 
-dataList = db.load(dt,dt)
-order1 = dataList[0]
+j = json.dumps(obj=opList,cls=DateEncoder)
+print(j)  # {"id": "007", "name": "007", "age": 28, "sex": "male", "phone": "13000000000", "email": "123@qq.com"}
 
-order2 =  db.loadById(order1.id)
-assert not order2 is None
-assert order1 == order2
-assert  order.code == order1.code
+dict = json.loads(s=j)
+print(dict)
+
+# db = OpOrderDataBase("opdata.db")
+# db.cleanAll()
+# db.save(order)
+
 
 

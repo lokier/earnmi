@@ -506,6 +506,7 @@ class CoreEngineRunner():
                                      )
                     order.update_time = occurBar.datetime
                 else:
+                    order.durationDay = opData.duration
                     order.update_time = opData.update_time
                 predictBarLen = len(predict.collectData.predictBars)
                 if  not opData.finished and predictBarLen > 0 :
@@ -526,9 +527,9 @@ class CoreEngineRunner():
         todayBarsMap = {}
         from earnmi.uitl.jqSdk import jqSdk
 
-        if today.hour >= 16 or today.hour == 15 and today.minute > 30:
+        if today.hour >= 15:
             print(f"[getTops]: 今天已经收市")
-        elif today.hour < 9:
+        elif today.hour < 9 or today.hour == 9 and today.minute < 10:
             print(f"[getTops]: 今天还没开市")
 
         todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
