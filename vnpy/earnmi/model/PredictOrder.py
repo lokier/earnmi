@@ -73,6 +73,8 @@ class PredictOrder(object):
             opOrder.sell_price = self.sellPrice
         if not self.buyPrice is None:
             opOrder.buy_price = self.buyPrice
+        assert not self.update_time is None
+        opOrder.update_time = self.update_time
         opOrder.finished = self.status != PredictOrderStatus.READY and self.status!= PredictOrderStatus.HOLD
 
 

@@ -54,6 +54,9 @@ class SKDJ_EngineModel(CoreEngineModel):
     def __init__(self):
         self.kdjEncoder = FloatEncoder([15,30,45,60,75,90])
 
+    def getEngineName(self):
+        return "skdj_zz500"
+
     def getPctEncoder1(self)->FloatEncoder:
         return FloatEncoder(list(np.arange(-25,25.5, 50/30)), minValue=-26, maxValue=26)
 

@@ -13,6 +13,7 @@ from vnpy.trader.object import BarData
 class OpOrder:
     id = None
     code:str
+    strategy_name:str
     buy_price:float  ##预测买入价
     sell_price:float
     create_time:datetime; ##创建时间、发生时间
@@ -21,6 +22,8 @@ class OpOrder:
     finished:bool = False
     update_time:datetime = None
     source:int = 0  ##来源：0 为回测数据，1为实盘数据
+    buy_time:datetime = None
+    sell_time:datetime = None
 
     buy_actual_price: float = -1  #实际买入价
     sell_actual_price: float = -1
@@ -74,7 +77,7 @@ class OpOrderDataBase:
     def loadLatest(self,count:int)-> Sequence["OpOrder"]:
         s = (
             self.dao.select()
-                .order_by(self.dao.finished.asc(),self.dao.update_time.desc())
+                .order_by(self.dao.finished.asc(),self.dao.create_time.desc(),self.dao.update_time.desc())
                 .limit(count)
         )
         data = [db_bar.to_data() for db_bar in s]
@@ -126,6 +129,10 @@ class OpOrderDataBase:
             buy_price = FloatField()
             sell_price = FloatField()
 
+            buy_time = DateTimeField(null=True)
+            sell_time = DateTimeField(null=True)
+            strategy_name = CharField()
+
             status = IntegerField()
             duration = IntegerField()
             finished = BooleanField()
@@ -152,6 +159,9 @@ class OpOrderDataBase:
                 db_bar.create_time = bar.create_time
                 db_bar.buy_price = bar.buy_price
                 db_bar.sell_price = bar.sell_price
+                db_bar.sell_time = bar.sell_time
+                db_bar.buy_time = bar.buy_time
+                db_bar.strategy_name = bar.strategy_name
                 return db_bar
 
             def to_data(self):
@@ -159,6 +169,7 @@ class OpOrderDataBase:
                 Generate BarData object from DbBarData.
                 """
                 bar = OpOrder(
+                    strategy_name=self.strategy_name,
                     code=self.code,
                     create_time=self.create_time,
                     sell_price=self.sell_price,
@@ -170,6 +181,9 @@ class OpOrderDataBase:
                 bar.duration = self.duration
                 bar.update_time = self.update_time
                 bar.source = self.source
+                bar.sell_time = self.sell_time
+                bar.buy_time = self.buy_time
+
                 return bar
 
             @staticmethod

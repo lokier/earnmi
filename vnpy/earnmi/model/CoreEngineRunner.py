@@ -497,11 +497,14 @@ class CoreEngineRunner():
                 isNewOpData = False
                 if opData is None:
                     isNewOpData = True
+                    strategy_name = f"{self.coreEngine.getEngineModel().getEngineName()}|{strategy.getName()}|{dimen.value}"
                     opData = OpOrder(code=occurBar.symbol,
+                                     strategy_name = strategy_name,
                                      create_time=occurBar.datetime,
                                      sell_price=order.suggestSellPrice,
                                      buy_price=order.suggestBuyPrice
                                      )
+                    order.update_time = occurBar.datetime
                 else:
                     order.update_time = opData.update_time
                 predictBarLen = len(predict.collectData.predictBars)

@@ -10,6 +10,8 @@ from vnpy.trader.object import BarData
 
 class CoreEngineStrategy:
 
+    def getName(self):
+        return "unkonw"
     """
     策略是否允许该维度下面的数据。
     """
@@ -40,6 +42,9 @@ class CommonStrategy(CoreEngineStrategy):
         self.sell_leve_pct_bottom = None
         self.buy_leve_pct_top = None  #buy_leve_pct的范围None表示没有限制
         self.buy_leve_pct_bottom = None
+
+    def getName(self):
+        return "CommonStrategy"
 
     def getParams(self,dimen_value:int):
         return None

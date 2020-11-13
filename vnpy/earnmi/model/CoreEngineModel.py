@@ -23,6 +23,10 @@ import numpy as np
 class CoreEngineModel(CollectModel):
 
 
+    @abstractmethod
+    def getEngineName(self):
+        return "unkonw"
+
     def getPctEncoder1(self)->FloatEncoder:
         return FloatEncoder([-7, -5, -3, -2, -1, 0, 1, 2, 3, 5, 7], minValue=-10, maxValue=10)
 
