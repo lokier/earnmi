@@ -59,8 +59,7 @@ class PredictOrder(object):
 
     durationDay = 0  ##生成经过的交易日
 
-    opLog:[] = None  ##操作日志。
-
+    opTips:str = None ##当天操作日志
 
     """
     今天操作状态：

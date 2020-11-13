@@ -99,14 +99,17 @@ class CommonStrategy(CoreEngineStrategy):
         if (order.status == PredictOrderStatus.HOLD):
             if bar.high_price >= suggestSellPrice:
                 order.sellPrice = suggestSellPrice
+                order.opTips = f"成功到达卖出价，操作单按预测成功完成！"
                 return 3
             if order.durationDay >= self.max_day:
                 order.sellPrice = bar.close_price
+                order.opTips = f"超过持有天数限制并强制减盈（减损），操作单未按预测成功！"
                 return 4
             order.isOverClosePct = 100 * (bar.close_price - suggestBuyPrice) / suggestBuyPrice  ##低价买入，是否想预期走势走高。
         elif order.status == PredictOrderStatus.READY:
             if order.durationDay > self.buy_day_max:
                 # 超过买入交易时间天数，废弃
+                order.opTips = f"超过考虑买入交易天数:{self.buy_day_max}"
                 return 5
 
             ##这天观察走势,且当天high_price 不能超过预测卖出价
@@ -119,5 +122,6 @@ class CommonStrategy(CoreEngineStrategy):
                 order.buyPrice = suggestBuyPrice
                 ##当天是否盈利欺骗
                 order.isWinCheatBuy = bar.high_price >= suggestSellPrice
+                order.opTips = f"成功到底最低价并开始持有！！！，当天是否有超过卖出价:{order.isWinCheatBuy}"
                 return 1
         return 0

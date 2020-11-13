@@ -19,7 +19,7 @@ from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.CoreEngineStrategy import CoreEngineStrategy
 from earnmi.model.Dimension import Dimension
-from earnmi.model.OpOrder import OpOrderDataBase, OpOrder
+from earnmi.model.OpOrder import OpOrderDataBase, OpOrder, OpLog
 from earnmi.model.PredictAbilityData import PredictAbilityData
 from earnmi.model.PredictData import PredictData
 from earnmi.model.PredictOrder import PredictOrderStatus, PredictOrder
@@ -294,7 +294,7 @@ class CoreEngineRunner():
 
     def __updateOrdres(self, strategy:CoreEngineStrategy,order,bars:[],debug_parms:{} = None,foce_close_order= True):
         order.durationDay = 0
-        todayOperaion = None
+        opLogList = []
         for bar in bars:
             if order.status == PredictOrderStatus.ABANDON or \
                     order.status == PredictOrderStatus.SUC or \
@@ -302,51 +302,87 @@ class CoreEngineRunner():
                 break
 
             if not order.update_time is None and bar.datetime <= order.update_time:
+                order.durationDay+=1
                 self.coreEngine.printLog(f"updateOrder[{bar.symbol}] at date: {bar.datetime}, skip!!!")
                 continue
-            oldStatus = order.status
-            _oldType = order.type
-            order.durationDay +=1
             last_today_bar = bar == bars[-1]
-            operation = strategy.operatePredictOrder(self.coreEngine, order, bar, last_today_bar, debug_parms)
-            order.update_time = bar.datetime
-            if oldStatus != order.status or _oldType != order.type:
-                raise RuntimeError("cant changed PredictOrder status or type！！")
+            operation = self.__updateOrdresAtDay(strategy,order,bar,last_today_bar,debug_parms)
             """
-               处理操作单
-               0: 不处理
-               1：做多
-               2：做空
-               3: 预测成功交割单
-               4：预测失败交割单
-               5：废弃单              
-               """
-            if operation == 1 or operation == 2:
-                assert order.type is None and  not order.buyPrice is None
-                order.type = operation
-                order.status = PredictOrderStatus.HOLD
-            elif operation == 3 or operation == 4:
-                assert not order.type is None and not order.sellPrice is None and not order.buyPrice is None and order.status == PredictOrderStatus.HOLD
-                if operation == 3:
-                    order.status = PredictOrderStatus.SUC
-                else:
-                    order.status = PredictOrderStatus.FAIL
-            elif operation ==5:
-                assert order.status == PredictOrderStatus.READY
-                order.status = PredictOrderStatus.ABANDON
-            else:
-                assert operation == 0
-            if last_today_bar:
-                todayOperaion = operation
-            self.coreEngine.printLog(f"updateOrder[{bar.symbol}] at date: {bar.datetime}, final operation:{operation}")
+                       处理操作单
+                       0: 不处理
+                       1：做多
+                       2：做空
+                       3: 预测成功交割单
+                       4：预测失败交割单
+                       5：废弃单              
+                       """
+            if operation!= 0:
+                opTipInfo = order.opTips
+                if opTipInfo is None:
+                    opTipInfo = self.__getOpeartionTips(operation)
+                opLog = OpLog(type = 0,info=opTipInfo,time =bar.datetime)
+                opLogList.append(opLog)
 
         ##强制清单
-        if foce_close_order and order.status == PredictOrderStatus.HOLD:
+        if foce_close_order and ( order.status == PredictOrderStatus.HOLD or order.status == PredictOrderStatus.READY):
             order.sellPrice = bars[-1].close_price
             order.status = PredictOrderStatus.FAIL
-        # elif order.status == PredictOrderStatus.READY:
-        #     order.status = PredictOrderStatus.ABANDON
-        return todayOperaion
+            opLogList.append(OpLog(type=1, info=f"超过持有天数限制，当天收盘价割单", time=bars[-1].datetime))
+
+        return opLogList
+
+    def __getOpeartionTips(self,operation):
+        if operation == 0:
+            return "不做处理"
+        elif operation == 1:
+            return "做多持有"
+        elif operation == 2:
+            return "做空持有"
+        elif operation == 3:
+            return "预测成功交割单"
+        elif operation == 4:
+            return "预测失败交割单"
+        elif operation == 5:
+            return "废弃无效操作"
+        return "未知操作"
+
+    def __updateOrdresAtDay(self, strategy: CoreEngineStrategy, order:PredictOrder, bar:BarData, last_today_bar,debug_parms: {} = None):
+        oldStatus = order.status
+        _oldType = order.type
+        if order.update_time is None or not utils.is_same_day(bar.datetime,order.update_time):
+            order.durationDay += 1   ##更新持有时间。
+
+        operation = strategy.operatePredictOrder(self.coreEngine, order, bar, last_today_bar, debug_parms)
+
+        order.update_time = bar.datetime
+        if oldStatus != order.status or _oldType != order.type:
+            raise RuntimeError("cant changed PredictOrder status or type！！")
+        """
+           处理操作单
+           0: 不处理
+           1：做多
+           2：做空
+           3: 预测成功交割单
+           4：预测失败交割单
+           5：废弃单              
+           """
+        if operation == 1 or operation == 2:
+            assert order.type is None and not order.buyPrice is None
+            order.type = operation
+            order.status = PredictOrderStatus.HOLD
+        elif operation == 3 or operation == 4:
+            assert not order.type is None and not order.sellPrice is None and not order.buyPrice is None and order.status == PredictOrderStatus.HOLD
+            if operation == 3:
+                order.status = PredictOrderStatus.SUC
+            else:
+                order.status = PredictOrderStatus.FAIL
+        elif operation == 5:
+            assert order.status == PredictOrderStatus.READY
+            order.status = PredictOrderStatus.ABANDON
+        else:
+            assert operation == 0
+        return operation
+
 
 
 
@@ -479,7 +515,7 @@ class CoreEngineRunner():
         if len(dataSet) < 1:
             self.coreEngine.printLog("当前没有出现特征数据！！")
 
-        unfinished_order_list :Sequence['PredictOrder']= []
+        unfinished_order_list= []
         for dimen, listData in dataSet.items():
             if not strategy.isSupport(self.coreEngine, dimen):
                 continue
@@ -510,11 +546,14 @@ class CoreEngineRunner():
                     order.update_time = opData.update_time
                 predictBarLen = len(predict.collectData.predictBars)
                 if  not opData.finished and predictBarLen > 0 :
-                    self.__updateOrdres(strategy, order, predict.collectData.predictBars,
-                                                    foce_close_order=False);
-                ##将该order的最新状态保存到数据库。
-                order.updateOpOrder(opData)
-                opDb.save(opData)
+                    opLogList = self.__updateOrdres(strategy, order, predict.collectData.predictBars,
+                                                    foce_close_order=predict.collectData.isFinished());
+                    opData.opLogs.extend(opLogList)
+
+
+                    ##将该order的最新状态保存到数据库。
+                    order.updateOpOrder(opData)
+                    opDb.save(opData)
                 if not opData.finished:
                     unfinished_order_list.append(order)
                 if isNewOpData:
@@ -540,13 +579,17 @@ class CoreEngineRunner():
         opList =  opDb.loadLatest(50)
         for op in opList:
             print(f"code:{op.code},finished:{op.finished},buy:%.2f, sell:%.2f,duration:{op.duration},create_time:{op.create_time}"  % (op.buy_price,op.sell_price))
+            if not op.opLogs is None:
+                for opLog in op.opLogs:
+                    print(f"    操作日志:{opLog.time}:{opLog.info}")
+
             bar: BarData = todayBarsMap.get(op.code)
             if bar is None:
                 info = f"    当前价格未知！"
             else:
                 target_pct = utils.keep_3_float(100 * (op.sell_price - bar.close_price) / bar.close_price);
                 buy_pct = utils.keep_3_float(100 * (bar.close_price - op.buy_price) / bar.close_price);
-                info = f"                   当前价格:{bar.close_price},离卖出:{target_pct}%,离买入:{buy_pct}%"
+                info = f"    当前价格:{bar.close_price},离卖出:{target_pct}%,离买入:{buy_pct}%"
             print(f"{info}")
 
 

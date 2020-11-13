@@ -2,6 +2,7 @@ import json
 from abc import ABC
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from enum import Enum
 from typing import List, Optional, Sequence
 
 from peewee import *
@@ -36,6 +37,16 @@ class _DateEncoder(json.JSONEncoder):
         else:
             return json.JSONEncoder.default(self,obj)
 
+class OpOrderStatus:
+    """
+    Interval of bar data.
+    """
+    NEW = 0 ##"新建"
+    HOLD = 1   ##"持有"
+    FINISEHD = 2  ##"操作结束"
+    INVALID = 3  ## "无效单"  ##即没买入也没卖出
+
+
 @dataclass
 class OpOrder:
     id = None
@@ -44,7 +55,10 @@ class OpOrder:
     buy_price:float  ##预测买入价
     sell_price:float
     create_time:datetime; ##创建时间、发生时间
-    status:int = -1
+    """
+    
+    """
+    status:int = OpOrderStatus.NEW
     duration:int = 0
     finished:bool = False
     update_time:datetime = None
