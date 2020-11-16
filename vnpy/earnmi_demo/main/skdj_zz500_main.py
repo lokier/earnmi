@@ -104,6 +104,7 @@ class SKDJ_EngineModel(CoreEngineModel):
         goldCross = k0 < d0 and k1 >= d1
         if not goldCross:
             return None
+
         #最近12天的震荡因子和金叉当前的dea和dif因子组合作为维度值
         goldBar:BarData = self.lastedBars[-2]
         goldBarMacd = self.lasted3BarMacd[2];

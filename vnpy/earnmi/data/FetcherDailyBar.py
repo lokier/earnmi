@@ -26,6 +26,9 @@ from earnmi.uitl.utils import utils
 import numpy as np
 
 
+""""
+不包含今天
+"""
 class FetcherDailyBar:
 
 
@@ -44,7 +47,7 @@ class FetcherDailyBar:
 
     def __initDataManager(self,file_preffix):
 
-        database = f"{file_preffix}{self.__code}_{self.__exchange.value.__str__()}.db"
+        database = f"{file_preffix}{self.__code_jq}.db"
         path = str(get_file_path(database))
         db = SqliteDatabase(path)
         self.__database_manager = init_by_sql_databease(db)
@@ -55,10 +58,21 @@ class FetcherDailyBar:
         self.__database_manager.clean(codeTime)
         self.__database_manager.clean(self.__code)
         self.__updateNewestTime()
+        assert self.__newest_bar_datetime == None
+        assert self.__oldest_bar_datetime == None
 
+    """
+    end不包含今天
+    """
     def fetch(self, start: datetime, end: datetime) -> Sequence["BarData"]:
 
         database_manager = self.__database_manager
+
+        now = datetime.now()
+        yestoday = utils.to_end_date(now - timedelta(days=1))
+        #end不包含今天
+        if end.__gt__(yestoday):
+            end = yestoday
 
         if self.__oldest_bar_datetime is None:
             self.__update_bar_data_from_jqdata(start, end)
@@ -199,7 +213,8 @@ if __name__ == "__main__":
     from earnmi.chart.Chart import Chart
 
     code = "000050"
-    start = datetime.now() - timedelta(days=200)
+    #start = datetime.now() - timedelta(days=200)
+    start = datetime(2015, 10, 1)
     end = datetime.now()
 
     # start_1 = datetime.now() -timedelta(days=1000)
@@ -210,8 +225,8 @@ if __name__ == "__main__":
     # bars = fetcher.fetch(start_1,end_1)
     bars = fetcher.fetch(start,end)
     chart = Chart()
-    chart.show(bars)
-    print(f"len:{len(bars)}")
+    #chart.show(bars)
+    print(f"len:{len(bars)},end = {bars[-1].datetime}")
 
 
 

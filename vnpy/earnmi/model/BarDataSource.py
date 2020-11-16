@@ -90,8 +90,8 @@ if __name__ == "__main__":
     start = datetime(2015, 10, 1)
     end = datetime.now()
     souces = ZZ500DataSource(start,end)
-   # souces.clearAll()
+    souces.clearAll()
     bars,code = souces.nextBars()
     while not code is None:
-        print(f"code:{code}, start:{bars[0]},\n            end:{bars[-1]}")
-        code, bars = souces.nextBars()
+        print(f"code:{code}, start:{bars[0].datetime},   end:{bars[-1].datetime},end:volume = {bars[-1].volume}")
+        bars,code = souces.nextBars()

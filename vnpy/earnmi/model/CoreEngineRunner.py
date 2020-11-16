@@ -503,7 +503,7 @@ class CoreEngineRunner():
         dataSet = {}
         while not bars is None:
             finished, stop = model.collectBars(bars, code)
-            engine.printLog(f"[getTops]: collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
+            engine.printLog(f"[getTops]: collect code:{code}, finished:{len(finished)},stop:{len(stop)},last date: {bars[-1].datetime},volume={bars[-1].volume}")
             bars, code = soruce.nextBars()
             all_data_list = list(finished) + list(stop)
             for data in all_data_list:
