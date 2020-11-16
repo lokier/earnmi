@@ -545,12 +545,10 @@ class CoreEngineRunner():
                     order.durationDay = opData.duration
                     order.update_time = opData.update_time
                 predictBarLen = len(predict.collectData.predictBars)
-                if  not opData.finished and predictBarLen > 0 :
+                if isNewOpData or not opData.finished and predictBarLen > 0 :
                     opLogList = self.__updateOrdres(strategy, order, predict.collectData.predictBars,
                                                     foce_close_order=predict.collectData.isFinished());
                     opData.opLogs.extend(opLogList)
-
-
                     ##将该order的最新状态保存到数据库。
                     order.updateOpOrder(opData)
                     opDb.save(opData)
