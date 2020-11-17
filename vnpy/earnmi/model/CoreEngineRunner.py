@@ -128,6 +128,7 @@ class CoreEngineRunner():
 
     def __init__(self,engine:CoreEngine):
         self.coreEngine:CoreEngine = engine
+        self.runZZ500NowTime = None
     """
     计算未来两天最有可能涨的股票SW指数。
     """
@@ -494,32 +495,42 @@ class CoreEngineRunner():
     def runZZ500Now(self, db:Database, strategy: CoreEngineStrategy):
         engine = self.coreEngine
         opDb = OpOrderDataBase(db)
-        self._buildHisotryData(opDb,strategy)
-
         today = datetime.now()
-        todayBarsMap = {}
-        from earnmi.uitl.jqSdk import jqSdk
+        self.runZZ500NowTime = today
+        self._buildHisotryData(opDb,strategy)
+        runner = self
+        runner.historyDay =  today
+        from threading import Timer
+        def dayJob():
+            from earnmi.uitl.jqSdk import jqSdk
+            noInTradeTime = today.hour >= 15 or \
+                    today.hour < 9 or today.hour == 9 and today.minute < 10
+            if noInTradeTime:
+                print(f"[getTops]: 未在交易时间")
+                if utils.is_same_day(runner.runZZ500NowTime,datetime.now()):
+                    ###新的一天，更新老师库
+                    runner._buildHisotryData(opDb, strategy)
+                    runner.runZZ500NowTime = datetime.now()
+                t = Timer(120, dayJob, ())
+            else:
+                print(f"[getTops:{datetime.now()}]: 更新价格")
+                todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
+                opList =  opDb.loadLatest(50)
+                ###更新最近50个数据
+                updateOpList = []
+                for op in opList:
+                    bar: BarData = todayBarsMap.get(op.code)
+                    if not bar is None:
+                        op.current_price = bar.close_price
+                        op.update_time =bar.datetime
+                        updateOpList.append(op)
+                if len(updateOpList) > 0:
+                    opDb.saveAll(updateOpList)
+                t = Timer(30, dayJob, ())
+            t.start()
 
-        if today.hour >= 15:
-            print(f"[getTops]: 今天已经收市")
-        elif today.hour < 9 or today.hour == 9 and today.minute < 10:
-            print(f"[getTops]: 今天还没开市")
-
-        todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
-        opList =  opDb.loadLatest(50)
-
-        ###更新最近50个数据
-        updateOpList = []
-        for op in opList:
-            bar: BarData = todayBarsMap.get(op.code)
-            if not bar is None:
-                op.current_price = bar.close_price
-                op.update_time =bar.datetime
-                updateOpList.append(op)
-        if len(updateOpList) > 0:
-            opDb.saveAll(updateOpList)
-
-        self.__printOpList(opDb)
+        dayJob()
+        #self.__printOpList(opDb)
 
 
     def __printOpList(self, opDb:OpOrderDataBase):
