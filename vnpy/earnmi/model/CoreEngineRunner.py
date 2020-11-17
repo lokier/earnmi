@@ -11,6 +11,7 @@ from functools import cmp_to_key
 from typing import Sequence
 
 import pandas as pd
+from peewee import Database
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
 from earnmi.data.SWImpl import SWImpl
@@ -490,9 +491,55 @@ class CoreEngineRunner():
 
         ###中证500的数据
 
-    def runZZ500Now(self, opFileName:str, strategy: CoreEngineStrategy):
+    def runZZ500Now(self, db:Database, strategy: CoreEngineStrategy):
         engine = self.coreEngine
-        opDb = OpOrderDataBase(opFileName)
+        opDb = OpOrderDataBase(db)
+        self._buildHisotryData(opDb,strategy)
+
+        today = datetime.now()
+        todayBarsMap = {}
+        from earnmi.uitl.jqSdk import jqSdk
+
+        if today.hour >= 15:
+            print(f"[getTops]: 今天已经收市")
+        elif today.hour < 9 or today.hour == 9 and today.minute < 10:
+            print(f"[getTops]: 今天还没开市")
+
+        todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
+        opList =  opDb.loadLatest(50)
+
+        ###更新最近50个数据
+        updateOpList = []
+        for op in opList:
+            bar: BarData = todayBarsMap.get(op.code)
+            if not bar is None:
+                op.current_price = bar.close_price
+                op.update_time =bar.datetime
+                updateOpList.append(op)
+        if len(updateOpList) > 0:
+            opDb.saveAll(updateOpList)
+
+        self.__printOpList(opDb)
+
+
+    def __printOpList(self, opDb:OpOrderDataBase):
+        opList =  opDb.loadLatest(50)
+        for op in opList:
+            print(f"code:{op.code},finished:{op.finished},buy:%.2f, sell:%.2f,duration:{op.duration},create_time:{op.create_time}"  % (op.buy_price,op.sell_price))
+            if not op.opLogs is None:
+                for opLog in op.opLogs:
+                    print(f"    操作日志:{opLog.time}:{opLog.info}")
+            if op.current_price is None:
+                info = f"    当前价格未知！"
+            else:
+                base_price = op.current_price
+                target_pct = utils.keep_3_float(100 * (op.sell_price -base_price) / base_price);
+                buy_pct = utils.keep_3_float(100 * (base_price - op.buy_price) / base_price);
+                info = f"    当前价格:{base_price},离卖出:{target_pct}%,离买入:{buy_pct}%"
+            print(f"{info}")
+
+    def _buildHisotryData(self, opDb:OpOrderDataBase, strategy: CoreEngineStrategy):
+        engine = self.coreEngine
         today = datetime.now()
         end = utils.to_end_date(today - timedelta(days=1))
         start = end - timedelta(days=90)
@@ -503,7 +550,8 @@ class CoreEngineRunner():
         dataSet = {}
         while not bars is None:
             finished, stop = model.collectBars(bars, code)
-            engine.printLog(f"[getTops]: collect code:{code}, finished:{len(finished)},stop:{len(stop)},last date: {bars[-1].datetime},volume={bars[-1].volume}")
+            engine.printLog(
+                f"[getTops]: collect code:{code}, finished:{len(finished)},stop:{len(stop)},last date: {bars[-1].datetime},volume={bars[-1].volume}")
             bars, code = soruce.nextBars()
             all_data_list = list(finished) + list(stop)
             for data in all_data_list:
@@ -515,7 +563,7 @@ class CoreEngineRunner():
         if len(dataSet) < 1:
             self.coreEngine.printLog("当前没有出现特征数据！！")
 
-        unfinished_order_list= []
+        unfinished_order_list = []
         for dimen, listData in dataSet.items():
             if not strategy.isSupport(self.coreEngine, dimen):
                 continue
@@ -529,13 +577,13 @@ class CoreEngineRunner():
                 ##产生一个预测单,
                 order = self.__generatePredictOrder(self.coreEngine, predict)
                 occurBar = order.predict.collectData.occurBars[-1]
-                opData = opDb.loadAtDay(occurBar.symbol,occurBar.datetime)
+                opData = opDb.loadAtDay(occurBar.symbol, occurBar.datetime)
                 isNewOpData = False
                 if opData is None:
                     isNewOpData = True
                     strategy_name = f"{self.coreEngine.getEngineModel().getEngineName()}|{strategy.getName()}|{dimen.value}"
                     opData = OpOrder(code=occurBar.symbol,
-                                     strategy_name = strategy_name,
+                                     strategy_name=strategy_name,
                                      create_time=occurBar.datetime,
                                      sell_price=order.suggestSellPrice,
                                      buy_price=order.suggestBuyPrice
@@ -545,7 +593,7 @@ class CoreEngineRunner():
                     order.durationDay = opData.duration
                     order.update_time = opData.update_time
                 predictBarLen = len(predict.collectData.predictBars)
-                if isNewOpData or not opData.finished and predictBarLen > 0 :
+                if isNewOpData or not opData.finished and predictBarLen > 0:
                     opLogList = self.__updateOrdres(strategy, order, predict.collectData.predictBars,
                                                     foce_close_order=predict.collectData.isFinished());
                     opData.opLogs.extend(opLogList)
@@ -558,39 +606,6 @@ class CoreEngineRunner():
                     self.coreEngine.printLog(f"产生新的操作单: code={opData.code},create_time:{opData.create_time}")
 
         engine.printLog(f"load historyfinished！！")
-
-
-        today = datetime.now()
-        todayBarsMap = {}
-        from earnmi.uitl.jqSdk import jqSdk
-
-        if today.hour >= 15:
-            print(f"[getTops]: 今天已经收市")
-        elif today.hour < 9 or today.hour == 9 and today.minute < 10:
-            print(f"[getTops]: 今天还没开市")
-
-        todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
-
-        for predictOreder in unfinished_order_list:
-            pass
-
-        opList =  opDb.loadLatest(50)
-        for op in opList:
-            print(f"code:{op.code},finished:{op.finished},buy:%.2f, sell:%.2f,duration:{op.duration},create_time:{op.create_time}"  % (op.buy_price,op.sell_price))
-            if not op.opLogs is None:
-                for opLog in op.opLogs:
-                    print(f"    操作日志:{opLog.time}:{opLog.info}")
-
-            bar: BarData = todayBarsMap.get(op.code)
-            if bar is None:
-                info = f"    当前价格未知！"
-            else:
-                target_pct = utils.keep_3_float(100 * (op.sell_price - bar.close_price) / bar.close_price);
-                buy_pct = utils.keep_3_float(100 * (bar.close_price - op.buy_price) / bar.close_price);
-                info = f"    当前价格:{bar.close_price},离卖出:{target_pct}%,离买入:{buy_pct}%"
-            print(f"{info}")
-
-
     ###中证500的数据
     def printZZ500Tops(self, strategy:CoreEngineStrategy,level = 1):
         today = datetime.now()

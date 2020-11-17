@@ -59,12 +59,14 @@ class OpOrder:
     
     """
     status:int = OpOrderStatus.NEW
+    current_price:float = None
     duration:int = 0
     finished:bool = False
     update_time:datetime = None
     source:int = 0  ##来源：0 为回测数据，1为实盘数据
     buy_time:datetime = None
     sell_time:datetime = None
+
 
     buy_actual_price: float = -1  #实际买入价
     sell_actual_price: float = -1
@@ -95,8 +97,7 @@ class OpOrder:
 
 class OpOrderDataBase:
 
-    def __init__(self,dbFile:str):
-        db = SqliteDatabase(dbFile)
+    def __init__(self,db:Database):
         self.dao = OpOrderDataBase.init_models(db)
 
     def loadById(self,id)->Optional["OpOrder"]:
@@ -191,6 +192,7 @@ class OpOrderDataBase:
             buy_time = DateTimeField(null=True)
             sell_time = DateTimeField(null=True)
             strategy_name = CharField()
+            current_price = FloatField(null=True)
 
             status = IntegerField()
             duration = IntegerField()
@@ -221,6 +223,7 @@ class OpOrderDataBase:
                 db_bar.sell_time = bar.sell_time
                 db_bar.buy_time = bar.buy_time
                 db_bar.strategy_name = bar.strategy_name
+                db_bar.current_price = bar.current_price
                 db_bar.opLogsJsonText = bar.convertOpLogToJsonText()
 
                 return db_bar
@@ -244,6 +247,7 @@ class OpOrderDataBase:
                 bar.source = self.source
                 bar.sell_time = self.sell_time
                 bar.buy_time = self.buy_time
+                bar.current_price = self.current_price
                 bar.loadOpLogFromJsonText(self.opLogsJsonText)
 
                 return bar

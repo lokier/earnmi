@@ -389,7 +389,16 @@ def printLaststTops():
 
         def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
             return not self.paramMap.get(dimen.value) is None
-    runner.runZZ500Now("pbData.db",MyStrategy());
+
+    # keys = {"database", "user", "password", "host", "port"}
+    # settings = {k: v for k, v in settings.items() if k in keys}
+    from peewee import MySQLDatabase
+    # db = MySQLDatabase(**settings)
+    dbSetting = {"database":"vnpy","user":"root","password":"Qwer4321","host":"localhost","port":3306}
+    from peewee import SqliteDatabase
+    #db = SqliteDatabase("opdata.db")
+    db = MySQLDatabase(**dbSetting)
+    runner.runZZ500Now(db,MyStrategy());
 
 
     pass
