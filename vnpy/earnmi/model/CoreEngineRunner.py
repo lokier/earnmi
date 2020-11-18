@@ -511,7 +511,7 @@ class CoreEngineRunner():
                     ###新的一天，更新老师库
                     runner._buildHisotryData(opDb, strategy)
                     runner.runZZ500NowTime = datetime.now()
-                t = Timer(30, dayJob, ())
+                t = Timer(300, dayJob, ())
             else:
                 print(f"[dayJob:{datetime.now()}]: 更新价格")
                 todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
