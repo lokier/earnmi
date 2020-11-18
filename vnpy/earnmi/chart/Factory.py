@@ -1,11 +1,6 @@
-import math
-from typing import Union
-
 import numpy as np
-from numba import int32, jit, float64, numba
 import talib
-
-from earnmi.chart.Indicator import Indicator
+from numba import int32, jit, float64
 
 
 class Factory:
