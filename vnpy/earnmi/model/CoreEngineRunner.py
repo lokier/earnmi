@@ -506,14 +506,14 @@ class CoreEngineRunner():
             noInTradeTime = today.hour >= 15 or \
                     today.hour < 9 or today.hour == 9 and today.minute < 10
             if noInTradeTime:
-                print(f"[getTops]: 未在交易时间")
+                print(f"[dayJob:{datetime.now()}]: 未在交易时间")
                 if utils.is_same_day(runner.runZZ500NowTime,datetime.now()):
                     ###新的一天，更新老师库
                     runner._buildHisotryData(opDb, strategy)
                     runner.runZZ500NowTime = datetime.now()
                 t = Timer(120, dayJob, ())
             else:
-                print(f"[getTops:{datetime.now()}]: 更新价格")
+                print(f"[dayJob:{datetime.now()}]: 更新价格")
                 todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
                 opList =  opDb.loadLatest(50)
                 ###更新最近50个数据
