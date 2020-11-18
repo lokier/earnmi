@@ -1,50 +1,19 @@
-from datetime import datetime, timedelta
-from functools import cmp_to_key
-from typing import Sequence
-
-import pandas as pd
-import numpy as np
-import sklearn
-from sklearn import model_selection
-from sklearn.model_selection import cross_val_score
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import ExtraTreesClassifier
-from sklearn.tree import DecisionTreeClassifier
-import pickle
-
-from earnmi.chart.Chart import Chart
-from earnmi.chart.Factory import Factory
-from earnmi.data.SWImpl import SWImpl
-from earnmi.model.BarDataSource import ZZ500DataSource
-from earnmi.model.CoreEngine import CoreEngine
-from earnmi.model.CoreEngineImpl import SWDataSource
-from earnmi.model.CoreEngineRunner import CoreEngineRunner
-from earnmi.model.CoreEngineStrategy import CoreEngineStrategy, CommonStrategy
-from earnmi.model.PredictData2 import PredictData
-from earnmi.uitl.BarUtils import BarUtils
-from earnmi.uitl.utils import utils
-from vnpy.trader.object import BarData
-
-from earnmi.data.SWImpl import SWImpl
-from earnmi.model.CoreEngineModel import CoreEngineModel
-from abc import abstractmethod, ABC
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Union, Tuple, Sequence
 
-from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
-from earnmi.model.CollectData import CollectData
-from earnmi.model.CoreEngine import CoreEngine,PredictModel
-from earnmi.model.CoreEngineImpl import SWDataSource
-from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
-from earnmi.model.PredictData import PredictData
-from earnmi.model.PredictOrder import PredictOrder, PredictOrderStatus
-from earnmi.model.QuantData import QuantData
-from earnmi.model.CoreEngineModel import CoreEngineModel
-from vnpy.trader.object import BarData
 import numpy as np
-import pandas as pd
-from earnmi.chart.KPattern import KPattern
+
+from earnmi.chart.Factory import Factory
+from earnmi.chart.FloatEncoder import FloatEncoder
+from earnmi.model.BarDataSource import ZZ500DataSource
+from earnmi.model.CollectData import CollectData
+from earnmi.model.CoreEngine import CoreEngine
+from earnmi.model.CoreEngineModel import CoreEngineModel
+from earnmi.model.CoreEngineRunner import CoreEngineRunner
+from earnmi.model.CoreEngineStrategy import CommonStrategy
+from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
+from earnmi.uitl.BarUtils import BarUtils
+from vnpy.trader.object import BarData
+
 
 class SKDJ_EngineModel(CoreEngineModel):
 
@@ -395,7 +364,6 @@ def printLaststTops():
     from peewee import MySQLDatabase
     # db = MySQLDatabase(**settings)
     dbSetting = {"database":"vnpy","user":"root","password":"Qwer4321","host":"localhost","port":3306}
-    from peewee import SqliteDatabase
     #db = SqliteDatabase("opdata.db")
     db = MySQLDatabase(**dbSetting)
     runner.runZZ500Now(db,MyStrategy());

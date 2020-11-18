@@ -530,7 +530,7 @@ class CoreEngineRunner():
             t.start()
 
         dayJob()
-        #self.__printOpList(opDb)
+        self.__printOpList(opDb)
 
 
     def __printOpList(self, opDb:OpOrderDataBase):
