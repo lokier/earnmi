@@ -503,9 +503,8 @@ class CoreEngineRunner():
         from threading import Timer
         def dayJob():
             from earnmi.uitl.jqSdk import jqSdk
-            noInTradeTime = today.hour >= 15 or \
-                    today.hour < 9 or today.hour == 9 and today.minute < 10
-            if noInTradeTime:
+            isInTradeTime = today.hour >= 9 and today.hour <=15
+            if not isInTradeTime:
                 print(f"[dayJob:{datetime.now()}]: 未在交易时间")
                 if not utils.is_same_day(runner.runZZ500NowTime,datetime.now()):
                     ###新的一天，更新老师库
@@ -530,7 +529,7 @@ class CoreEngineRunner():
             t.start()
 
         dayJob()
-        ##self.__printOpList(opDb)
+        self.__printOpList(opDb)
 
 
     def __printOpList(self, opDb:OpOrderDataBase):
