@@ -77,7 +77,7 @@ class PredictOrder(object):
             opOrder.buy_price = self.buyPrice
         assert not self.update_time is None
         opOrder.update_time = self.update_time
-        opOrder.finished = self.status != PredictOrderStatus.READY and self.status!= PredictOrderStatus.HOLD
+        opOrder.updateStatus()
 
 
     def getStr(self):

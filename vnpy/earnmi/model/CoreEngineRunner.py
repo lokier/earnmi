@@ -129,6 +129,7 @@ class CoreEngineRunner():
     def __init__(self,engine:CoreEngine):
         self.coreEngine:CoreEngine = engine
         self.runZZ500NowTime = None
+        self.zz500_funished_order_map = {}
     """
     计算未来两天最有可能涨的股票SW指数。
     """
@@ -308,28 +309,24 @@ class CoreEngineRunner():
                 self.coreEngine.printLog(f"updateOrder[{bar.symbol}] at date: {bar.datetime}, skip!!!")
                 continue
             last_today_bar = bar == bars[-1]
-            operation = self.__updateOrdresAtDay(strategy,order,bar,last_today_bar,debug_parms)
+            opLog = self.__updateOrdresAtDay(strategy,order,bar,last_today_bar,debug_parms)
             """
                        处理操作单
                        0: 不处理
                        1：做多
                        2：做空
-                       3: 预测成功交割单
+                       3: 预测成功交割单(卖出）
                        4：预测失败交割单
                        5：废弃单              
                        """
-            if operation!= 0:
-                opTipInfo = order.opTips
-                if opTipInfo is None:
-                    opTipInfo = self.__getOpeartionTips(operation)
-                opLog = OpLog(type = 0,info=opTipInfo,time =bar.datetime)
+            if  not opLog is None:
                 opLogList.append(opLog)
 
         ##强制清单
         if foce_close_order and ( order.status == PredictOrderStatus.HOLD or order.status == PredictOrderStatus.READY):
             order.sellPrice = bars[-1].close_price
             order.status = PredictOrderStatus.FAIL
-            opLogList.append(OpLog(type=1, info=f"超过持有天数限制，当天收盘价割单", time=bars[-1].datetime))
+            opLogList.append(OpLog(type=4, info=f"超过持有天数限制，当天收盘价割单", time=bars[-1].datetime))
 
         return opLogList
 
@@ -383,7 +380,14 @@ class CoreEngineRunner():
             order.status = PredictOrderStatus.ABANDON
         else:
             assert operation == 0
-        return operation
+
+        if operation != 0:
+            opTipInfo = order.opTips
+            if opTipInfo is None:
+                opTipInfo = self.__getOpeartionTips(operation)
+            opLog = OpLog(type=operation, info=opTipInfo, time=bar.datetime)
+            return opLog
+        return None
 
 
 
@@ -497,7 +501,7 @@ class CoreEngineRunner():
         opDb = OpOrderDataBase(db)
         today = datetime.now()
         self.runZZ500NowTime = today
-        self._buildHisotryData(opDb,strategy)
+        self.zz500_funished_order_map = self._buildHisotryData(opDb,strategy)
         runner = self
         runner.historyDay =  today
         from threading import Timer
@@ -509,7 +513,7 @@ class CoreEngineRunner():
                 print(f"[dayJob:{datetime.now()}]: 未在交易时间")
                 if not utils.is_same_day(runner.runZZ500NowTime,today):
                     ###新的一天，更新老师库
-                    runner._buildHisotryData(opDb, strategy)
+                    runner.zz500_funished_order_map = runner._buildHisotryData(opDb, strategy)
                     runner.runZZ500NowTime = today
                 t = Timer(300, dayJob, ())
             else:
@@ -520,6 +524,14 @@ class CoreEngineRunner():
                 updateOpList = []
                 for op in opList:
                     bar: BarData = todayBarsMap.get(op.code)
+                    unfishedOrder = runner.zz500_funished_order_map.get(op.code)
+                    if not unfishedOrder is None:
+                        opLog = runner.__updateOrdresAtDay(strategy, unfishedOrder, bar, False, None)
+                        if not opLog is None:
+                            op.opLogs.append(opLog)
+                        unfishedOrder.updateOpOrder(op)
+                        if op.isFinished():
+                             del runner.zz500_funished_order_map[op.code]
                     if not bar is None:
                         op.current_price = bar.close_price
                         op.update_time =bar.datetime
@@ -536,7 +548,7 @@ class CoreEngineRunner():
     def __printOpList(self, opDb:OpOrderDataBase):
         opList =  opDb.loadLatest(50)
         for op in opList:
-            print(f"code:{op.code},finished:{op.finished},buy:%.2f, sell:%.2f,duration:{op.duration},create_time:{op.create_time}"  % (op.buy_price,op.sell_price))
+            print(f"code:{op.code},status:{op.status},buy:%.2f, sell:%.2f,duration:{op.duration},create_time:{op.create_time}"  % (op.buy_price,op.sell_price))
             if not op.opLogs is None:
                 for opLog in op.opLogs:
                     print(f"    操作日志:{opLog.time}:{opLog.info}")
@@ -574,7 +586,7 @@ class CoreEngineRunner():
         if len(dataSet) < 1:
             self.coreEngine.printLog("当前没有出现特征数据！！")
 
-        unfinished_order_list = []
+        unfinished_orderMap = {}
         for dimen, listData in dataSet.items():
             if not strategy.isSupport(self.coreEngine, dimen):
                 continue
@@ -604,19 +616,21 @@ class CoreEngineRunner():
                     order.durationDay = opData.duration
                     order.update_time = opData.update_time
                 predictBarLen = len(predict.collectData.predictBars)
-                if isNewOpData or not opData.finished and predictBarLen > 0:
+                if isNewOpData or not opData.isFinished() and predictBarLen > 0:
                     opLogList = self.__updateOrdres(strategy, order, predict.collectData.predictBars,
                                                     foce_close_order=predict.collectData.isFinished());
                     opData.opLogs.extend(opLogList)
                     ##将该order的最新状态保存到数据库。
                     order.updateOpOrder(opData)
                     opDb.save(opData)
-                if not opData.finished:
-                    unfinished_order_list.append(order)
+                if not opData.isFinished():
+                    unfinished_orderMap[order.code] = order
                 if isNewOpData:
                     self.coreEngine.printLog(f"产生新的操作单: code={opData.code},create_time:{opData.create_time}")
-
         engine.printLog(f"load historyfinished！！")
+        return unfinished_orderMap
+
+
     ###中证500的数据
     def printZZ500Tops(self, strategy:CoreEngineStrategy,level = 1):
         today = datetime.now()

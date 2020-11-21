@@ -42,9 +42,11 @@ class OpOrderStatus:
     Interval of bar data.
     """
     NEW = 0 ##"新建"
-    HOLD = 1   ##"持有"
-    FINISEHD = 2  ##"操作结束"
-    INVALID = 3  ## "无效单"  ##即没买入也没卖出
+    HOLD = 1   ##"已经买入"
+    FINISHED_EARN = 2  ## 盈利单
+    FINISHED_LOSS = 3  ##亏损单
+    INVALID = 4  ## "无效单"  ##即没买入也没卖出
+
 
 
 @dataclass
@@ -61,7 +63,7 @@ class OpOrder:
     status:int = OpOrderStatus.NEW
     current_price:float = None
     duration:int = 0
-    finished:bool = False
+    predict_suc:bool = None   ##是否预测成功，只在完成状态有效。
     update_time:datetime = None
     source:int = 0  ##来源：0 为回测数据，1为实盘数据
     buy_time:datetime = None
@@ -75,6 +77,9 @@ class OpOrder:
     def __post_init__(self):
         self.update_time = self.create_time
         self.opLogs = []
+
+    def isFinished(self):
+        return self.status!= OpOrderStatus.NEW and self.status!=OpOrderStatus.HOLD
 
     def convertOpLogToJsonText(self):
         size = len(self.opLogs)
@@ -93,6 +98,39 @@ class OpOrder:
                     opLog.form_dict(the_dict)
                     op_log_list.append(opLog)
         self.opLogs = op_log_list
+
+    """
+     /*
+                       处理操作单
+                       0: 不处理
+                       1：做多
+                       2：做空
+                       3: 预测成功交割单(卖出）
+                       4：预测失败交割单
+                       5：废弃单
+     */
+    """
+    def updateStatus(self):
+        if len(self.opLogs) < 1:
+            return
+        lastOptionCode = self.opLogs[-1].type
+        if lastOptionCode == 0:
+            return
+        if lastOptionCode == 5:
+            self.status = OpOrderStatus.INVALID
+            return
+        if lastOptionCode == 1 or lastOptionCode ==2:
+            self.status = OpOrderStatus.HOLD
+            return
+        if lastOptionCode != 3 and lastOptionCode != 4:
+            print(f"why!!!")
+        assert lastOptionCode == 3 or lastOptionCode == 4
+        self.predict_suc = lastOptionCode == 3
+        if self.buy_price < self.sell_price:
+            self.status = OpOrderStatus.FINISHED_EARN
+        else:
+            self.status = OpOrderStatus.FINISHED_LOSS
+
 
 
 class OpOrderDataBase:
@@ -136,7 +174,7 @@ class OpOrderDataBase:
     def loadLatest(self,count:int)-> Sequence["OpOrder"]:
         s = (
             self.dao.select()
-                .order_by(self.dao.finished.asc(),self.dao.create_time.desc(),self.dao.update_time.desc())
+                .order_by(self.dao.create_time.desc(),self.dao.update_time.desc())
                 .limit(count)
         )
         data = [db_bar.to_data() for db_bar in s]
@@ -196,7 +234,7 @@ class OpOrderDataBase:
 
             status = IntegerField()
             duration = IntegerField()
-            finished = BooleanField()
+            predict_suc = BooleanField(null=True)
             update_time = DateTimeField()
 
             def to_dict(self):
@@ -211,7 +249,7 @@ class OpOrderDataBase:
                 """
                 db_bar = OpOrderData()
                 db_bar.status = bar.status
-                db_bar.finished = bar.finished
+                db_bar.predict_suc = bar.predict_suc
                 db_bar.duration = bar.duration
                 db_bar.update_time = bar.update_time
                 db_bar.source = bar.source
@@ -241,7 +279,7 @@ class OpOrderDataBase:
                 )
                 bar.id = self.id
                 bar.status = self.status
-                bar.finished = self.finished
+                bar.predict_suc = self.predict_suc
                 bar.duration = self.duration
                 bar.update_time = self.update_time
                 bar.source = self.source
