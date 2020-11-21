@@ -525,15 +525,15 @@ class CoreEngineRunner():
                 updateOpList = []
                 for op in opList:
                     bar: BarData = todayBarsMap.get(op.code)
-                    unfishedOrder = runner.zz500_funished_order_map.get(op.code)
-                    if not unfishedOrder is None:
-                        opLog = runner.__updateOrdresAtDay(strategy, unfishedOrder, bar, False, None)
-                        if not opLog is None:
-                            op.opLogs.append(opLog)
-                        unfishedOrder.updateOpOrder(op)
-                        if op.isFinished():
-                             del runner.zz500_funished_order_map[op.code]
                     if not bar is None:
+                        unfishedOrder = runner.zz500_funished_order_map.get(op.code)
+                        if not unfishedOrder is None:
+                            opLog = runner.__updateOrdresAtDay(strategy, unfishedOrder, bar, False, None)
+                            if not opLog is None:
+                                op.opLogs.append(opLog)
+                            unfishedOrder.updateOpOrder(op)
+                            if op.isFinished():
+                                del runner.zz500_funished_order_map[op.code]
                         op.current_price = bar.close_price
                         op.update_time =bar.datetime
                         updateOpList.append(op)
