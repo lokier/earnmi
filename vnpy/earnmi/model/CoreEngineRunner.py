@@ -607,6 +607,8 @@ class CoreEngineRunner():
                 if opData is None:
                     isNewOpData = True
                     strategy_name = f"{self.coreEngine.getEngineModel().getEngineName()}|{strategy.getName()}|{dimen.value}"
+                    if order.strategyBuyPrice < 1:
+                        print(f"why!!!")
                     opData = OpOrder(code=occurBar.symbol,
                                      strategy_name=strategy_name,
                                      create_time=occurBar.datetime,
@@ -696,7 +698,7 @@ class CoreEngineRunner():
             for predict in predictList:
                 order = self.__generatePredictOrder(self.coreEngine,predict)
                 strategy.onInitOrder(order, None)
-                todayOpration = self.__updateOrdres(strategy,order,predict.collectData.predictBars,foce_close_order=False);
+                self.__updateOrdres(strategy,order,predict.collectData.predictBars,foce_close_order=False);
                 today_order_list.append(order)
 
 

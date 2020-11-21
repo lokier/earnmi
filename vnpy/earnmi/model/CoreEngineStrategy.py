@@ -81,12 +81,6 @@ class CommonStrategy(CoreEngineStrategy):
         self.initPrams(order.dimen, debugParams)
         suggestSellPrice = order.suggestSellPrice
         suggestBuyPrice = order.suggestBuyPrice
-        ocurrBar_close_price = order.predict.collectData.occurBars[-1].close_price
-        sell_leve_pct = 100 * (order.suggestSellPrice - ocurrBar_close_price) / ocurrBar_close_price
-        if not self.sell_leve_pct_top is None and sell_leve_pct > self.sell_leve_pct_top:
-            return 5
-        if not self.sell_leve_pct_bottom is None and sell_leve_pct < self.sell_leve_pct_bottom:
-            return 5
         ##调整卖出价
         if not self.sell_offset_pct is None:
             selff_offset = self.sell_offset_pct / 100
@@ -104,6 +98,13 @@ class CommonStrategy(CoreEngineStrategy):
     @abstractmethod
     def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
                             debugParams: {} = None) -> int:
+        self.initPrams(order.dimen, debugParams)
+        ocurrBar_close_price = order.predict.collectData.occurBars[-1].close_price
+        sell_leve_pct = 100 * (order.suggestSellPrice - ocurrBar_close_price) / ocurrBar_close_price
+        if not self.sell_leve_pct_top is None and sell_leve_pct > self.sell_leve_pct_top:
+            return 5
+        if not self.sell_leve_pct_bottom is None and sell_leve_pct < self.sell_leve_pct_bottom:
+            return 5
         suggestSellPrice = order.strategySellPrice
         suggestBuyPrice = order.strategyBuyPrice
 
