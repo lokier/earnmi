@@ -48,6 +48,10 @@ class PredictOrder(object):
     #最佳买入价
     suggestBuyPrice:float = 0.0
 
+    strategySellPrice:float = 0.0
+    strategyBuyPrice:float = 0.0
+
+
     """
     """
     buyPrice:float = None
@@ -72,9 +76,9 @@ class PredictOrder(object):
         opOrder.duration = self.durationDay
         opOrder.update_time = self.update_time
         if not self.sellPrice is None:
-            opOrder.sell_price = self.sellPrice
+            opOrder.sell_actual_price = self.sellPrice
         if not self.buyPrice is None:
-            opOrder.buy_price = self.buyPrice
+            opOrder.buy_actual_price = self.buyPrice
         assert not self.update_time is None
         opOrder.update_time = self.update_time
         opOrder.updateStatus()

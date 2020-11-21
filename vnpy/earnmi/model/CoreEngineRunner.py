@@ -291,6 +291,7 @@ class CoreEngineRunner():
         _testData.quant = self.coreEngine.queryQuantData(dimen)
         for predict in predictList:
             order = self.__generatePredictOrder(self.coreEngine, predict)
+            strategy.onInitOrder(order,debug_parms)
             self.__updateOrdres(strategy, order, predict.collectData.predictBars,debug_parms = debug_parms);
             self.putToStatistics(_testData, order, predict)
         return _testData
@@ -599,6 +600,7 @@ class CoreEngineRunner():
             for predict in predictList:
                 ##产生一个预测单,
                 order = self.__generatePredictOrder(self.coreEngine, predict)
+                strategy.onInitOrder(order, None)
                 occurBar = order.predict.collectData.occurBars[-1]
                 opData = opDb.loadAtDay(occurBar.symbol, occurBar.datetime)
                 isNewOpData = False
@@ -608,8 +610,8 @@ class CoreEngineRunner():
                     opData = OpOrder(code=occurBar.symbol,
                                      strategy_name=strategy_name,
                                      create_time=occurBar.datetime,
-                                     sell_price=order.suggestSellPrice,
-                                     buy_price=order.suggestBuyPrice
+                                     sell_price=order.strategySellPrice,
+                                     buy_price=order.strategyBuyPrice
                                      )
                     order.update_time = occurBar.datetime
                 else:
@@ -693,6 +695,7 @@ class CoreEngineRunner():
             _testData.quant = self.coreEngine.queryQuantData(dimen)
             for predict in predictList:
                 order = self.__generatePredictOrder(self.coreEngine,predict)
+                strategy.onInitOrder(order, None)
                 todayOpration = self.__updateOrdres(strategy,order,predict.collectData.predictBars,foce_close_order=False);
                 today_order_list.append(order)
 

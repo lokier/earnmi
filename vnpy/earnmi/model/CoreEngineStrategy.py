@@ -17,6 +17,9 @@ class CoreEngineStrategy:
     """
     def isSupport(self, engine: CoreEngine, dimen:Dimension)->bool:
         return True
+
+    def onInitOrder(self,order: PredictOrder,debugParams: {} = None):
+        pass
     """
     处理操作单
     0: 不处理
@@ -73,10 +76,9 @@ class CommonStrategy(CoreEngineStrategy):
         if debugParams.__contains__('buy_leve_pct_bottom'):
             self.buy_leve_pct_bottom = debugParams['buy_leve_pct_bottom']
         pass
-    @abstractmethod
-    def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
-                            debugParams: {} = None) -> int:
-        self.initPrams(order.dimen,debugParams)
+
+    def onInitOrder(self,order: PredictOrder,debugParams: {} = None):
+        self.initPrams(order.dimen, debugParams)
         suggestSellPrice = order.suggestSellPrice
         suggestBuyPrice = order.suggestBuyPrice
         ocurrBar_close_price = order.predict.collectData.occurBars[-1].close_price
@@ -94,7 +96,16 @@ class CommonStrategy(CoreEngineStrategy):
             buy_offset = self.buy_offset_pct / 100
             suggestBuyPrice = suggestBuyPrice * (1 + buy_offset)
         if not self.buy_leve_pct_top is None or not self.buy_leve_pct_bottom is None:
-            raise  RuntimeError("暂未支持")
+            raise RuntimeError("暂未支持")
+        order.strategySellPrice = suggestSellPrice
+        order.strategyBuyPrice = suggestBuyPrice
+
+
+    @abstractmethod
+    def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
+                            debugParams: {} = None) -> int:
+        suggestSellPrice = order.strategySellPrice
+        suggestBuyPrice = order.strategyBuyPrice
 
         if (order.status == PredictOrderStatus.HOLD):
             if bar.high_price >= suggestSellPrice:

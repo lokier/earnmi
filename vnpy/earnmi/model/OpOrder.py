@@ -126,7 +126,7 @@ class OpOrder:
             print(f"why!!!")
         assert lastOptionCode == 3 or lastOptionCode == 4
         self.predict_suc = lastOptionCode == 3
-        if self.buy_price < self.sell_price:
+        if self.buy_actual_price < self.sell_actual_price:
             self.status = OpOrderStatus.FINISHED_EARN
         else:
             self.status = OpOrderStatus.FINISHED_LOSS
