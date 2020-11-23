@@ -7,6 +7,7 @@ from typing import List, Optional, Sequence
 
 from peewee import *
 
+from earnmi.model.op import OpOrderStatus
 from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 
@@ -37,20 +38,12 @@ class _DateEncoder(json.JSONEncoder):
         else:
             return json.JSONEncoder.default(self,obj)
 
-class OpOrderStatus:
-    """
-    Interval of bar data.
-    """
-    NEW = 0 ##"新建"
-    HOLD = 1   ##"已经买入"
-    FINISHED_EARN = 2  ## 盈利单
-    FINISHED_LOSS = 3  ##亏损单
-    INVALID = 4  ## "无效单"  ##即没买入也没卖出
+
 
 
 
 @dataclass
-class OpOrder:
+class OpOrder2:
     id = None
     code:str
     strategy_name:str
@@ -138,7 +131,7 @@ class OpOrderDataBase:
     def __init__(self,db:Database):
         self.dao = OpOrderDataBase.init_models(db)
 
-    def loadById(self,id)->Optional["OpOrder"]:
+    def loadById(self,id)->Optional["OpOrder2"]:
         s = (
             self.dao.select()
                 .where(
@@ -150,7 +143,7 @@ class OpOrderDataBase:
             return s.to_data()
         return None
 
-    def loadAtDay(self,code:str,dayTime:datetime)->Optional["OpOrder"]:
+    def loadAtDay(self,code:str,dayTime:datetime)->Optional["OpOrder2"]:
         start = utils.to_start_date(dayTime)
         end = utils.to_end_date(dayTime)
         s = (
@@ -171,7 +164,7 @@ class OpOrderDataBase:
     def LoadLatest(self):
         pass
 
-    def loadLatest(self,count:int)-> Sequence["OpOrder"]:
+    def loadLatest(self,count:int)-> Sequence["OpOrder2"]:
         s = (
             self.dao.select()
                 .order_by(self.dao.create_time.desc(),self.dao.update_time.desc())
@@ -180,7 +173,7 @@ class OpOrderDataBase:
         data = [db_bar.to_data() for db_bar in s]
         return data
 
-    def load(self,start: datetime,end: datetime) -> Sequence["OpOrder"]:
+    def load(self,start: datetime,end: datetime) -> Sequence["OpOrder2"]:
         s = (
             self.dao.select()
                 .where(
@@ -192,13 +185,13 @@ class OpOrderDataBase:
         data = [db_bar.to_data() for db_bar in s]
         return data
 
-    def save(self,data:OpOrder):
+    def save(self, data:OpOrder2):
 
         self.dao.save_all([self.dao.from_data(data)])
 
     def saveAll(
         self,
-        datas: Sequence["OpOrder"],
+        datas: Sequence["OpOrder2"],
     ):
         ds = [self.dao.from_data(i) for i in datas]
         self.dao.save_all(ds)
@@ -243,7 +236,7 @@ class OpOrderDataBase:
                 database = db
                 indexes = ((("code", "create_time"), True),)
             @staticmethod
-            def from_data(bar: OpOrder):
+            def from_data(bar: OpOrder2):
                 """
                 Generate DbBarData object from BarData.
                 """
@@ -270,7 +263,7 @@ class OpOrderDataBase:
                 """
                 Generate BarData object from DbBarData.
                 """
-                bar = OpOrder(
+                bar = OpOrder2(
                     strategy_name=self.strategy_name,
                     code=self.code,
                     create_time=self.create_time,
@@ -311,8 +304,8 @@ class OpOrderDataBase:
 if __name__ == "__main__":
 
     dt = datetime.now() - timedelta(minutes=1)
-    order = OpOrder(strategy_name="1",code='test', sell_price='34', buy_price='sf', create_time=dt)
-    sameOrder = OpOrder(strategy_name="1",code='test', sell_price='34', buy_price='sf', create_time=dt)
+    order = OpOrder2(strategy_name="1", code='test', sell_price='34', buy_price='sf', create_time=dt)
+    sameOrder = OpOrder2(strategy_name="1", code='test', sell_price='34', buy_price='sf', create_time=dt)
 
     db = OpOrderDataBase("opdata.db")
 

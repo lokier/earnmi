@@ -20,7 +20,7 @@ from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.CoreEngineStrategy import CoreEngineStrategy
 from earnmi.model.Dimension import Dimension
-from earnmi.model.OpOrder import OpOrderDataBase, OpOrder, OpLog
+from earnmi.model.OpOrder2 import OpOrderDataBase, OpOrder2, OpLog
 from earnmi.model.PredictAbilityData import PredictAbilityData
 from earnmi.model.PredictData import PredictData
 from earnmi.model.PredictOrder import PredictOrderStatus, PredictOrder
@@ -609,12 +609,12 @@ class CoreEngineRunner():
                     strategy_name = f"{self.coreEngine.getEngineModel().getEngineName()}|{strategy.getName()}|{dimen.value}"
                     if order.strategyBuyPrice < 1:
                         print(f"why!!!")
-                    opData = OpOrder(code=occurBar.symbol,
-                                     strategy_name=strategy_name,
-                                     create_time=occurBar.datetime,
-                                     sell_price=order.strategySellPrice,
-                                     buy_price=order.strategyBuyPrice
-                                     )
+                    opData = OpOrder2(code=occurBar.symbol,
+                                      strategy_name=strategy_name,
+                                      create_time=occurBar.datetime,
+                                      sell_price=order.strategySellPrice,
+                                      buy_price=order.strategyBuyPrice
+                                      )
                     order.update_time = occurBar.datetime
                 else:
                     order.durationDay = opData.duration

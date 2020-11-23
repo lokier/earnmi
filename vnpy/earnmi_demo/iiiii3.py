@@ -7,7 +7,7 @@ from earnmi.data.MarketImpl import MarketImpl
 from datetime import datetime, timedelta
 import talib
 
-from earnmi.model.OpOrder import OpOrderDataBase, OpOrder, OpLog
+from earnmi.model.OpOrder2 import OpOrderDataBase, OpOrder2, OpLog
 
 code = "600155"
 #code = '000300'

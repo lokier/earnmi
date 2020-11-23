@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from earnmi.model.Dimension import Dimension
-from earnmi.model.OpOrder import OpOrder
+from earnmi.model.OpOrder2 import OpOrder2
 from earnmi.model.PredictData import PredictData
 from earnmi.uitl.utils import utils
 
@@ -72,7 +72,7 @@ class PredictOrder(object):
     """
     trace_status = 0
 
-    def updateOpOrder(self,opOrder:OpOrder):
+    def updateOpOrder(self, opOrder:OpOrder2):
         opOrder.duration = self.durationDay
         opOrder.update_time = self.update_time
         if not self.sellPrice is None:
