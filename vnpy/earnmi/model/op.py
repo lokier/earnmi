@@ -5,6 +5,16 @@ from typing import List, Sequence
 from peewee import Model, AutoField, CharField, IntegerField, DateTimeField, FloatField, TextField, BooleanField, \
     Database, SqliteDatabase, chunked
 
+__all__ = [
+    # Super-special typing primitives.
+    'OpOrderStatus',
+    'OpLogType',
+    'OpLog',
+    'OpOrder',
+    'OpOrderRealInfo',
+    'OpProject',
+    'OpDataBase', ###数据库
+]
 
 class OpOrderStatus:
     """
@@ -27,6 +37,7 @@ class OpLogType:
 @dataclass
 class OpLog:
     project_id:int
+    id:int = None
     order_id:int = None
     type:int = -1   ## 查看 OpLogType
     level:int = 0   ##0: verbse  100:debug  200：info   300:warn:  400 :error
@@ -45,7 +56,6 @@ class OpOrder:
     buy_price: float  ##预测买入价
     sell_price: float
     create_time: datetime;  ##创建时间、发生时间
-
     id :int = None
     status: int = OpOrderStatus.NEW
     duration: int = 0
@@ -94,6 +104,10 @@ class OpOrederRealInfo:
     price:float = 0.0
     current_status:str = ""
 
+"""
+orm model
+"""
+
 class OpBaseModel(Model):
 
     def to_dict(self):
@@ -110,15 +124,13 @@ class OpBaseModel(Model):
 
 class OpProjectModel(OpBaseModel):
     table_name = 'op_project'
-
-    id = AutoField()
+    id = AutoField(null=False)
     name = CharField(max_length=512,null=False)
     create_time = DateTimeField(index=True)
     update_time = DateTimeField(index=True)
     status = CharField(max_length=128)
     summary = CharField(max_length=10240,null=True)
     url = CharField(max_length=10240,null=True)
-
 
     @staticmethod
     def from_data(data: OpProject):
@@ -143,6 +155,130 @@ class OpProjectModel(OpBaseModel):
         data.update_time = self.update_time
         return data
 
+class OpOrderModel(OpBaseModel):
+    table_name = 'op_order'
+    id = AutoField()
+    code = CharField(max_length=48,null=False)
+    code_name = CharField(max_length=125,null=False)
+    project_id = IntegerField(null=False)
+    buy_price = FloatField()
+    sell_price= FloatField()
+    create_time= DateTimeField()
+    status = IntegerField()
+    duration = IntegerField()
+    predict_suc = BooleanField(null=True)
+    update_time = DateTimeField()
+    source = IntegerField()
+    desc = CharField(max_length=10240,null=True)
+
+    @staticmethod
+    def from_data(data: OpOrder):
+        db_data = OpOrderModel()
+        db_data.id = data.id
+        db_data.code = data.code
+        db_data.code_name = data.code_name
+        db_data.project_id = data.project_id
+        db_data.buy_price = data.buy_price
+        db_data.sell_price = data.sell_price
+        db_data.create_time = data.create_time
+        db_data.status = data.status
+        db_data.duration = data.duration
+        db_data.predict_suc = data.predict_suc
+        db_data.update_time = data.update_time
+        db_data.source = data.source
+        db_data.desc = data.desc
+        return db_data
+
+    def to_data(self):
+        data = OpOrder(
+            code=self.code,
+            code_name=self.code_name,
+            project_id=self.project_id,
+            buy_price=self.buy_price,
+            sell_price=self.sell_price,
+            create_time=self.create_time,
+        )
+        data.id = self.id
+        data.status = self.status
+        data.duration = self.duration
+        data.predict_suc = self.predict_suc
+        data.update_time = self.update_time
+        data.source = self.source
+        data.desc = self.desc
+        return data
+
+
+
+class OpOrderRealInfoModel(OpBaseModel):
+    table_name = 'op_order_real_info'
+    id = AutoField()
+    order_id = IntegerField(null=False)
+    update_time = DateTimeField()
+    price = FloatField()
+    current_status = CharField(max_length=48,null=True)
+
+    @staticmethod
+    def from_data(data: OpOrederRealInfo):
+        db_data = OpOrderRealInfoModel()
+        db_data.id = data.id
+        db_data.order_id = data.order_id
+        db_data.update_time = data.update_time
+        db_data.price = data.price
+        db_data.current_status = data.current_status
+        return db_data
+
+    def to_data(self):
+        data = OpOrederRealInfo(
+            order_id=self.order_id,
+        )
+        data.id = self.id
+        data.update_time = self.update_time
+        data.price = self.price
+        data.current_status = self.current_status
+        return data
+
+
+class OpLogModel(OpBaseModel):
+    table_name = 'op_log'
+    id = AutoField()
+    order_id = IntegerField(null=True)
+    project_id = IntegerField(null=False)
+    type = IntegerField(null=True)
+    level = IntegerField(null=False,default=0)
+    time = DateTimeField()
+    price = FloatField()
+    info = CharField(max_length=10240,null=True)
+    extraJasonText = CharField(max_length=10240,null=True)
+
+    @staticmethod
+    def from_data(data: OpLog):
+        db_data = OpLogModel()
+        db_data.id = data.id
+        db_data.order_id = data.order_id
+        db_data.project_id = data.project_id
+        db_data.type = data.type
+        db_data.level = data.level
+        db_data.time = data.time
+        db_data.price = data.price
+        db_data.info = data.info
+        db_data.extraJasonText = data.extraJasonText
+        return db_data
+
+    def to_data(self):
+        data = OpLog(
+            order_id=self.order_id,
+        )
+        data.id = self.id
+        data.order_id = self.order_id
+        data.project_id = self.project_id
+        data.type = self.type
+        data.level = self.level
+        data.time = self.time
+        data.price = self.price
+        data.info = self.info
+        data.extraJasonText = self.extraJasonText
+        return data
+
 
 class OpDataBase:
 
@@ -151,10 +287,26 @@ class OpDataBase:
             class Meta:
                 database = db
                 table_name = OpProjectModel.table_name
+        class OpOrderModelWrapper(OpOrderModel):
+            class Meta:
+                database = db
+                table_name = OpOrderModel.table_name
+        class OpOrderRealInfoModelWrapper(OpOrderRealInfoModel):
+            class Meta:
+                database = db
+                table_name = OpOrderRealInfoModel.table_name
+        class OpLogModelWrapper(OpLogModel):
+            class Meta:
+                database = db
+                table_name = OpLogModel.table_name
+
         self.db = db
         self.projectModel = OpProjectModelWrapper
+        self.logModel = OpLogModelWrapper
+        self.orderModel = OpOrderModelWrapper
+        self.orderRealInfoModel = OpOrderRealInfoModelWrapper
         db.connect()
-        db.create_tables([OpProjectModelWrapper])
+        db.create_tables([OpProjectModelWrapper,OpLogModelWrapper,OpOrderModelWrapper,OpOrderRealInfoModelWrapper])
 
     def save_project(self,datas: List["OpProject"]):
         ds = [self.projectModel.from_data(i) for i in datas]
@@ -193,6 +345,7 @@ class OpDataBase:
         )
         data = [db_bar.to_data() for db_bar in s]
         return data
+
 
 if __name__ == "__main__":
 
