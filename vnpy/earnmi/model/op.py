@@ -11,13 +11,31 @@ class OpOrderStatus:
     FINISHED_LOSS = 3  ##亏损单
     INVALID = 4  ## "无效单"  ##即没买入也没卖出
 
+class OpLogType:
+    PLAIN = 0   #不处理类型
+    BUY_LONG = 1 #做多买入类型
+    BUY_SHORT = 2 #做空买入类型
+    CROSS_SUCCESS = 3 #预测成功交割单(卖出）类型
+    CROSS_FAIL = 4 #预测失败交割单类型
+    ABANDON = 5 #废弃单类型
+
 @dataclass
 class OpLog:
-    pass
+    project_id:int
+    order_id:int = None
+    type:int = -1   ## 查看 OpLogType
+    level:int = 0   ##0: verbse  100:debug  200：info   300:warn:  400 :error
+    info:str = ""
+    time:datetime = None
+    price = 0.0
+    extraJasonText:str = None
+    def __post_init__(self):
+        self.time = datetime.now()
 
 @dataclass
 class OpOrder:
     code: str
+    code_name:str
     project_id:int
     buy_price: float  ##预测买入价
     sell_price: float
@@ -29,16 +47,18 @@ class OpOrder:
     predict_suc: bool = None  ##是否预测成功，只在完成状态有效。
     update_time: datetime = None
     source: int = 0  ##来源：0 为回测数据，1为实盘数据
+    desc:str = ""
 
 
-    # buy_time: datetime = None   ##opLog可以获取到
-    # sell_time: datetime = None
-    # buy_actual_price: float = -1  # 实际买入价
-    # sell_actual_price: float = -1
+
 
 @dataclass
 class OpOrderRealInfo:
-    pass
+    order_id:int
+    price:float = 0.0
+    update_time:datetime = None
+    current_stats:str = ""
+
 
 
 @dataclass
@@ -46,9 +66,10 @@ class OpProject:
     id:int
     status:str
     name:str
-    create_time:datetime;
+    create_time:datetime
 
     summary:str = ""
+    url:str = ""
     update_time:datetime = None
 
     def __post_init__(self):
@@ -60,5 +81,11 @@ class OpProject:
 """
 实时信息
 """
+@dataclass
 class OpOrederRealInfo:
-    pass
+    order_id:int
+    id:int = None
+    update_time = None
+    price:float = 0.0
+    current_status:str = ""
+
