@@ -43,13 +43,14 @@ class OpLogLevel:
 
 @dataclass
 class OpLog:
-    project_id:int
+    project_id:int = None
     id:int = None
     order_id:int = None
     type:int = OpLogType.PLAIN   ## 查看 OpLogType
     level:int = OpLogLevel.VERBASE   ## 查看 OpLogLevel
     time:datetime = None
-    price = 0.0
+    price:float = 0.0
+    info:str = ""
     extraJasonText:str = None
     def __post_init__(self):
         self.time = datetime.now()
@@ -327,8 +328,12 @@ class OpDataBase:
     def clear_project(self):
         self.projectModel.delete().execute()
 
+    def clear_log(self):
+        self.logModel.delete().execute()
+
     def delete_project(self,id:int):
         self.projectModel.delete().where(self.projectModel.id == id).execute()
+
 
     def count_project(self):
         return self.projectModel.select().count()
@@ -355,6 +360,28 @@ class OpDataBase:
         data = [db_bar.to_data() for db_bar in s]
         return data
 
+    def load_log_by_order_id(self, order_id)-> Sequence["OpLog"]:
+        s = (
+            self.logModel.select()
+                .where(self.logModel.order_id == order_id)
+        )
+        data = [db_bar.to_data() for db_bar in s]
+        return data
+
+
+    """
+    返回order实际买入、卖出的价格。
+    """
+    def load_order_sell_buy_price(self,order_id):
+        buy_price = None
+        sell_price = None
+        for log in self.load_log_by_order_id(order_id):
+            if log.type == OpLogType.BUY_SHORT or log.type == OpLogType.BUY_LONG:
+                buy_price = log.price
+            if log.type  == OpLogType.CROSS_FAIL or log.type == OpLogType.CROSS_SUCCESS:
+                sell_price = log.price
+        return buy_price,sell_price
+
     def save_log(self, log:OpLog):
         self.save_logs([log])
 
@@ -365,6 +392,28 @@ class OpDataBase:
             for c in chunked(dicts, 50):
                 self.logModel.insert_many(c).on_conflict_replace().execute()
 
+    def load_order_by_time(self, code:str, create_time:datetime)->OpOrder:
+        s = (
+            self.projectModel.select()
+                .where(
+                self.orderModel.code == code
+                & (self.orderModel.create_time == create_time)
+            )
+        )
+        if s:
+            data = [db_bar.to_data() for db_bar in s]
+            if len(data) > 0:
+                assert len(data) == 1
+                return data[0]
+        return None
+
+    def save_order(self, op_order):
+        ds = [self.orderModel.from_data(i) for i in [op_order]]
+        dicts = [i.to_dict() for i in ds]
+        with self.db.atomic():
+            for c in chunked(dicts, 50):
+                self.orderModel.insert_many(c).on_conflict_replace().execute()
+
 
 if __name__ == "__main__":
 
@@ -372,7 +421,7 @@ if __name__ == "__main__":
     db = OpDataBase(db_file);
     now = datetime.now()
 
-    def test_project():
+    def test():
         dt = now - timedelta(minutes=1)
         project = OpProject(
             id=12,
@@ -412,10 +461,32 @@ if __name__ == "__main__":
         assert len(pList) == 0
         db.delete_project(14)
         db.delete_project(13)
+
         assert db.count_project() == 1
+        db.clear_log()
+        buy,sell = db.load_order_sell_buy_price(13)
+        assert buy is None
+        assert sell is None
+
+        log1 = OpLog(project_id=13,order_id=3,info ="sdfdsf",type= OpLogType.BUY_LONG,price=34.34)
+        db.save_log(log1)
+        assert len(db.load_log_by_order_id(3)) == 1
+
+        buy, sell = db.load_order_sell_buy_price(3)
+        assert 34.34 == buy
+        assert sell is None
+        log2 = OpLog(project_id=13,order_id=3,info ="sdfdsf",type= OpLogType.CROSS_FAIL,price=32.34)
+        db.save_log(log2)
+        assert len(db.load_log_by_order_id(3)) == 2
+        buy, sell = db.load_order_sell_buy_price(3)
+        assert 34.34 == buy
+        assert sell ==32.34
 
 
-    test_project();
+
+
+
+    test();
 
 
 

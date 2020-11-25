@@ -61,7 +61,7 @@ class CtaStrategyBridage(CtaTemplate,Portfolio):
         if(self.myStrategy.mRunOnBackTest):
             context = BackTestContext()
             context.start_date = self.cta_engine.start
-            context.end_date = self.cta_engine.end
+            context.end_date = self.cta_engine.closeMarket
             self.myStrategy.backtestContext = context
             if(self.cta_engine.interval != Interval.DAILY):
                 raise RuntimeError(f"error interval : {self.cta_engine.interval}")
