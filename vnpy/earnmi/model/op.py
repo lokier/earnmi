@@ -9,6 +9,7 @@ __all__ = [
     # Super-special typing primitives.
     'OpOrderStatus',
     'OpLogType',
+    'OpLogLevel',
     'OpLog',
     'OpOrder',
     'OpOrderRealInfo',
@@ -33,15 +34,20 @@ class OpLogType:
     CROSS_SUCCESS = 3 #预测成功交割单(卖出）类型
     CROSS_FAIL = 4 #预测失败交割单类型
     ABANDON = 5 #废弃单类型
+class OpLogLevel:
+    VERBASE = 0   #不处理类型
+    DEBUG = 100 #做多买入类型
+    INFO = 200 #做空买入类型
+    WARN = 300 #预测成功交割单(卖出）类型
+    ERROR = 400 #预测失败交割单类型
 
 @dataclass
 class OpLog:
     project_id:int
     id:int = None
     order_id:int = None
-    type:int = -1   ## 查看 OpLogType
-    level:int = 0   ##0: verbse  100:debug  200：info   300:warn:  400 :error
-    info:str = ""
+    type:int = OpLogType.PLAIN   ## 查看 OpLogType
+    level:int = OpLogLevel.VERBASE   ## 查看 OpLogLevel
     time:datetime = None
     price = 0.0
     extraJasonText:str = None
@@ -57,6 +63,7 @@ class OpOrder:
     sell_price: float
     create_time: datetime;  ##创建时间、发生时间
     id :int = None
+    op_name:str = None
     status: int = OpOrderStatus.NEW
     duration: int = 0
     predict_suc: bool = None  ##是否预测成功，只在完成状态有效。
@@ -160,6 +167,7 @@ class OpOrderModel(OpBaseModel):
     id = AutoField()
     code = CharField(max_length=48,null=False)
     code_name = CharField(max_length=125,null=False)
+    op_name = CharField(max_length=125,null=False)
     project_id = IntegerField(null=False)
     buy_price = FloatField()
     sell_price= FloatField()
@@ -176,6 +184,7 @@ class OpOrderModel(OpBaseModel):
         db_data = OpOrderModel()
         db_data.id = data.id
         db_data.code = data.code
+        db_data.op_name = data.op_name
         db_data.code_name = data.code_name
         db_data.project_id = data.project_id
         db_data.buy_price = data.buy_price
@@ -199,6 +208,7 @@ class OpOrderModel(OpBaseModel):
             create_time=self.create_time,
         )
         data.id = self.id
+        data.op_name = self.op_name
         data.status = self.status
         data.duration = self.duration
         data.predict_suc = self.predict_suc
@@ -269,7 +279,6 @@ class OpLogModel(OpBaseModel):
             order_id=self.order_id,
         )
         data.id = self.id
-        data.order_id = self.order_id
         data.project_id = self.project_id
         data.type = self.type
         data.level = self.level
@@ -308,7 +317,7 @@ class OpDataBase:
         db.connect()
         db.create_tables([OpProjectModelWrapper,OpLogModelWrapper,OpOrderModelWrapper,OpOrderRealInfoModelWrapper])
 
-    def save_project(self,datas: List["OpProject"]):
+    def save_projects(self, datas: List["OpProject"]):
         ds = [self.projectModel.from_data(i) for i in datas]
         dicts = [i.to_dict() for i in ds]
         with self.db.atomic():
@@ -346,6 +355,16 @@ class OpDataBase:
         data = [db_bar.to_data() for db_bar in s]
         return data
 
+    def save_log(self, log:OpLog):
+        self.save_logs([log])
+
+    def save_logs(self, datas: List["OpLog"]):
+        ds = [self.logModel.from_data(i) for i in datas]
+        dicts = [i.to_dict() for i in ds]
+        with self.db.atomic():
+            for c in chunked(dicts, 50):
+                self.logModel.insert_many(c).on_conflict_replace().execute()
+
 
 if __name__ == "__main__":
 
@@ -365,11 +384,11 @@ if __name__ == "__main__":
         project.url = "url"
         db.clear_project()
         assert db.count_project() == 0
-        db.save_project([project])
+        db.save_projects([project])
         assert db.count_project() == 1
-        db.save_project([project])
-        db.save_project([project])
-        db.save_project([project])
+        db.save_projects([project])
+        db.save_projects([project])
+        db.save_projects([project])
         assert db.count_project() == 1
         assert db.load_project(23) == None
         load_project = db.load_project(12)
@@ -377,9 +396,9 @@ if __name__ == "__main__":
         assert load_project.name == project.name
 
         project.id =13
-        db.save_project([project])
+        db.save_projects([project])
         project.id =14
-        db.save_project([project])
+        db.save_projects([project])
         assert db.count_project() == 3
         pList = db.load_projects(0, 1)
         assert len(pList) == 1

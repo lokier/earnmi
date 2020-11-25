@@ -202,7 +202,7 @@ class MyStrategy(CoreEngineStrategy):
       4：预测失败交割单
       5：废弃改单
       """
-    def operatePredictOrder(self,engine:CoreEngine, order: PredictOrder,bar:BarData,isTodayLastBar:bool,debugParams:{}=None) ->int:
+    def operatePredictOrder2(self, engine:CoreEngine, order: PredictOrder, bar:BarData, isTodayLastBar:bool, debugParams:{}=None) ->int:
         if (order.status == PredictOrderStatus.HOLD):
             if bar.high_price >= order.suggestSellPrice:
                 order.sellPrice = order.suggestSellPrice

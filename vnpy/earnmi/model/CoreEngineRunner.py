@@ -352,7 +352,7 @@ class CoreEngineRunner():
         if order.update_time is None or not utils.is_same_day(bar.datetime,order.update_time):
             order.durationDay += 1   ##更新持有时间。
 
-        operation = strategy.operatePredictOrder(self.coreEngine, order, bar, last_today_bar, debug_parms)
+        operation = strategy.operatePredictOrder2(self.coreEngine, order, bar, last_today_bar, debug_parms)
 
         order.update_time = bar.datetime
         if oldStatus != order.status or _oldType != order.type:

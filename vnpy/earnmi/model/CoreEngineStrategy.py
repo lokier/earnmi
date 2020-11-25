@@ -30,7 +30,7 @@ class CoreEngineStrategy:
     5：废弃改单
     """
     @abstractmethod
-    def operatePredictOrder(self,engine:CoreEngine, order: PredictOrder,bar:BarData,isTodayLastBar:bool,debugParams:{}=None) ->int:
+    def operatePredictOrder2(self, engine:CoreEngine, order: PredictOrder, bar:BarData, isTodayLastBar:bool, debugParams:{}=None) ->int:
         pass
 
 
@@ -96,8 +96,8 @@ class CommonStrategy(CoreEngineStrategy):
 
 
     @abstractmethod
-    def operatePredictOrder(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
-                            debugParams: {} = None) -> int:
+    def operatePredictOrder2(self, engine: CoreEngine, order: PredictOrder, bar: BarData, isTodayLastBar: bool,
+                             debugParams: {} = None) -> int:
         self.initPrams(order.dimen, debugParams)
         ocurrBar_close_price = order.predict.collectData.occurBars[-1].close_price
         sell_leve_pct = 100 * (order.suggestSellPrice - ocurrBar_close_price) / ocurrBar_close_price
