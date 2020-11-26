@@ -116,16 +116,36 @@ class OpRunner(object):
     def unInit(self, endBar:BarData,  debug_parms:{} = None):
         assert self.inited
         self.inited = False
-        order = self.order
-        if order.status == PredictOrderStatus.HOLD or order.status == PredictOrderStatus.READY:
-            order.sellPrice = endBar.close_price
-            order.status = PredictOrderStatus.FAIL
-            cross_op_log = OpLog(type=OpLogType.CROSS_FAIL, info=f"超过持有天数限制，当天收盘价割单", time=endBar.datetime)
-            self.saveLog(cross_op_log)
-        order.update_time = endBar.datetime
-        self.__updateOpOrder()
+
         opLog = self.strategy.onEndOrder(self.order, endBar, debug_parms)
         self.saveLog(opLog)
+
+        order = self.order
+        if endBar:
+            if order.status == PredictOrderStatus.HOLD:
+                order.sellPrice = endBar.close_price
+                order.status = PredictOrderStatus.FAIL
+                cross_op_log = OpLog(type=OpLogType.CROSS_FAIL, info=f"超过持有天数限制，当天收盘价割单", time=endBar.datetime)
+                self.saveLog(cross_op_log)
+            elif order.status == PredictOrderStatus.READY:
+                order.status = PredictOrderStatus.ABANDON
+                cross_op_log = OpLog(type=OpLogType.CROSS_FAIL, info=f"超过持有天数限制,废弃", time=endBar.datetime)
+                self.saveLog(cross_op_log)
+
+        order.update_time = endBar.datetime
+        self.__updateOpOrder()
+
+
+        op_order = self.opDataCache.order
+        buy_price, sell_price = self.load_order_sell_buy_price()
+
+        print(f"final order: status:{op_order.status},buy:{buy_price},sell:{sell_price}")
+        if op_order.status == OpOrderStatus.INVALID:
+            assert buy_price is None and sell_price is None
+        elif op_order.status == OpOrderStatus.HOLD:
+            assert not buy_price is None and sell_price is None
+        else:
+            assert not buy_price is None and not sell_price is None
 
         ##保存所有的缓存后的数据。
         self.db.save_order(self.opDataCache.order)
@@ -137,8 +157,8 @@ class OpRunner(object):
         time = order.update_time
         op_order = self.opDataCache.order
         assert time>= op_order.update_time
-        if time == op_order.update_time:
-            return
+        # if time == op_order.update_time:
+        #     return
         if (op_order.update_time - time).days < 0:
             op_order.duration +=1
 
@@ -146,6 +166,9 @@ class OpRunner(object):
 
         if order.status == PredictOrderStatus.HOLD:
             op_order.status =  OpOrderStatus.HOLD
+            real_buy_price, real_sell_price = self.load_order_sell_buy_price()
+            assert not real_buy_price is None
+            assert real_sell_price is None
         elif order.status == PredictOrderStatus.ABANDON:
             op_order.status = OpOrderStatus.INVALID
         elif order.status!= PredictOrderStatus.READY:
@@ -157,13 +180,20 @@ class OpRunner(object):
                 op_order.status = OpOrderStatus.FINISHED_EARN
             else:
                 op_order.status = OpOrderStatus.FINISHED_LOSS
+            ###
             op_order.predict_suc = order.status == PredictOrderStatus.SUC
 
 
     def saveLog(self,log:OpLog):
         log.order_id = self.opDataCache.order.id
         log.project_id = self.op_project.id
+        if log.type == OpLogType.BUY_LONG or log.type == OpLogType.BUY_SHORT:
+            assert not self.order.buyPrice is None
+            log.price = self.order.buyPrice
+        elif log.type == OpLogType.CROSS_FAIL or log.type == OpLogType.CROSS_SUCCESS:
+            log.price = self.order.sellPrice
         self.opDataCache.logs.append(log)
+        print(f"save_log: {log.type},{log.info},price:{log.price}")
 
     def __loadOpOrder(self, order: PredictOrder) -> OpOrder:
         op_order = self.db.load_order_by_time(order.code, order.create_time)
@@ -172,7 +202,6 @@ class OpRunner(object):
                                create_time=order.create_time
                                , buy_price=order.strategyBuyPrice, sell_price=order.strategySellPrice)
             op_order.op_name = f"dimen:{order.dimen}"
-            op_order.status = "新的"
             op_order.duration = 0
             self.db.save_order(op_order)
             op_order = self.db.load_order_by_time(order.code, order.create_time)
@@ -224,7 +253,7 @@ class ProjectRunner:
         log.price = price
         log.info = info
         self.opDB.save_log(log)
-        print(f"[runner|{datetime}]: {info}")
+        print(f"[runner|{time}]: {info}")
 
 
     def runBackTest(self, soruce: BarDataSource, strategy:CoreEngineStrategy):
@@ -284,7 +313,7 @@ class ProjectRunner:
                         runner.closeMarket(bar, debug_parms)
                         lastBar = bar
                 runner.unInit(lastBar,debug_parms)
-
+                assert runner.isFinished()
 
 
 
@@ -337,11 +366,11 @@ class ProjectRunner:
                   f"单均pct:XXX,"
                   f"盈pct:XXX(XXXX)")
             """
-[99]=>count:152(sScore:81.578,bScore:67.763),做多:[交易率:13.16%(盈利欺骗占25.00%),成功率:50.00%,盈利率:75.00%,单均pct:1.24,盈pct:3.37(4.97),
-[100]=>count:480(sScore:81.875,bScore:68.125),做多:[交易率:46.88%(盈利欺骗占22.67%),成功率:37.78%,盈利率:56.44%,单均pct:0.36,盈pct:3.07(7.00)
-[94]=>count:145(sScore:73.793,bScore:73.793),做多:[交易率:60.00%(盈利欺骗占19.54%),成功率:45.98%,盈利率:59.77%,单均pct:0.33,盈pct:3.05(6.16)
-[58]=>count:70(sScore:82.857,bScore:54.285),做多:[交易率:17.14%(盈利欺骗占41.67%),成功率:75.00%,盈利率:83.33%,单均pct:1.03,盈pct:1.79(2.53),
-            """
+[99]=>count:15(sScore:93.333,bScore:53.333),做多:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+[100]=>count:39(sScore:76.923,bScore:66.666),做多:[交易率:38.46%(盈利欺骗占6.67%),成功率:13.33%,盈利率:33.33%,单均pct:-0.40,盈pct:2.93(6.00),亏pct:-2.07(-7.21)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+[58]=>count:10(sScore:80.0,bScore:60.0),做多:[交易率:40.00%(盈利欺骗占25.00%),成功率:75.00%,盈利率:75.00%,单均pct:1.24,盈pct:1.67(1.69),亏pct:-0.07(-0.07)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+[94]=>count:10(sScore:70.0,bScore:80.0),做多:[交易率:50.00%(盈利欺骗占0.00%),成功率:60.00%,盈利率:60.00%,单均pct:0.93,盈pct:2.94(3.51),亏pct:-2.09(-3.97)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+          """
 
         pass
 

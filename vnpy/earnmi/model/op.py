@@ -49,7 +49,7 @@ class OpLog:
     type:int = OpLogType.PLAIN   ## 查看 OpLogType
     level:int = OpLogLevel.VERBASE   ## 查看 OpLogLevel
     time:datetime = None
-    price:float = 0.0
+    price:float = None
     info:str = ""
     extraJasonText:str = None
     def __post_init__(self):
@@ -264,7 +264,7 @@ class OpLogModel(OpBaseModel):
     type = IntegerField(null=True)
     level = IntegerField(null=False,default=0)
     time = DateTimeField()
-    price = FloatField()
+    price = FloatField(null=True)
     info = CharField(max_length=10240,null=True)
     extraJasonText = CharField(max_length=10240,null=True)
 

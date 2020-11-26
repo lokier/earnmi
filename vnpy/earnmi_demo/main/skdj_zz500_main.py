@@ -277,6 +277,7 @@ def runBackTest():
     start = datetime(2015, 10, 1)
     middle = datetime(2019, 9, 30)
     end = datetime(2020, 9, 30)
+    end = datetime(2019,12,30)
     historySource = ZZ500DataSource(start, middle)
     futureSouce = ZZ500DataSource(middle, end)
 
@@ -309,11 +310,12 @@ def runBackTest():
         def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
             return not self.paramMap.get(dimen.value) is None
     strategy = MyStrategy()
-    #runner.backtest(futureSouce, strategy)
+    # runner.backtest(futureSouce, strategy)
 
 
 
     p_runnner = __getBackTestRunner(engine)
+    p_runnner.opDB.clear_project()
     p_runnner.runBackTest(futureSouce,strategy)
     p_runnner.printDetail()
 
@@ -397,14 +399,14 @@ def printLaststTops():
 
 if __name__ == "__main__":
     #analysicQuantDataOnly()
-    #runBackTest()
+    runBackTest()
     #printLaststTops()
-    printBackTest()
+    #printBackTest()
     """
-    [99]=>count:152(sScore:81.578,bScore:67.763),做多:[交易率:13.16%(盈利欺骗占25.00%),成功率:50.00%,盈利率:75.00%,单均pct:1.24,盈pct:3.37(4.97),亏pct:-5.15(-9.76)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
-[100]=>count:480(sScore:81.875,bScore:68.125),做多:[交易率:46.88%(盈利欺骗占22.67%),成功率:37.78%,盈利率:56.44%,单均pct:0.36,盈pct:3.07(7.00),亏pct:-3.15(-16.63)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
-[94]=>count:145(sScore:73.793,bScore:73.793),做多:[交易率:60.00%(盈利欺骗占19.54%),成功率:45.98%,盈利率:59.77%,单均pct:0.33,盈pct:3.05(6.16),亏pct:-3.71(-12.13)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
-[58]=>count:70(sScore:82.857,bScore:54.285),做多:[交易率:17.14%(盈利欺骗占41.67%),成功率:75.00%,盈利率:83.33%,单均pct:1.03,盈pct:1.79(2.53),亏pct:-2.73(-5.43)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+[99]=>count:15(sScore:93.333,bScore:53.333),做多:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+[100]=>count:39(sScore:76.923,bScore:66.666),做多:[交易率:38.46%(盈利欺骗占6.67%),成功率:13.33%,盈利率:33.33%,单均pct:-0.40,盈pct:2.93(6.00),亏pct:-2.07(-7.21)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+[58]=>count:10(sScore:80.0,bScore:60.0),做多:[交易率:40.00%(盈利欺骗占25.00%),成功率:75.00%,盈利率:75.00%,单均pct:1.24,盈pct:1.67(1.69),亏pct:-0.07(-0.07)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
+[94]=>count:10(sScore:70.0,bScore:80.0),做多:[交易率:50.00%(盈利欺骗占0.00%),成功率:60.00%,盈利率:60.00%,单均pct:0.93,盈pct:2.94(3.51),亏pct:-2.09(-3.97)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
 
 注意：预测得分高并一定代表操作成功率应该高，因为很多情况是先到最高点，再到最低点，有个顺序问题
 回测总性能:count:847(sScore:80.519,bScore:67.886)
