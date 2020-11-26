@@ -261,6 +261,17 @@ class SKDJ_EngineModelV2(SKDJ_EngineModel):
             return data
 
 
+def __getBackTestRunner(engine):
+    from earnmi.model.op import OpProject
+    project = OpProject(id=1, status="new", name="skdj_500", create_time=datetime(year=2020, month=11, day=26))
+    from earnmi.model.ProjectRunner import ProjectRunner
+    from peewee import SqliteDatabase
+    from earnmi.model.op import OpDataBase
+
+    db_file = SqliteDatabase("models/skdj_zz500_runbacktest/project.db")
+    db = OpDataBase(db_file);
+    return ProjectRunner(project, db, engine)
+
 def runBackTest():
     _dirName = "models/skdj_zz500_runbacktest"
     start = datetime(2015, 10, 1)
@@ -298,8 +309,12 @@ def runBackTest():
         def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
             return not self.paramMap.get(dimen.value) is None
     strategy = MyStrategy()
-    runner.backtest(futureSouce, strategy)
+    #runner.backtest(futureSouce, strategy)
 
+
+
+    p_runnner = __getBackTestRunner(engine)
+    p_runnner.runBackTest(futureSouce,strategy)
 
 
     # strategy = CommonStrategy()
@@ -323,6 +338,12 @@ def runBackTest():
     # runner.debugBestParam(futureSouce, strategy,params,backtest_data_cmp=data_cmp)
 
     pass
+
+def printBackTest():
+    p_runnner = __getBackTestRunner(None)
+    p_runnner.printDetail()
+    pass
+
 
 
 def printLaststTops():
@@ -371,10 +392,14 @@ def printLaststTops():
 
     pass
 
+
+
+
 if __name__ == "__main__":
     #analysicQuantDataOnly()
-    runBackTest()
+    #runBackTest()
     #printLaststTops()
+    printBackTest()
     """
     [99]=>count:152(sScore:81.578,bScore:67.763),做多:[交易率:13.16%(盈利欺骗占25.00%),成功率:50.00%,盈利率:75.00%,单均pct:1.24,盈pct:3.37(4.97),亏pct:-5.15(-9.76)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
 [100]=>count:480(sScore:81.875,bScore:68.125),做多:[交易率:46.88%(盈利欺骗占22.67%),成功率:37.78%,盈利率:56.44%,单均pct:0.36,盈pct:3.07(7.00),亏pct:-3.15(-16.63)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]

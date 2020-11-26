@@ -1,5 +1,6 @@
-from collections import Sequence
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Sequence
 
 from ibapi.common import BarData
 
@@ -12,6 +13,12 @@ from earnmi.model.PredictOrder import PredictOrder, PredictOrderStatus
 from earnmi.model.op import *
 
 
+@dataclass
+class _OpOrderDataMap:
+    order:OpOrder = None
+    logs:[] = None
+    def __post_init__(self):
+        self.logs = []
 
 class OpRunner(object):
 
@@ -21,9 +28,8 @@ class OpRunner(object):
         self.order = order
         self.db = db
         self.inited = None
-        self.op_orde:OpOrder = None
-        self.order = None
         self.isOpenMarket = False
+        self.opDataCache = _OpOrderDataMap()   ##为了性能，runner过程中把数据保存到cache里面，然后在init读取数据，在uninit保存数据。
         pass
 
     def isFinished(self):
@@ -37,10 +43,13 @@ class OpRunner(object):
     def init(self, debug_parms:{} = None):
         assert self.inited == None
         self.inited =True
-        op_log = self.strategy.onBeginOrder(self.order, debug_parms)
-        self.op_order = self.__loadOpOrder(self.order)
-        assert not self.op_order is None;
-        self.saveLog(op_log)
+        init_log = self.strategy.onBeginOrder(self.order, debug_parms)
+        op_order = self.__loadOpOrder(self.order)
+        assert not op_order is None;
+        history_logs = self.db.load_log_by_order_id(op_order.id)
+        self.opDataCache.order = op_order
+        self.opDataCache.logs.extend(history_logs)
+        self.saveLog(init_log)
 
     """
     开始一天的交易
@@ -50,7 +59,7 @@ class OpRunner(object):
         assert self.isOpenMarket == False
         if self.isFinished():
             return False
-        if (self.op_order.update_time - time).days > 0:
+        if (self.opDataCache.order.update_time - time).days > 0:
             ## 过滤历史bar时间。
             return False
         self.isOpenMarket = True
@@ -63,7 +72,7 @@ class OpRunner(object):
         assert self.inited
         assert self.isOpenMarket == True
 
-        if self.op_order.update_time >= bar.datetime:
+        if self.opDataCache.order.update_time >= bar.datetime:
             ## 跳过已经更新的数据
             return
 
@@ -117,44 +126,49 @@ class OpRunner(object):
         self.__updateOpOrder()
         opLog = self.strategy.onEndOrder(self.order, endBar, debug_parms)
         self.saveLog(opLog)
-        assert  self.isFinished()
+
+        ##保存所有的缓存后的数据。
+        self.db.save_order(self.opDataCache.order)
+        self.db.save_logs(self.opDataCache.logs)
 
 
-    def __updateOpOrder(self, time:datetime):
-        assert time>= self.op_order.update_time
-        if time == self.op_order.update_time:
-            return
-        if (self.op_order.update_time - time).days < 0:
-            self.op_order.duration +=1
-
-        self.op_order.update_time = time
+    def __updateOpOrder(self):
         order = self.order
+        time = order.update_time
+        op_order = self.opDataCache.order
+        assert time>= op_order.update_time
+        if time == op_order.update_time:
+            return
+        if (op_order.update_time - time).days < 0:
+            op_order.duration +=1
+
+        op_order.update_time = time
 
         if order.status == PredictOrderStatus.HOLD:
-            self.op_order.status =  OpOrderStatus.HOLD
+            op_order.status =  OpOrderStatus.HOLD
         elif order.status == PredictOrderStatus.ABANDON:
-            self.op_order.status = OpOrderStatus.INVALID
+            op_order.status = OpOrderStatus.INVALID
         elif order.status!= PredictOrderStatus.READY:
-            real_buy_price, real_sell_price = self.db.load_order_sell_buy_price(self.op_order.id)
+            real_buy_price, real_sell_price = self.load_order_sell_buy_price()
             assert not real_buy_price is None
             assert not real_sell_price is None
             assert order.status == PredictOrderStatus.SUC or order.status == PredictOrderStatus.FAIL
             if real_sell_price>= real_buy_price:
-                self.op_order.status = OpOrderStatus.FINISHED_EARN
+                op_order.status = OpOrderStatus.FINISHED_EARN
             else:
-                self.op_order.status = OpOrderStatus.FINISHED_LOSS
-            self.op_order.predict_suc = order.status == PredictOrderStatus.SUC
-        self.db.save_order(self.op_order)
+                op_order.status = OpOrderStatus.FINISHED_LOSS
+            op_order.predict_suc = order.status == PredictOrderStatus.SUC
 
 
     def saveLog(self,log:OpLog):
-        log.order_id = self.op_order.id
-        self.db.save_log(log)
+        log.order_id = self.opDataCache.order.id
+        log.project_id = self.op_project.id
+        self.opDataCache.logs.append(log)
 
     def __loadOpOrder(self, order: PredictOrder) -> OpOrder:
         op_order = self.db.load_order_by_time(order.code, order.create_time)
         if op_order is None:
-            op_order = OpOrder(code=order.code, code_name=order.code, project_id=self.project.id,
+            op_order = OpOrder(code=order.code, code_name=order.code, project_id=self.op_project.id,
                                create_time=order.create_time
                                , buy_price=order.strategyBuyPrice, sell_price=order.strategySellPrice)
             op_order.op_name = f"dimen:{order.dimen}"
@@ -165,16 +179,30 @@ class OpRunner(object):
             assert not op_order is None
         return op_order
 
+    """
+       返回order实际买入、卖出的价格。
+       """
+
+    def load_order_sell_buy_price(self):
+        buy_price = None
+        sell_price = None
+        for log in self.opDataCache.logs:
+            if log.type == OpLogType.BUY_SHORT or log.type == OpLogType.BUY_LONG:
+                buy_price = log.price
+            if log.type == OpLogType.CROSS_FAIL or log.type == OpLogType.CROSS_SUCCESS:
+                sell_price = log.price
+        return buy_price, sell_price
 
 
-class ProjectRunner():
+
+class ProjectRunner:
 
     def __init__(self, project: OpProject, opDB:OpDataBase,engine: CoreEngine):
         self.coreEngine: CoreEngine = engine
         self.project = project
         self.opDB = opDB
         assert not project.id is None
-        self.opDB.save_projects(project)
+        self.opDB.save_projects([project])
 
 
     """
@@ -217,7 +245,6 @@ class ProjectRunner():
                     dataSet[data.dimen] = listData
                 listData.append(data)
 
-        __dataList = {}
         run_cnt = 0
         dataSetCount = len(dataSet)
         for dimen, listData in dataSet.items():
@@ -230,12 +257,15 @@ class ProjectRunner():
                 continue
             run_cnt +=1
             self.log(f"开始回测维度:{dimen},进度:[{run_cnt}/{dataSetCount}]")
-            _testData = self.__run_backtest(model,strategy,dimen,listData);
-            __dataList[dimen] = _testData
+            self.__run_backtest(model,strategy,dimen,listData);
 
     def __run_backtest(self,model,strategy,dimen:Dimension,listData:Sequence['CollectData'],debug_parms:{} = None):
         predictList: Sequence['PredictData'] = model.predict(listData)
+        run_cunt = 0
+
         for predict in predictList:
+            run_cunt +=1
+            print(f"{run_cunt}/{len(predictList)}")
             order = self.__generatePredictOrder(self.coreEngine, predict)
             runner = OpRunner(op_project=self.project,db = self.opDB, order= order,strategy = strategy)
             runner.init(debug_parms)
@@ -253,7 +283,7 @@ class ProjectRunner():
                                 break
                         runner.closeMarket(bar, debug_parms)
                         lastBar = bar
-                runner.unInit(lastBar.debug_parms)
+                runner.unInit(lastBar,debug_parms)
 
 
 
@@ -271,8 +301,8 @@ class ProjectRunner():
         order.predict = predict
         return order
 
-
-
+    def printDetail(self):
+        pass
 
 if __name__ == "__main__":
     pass

@@ -72,6 +72,9 @@ class OpOrder:
     source: int = 0  ##来源：0 为回测数据，1为实盘数据
     desc:str = ""
 
+    def __post_init__(self):
+        self.update_time = self.create_time
+
 
 
 
@@ -107,6 +110,7 @@ class OpProject:
 @dataclass
 class OpOrederRealInfo:
     order_id:int
+    project_id:int
     id:int = None
     update_time = None
     price:float = 0.0
@@ -223,6 +227,7 @@ class OpOrderModel(OpBaseModel):
 class OpOrderRealInfoModel(OpBaseModel):
     table_name = 'op_order_real_info'
     id = AutoField()
+    project_id = IntegerField(null=False)
     order_id = IntegerField(null=False)
     update_time = DateTimeField()
     price = FloatField()
@@ -233,6 +238,7 @@ class OpOrderRealInfoModel(OpBaseModel):
         db_data = OpOrderRealInfoModel()
         db_data.id = data.id
         db_data.order_id = data.order_id
+        db_data.project_id = data.project_id
         db_data.update_time = data.update_time
         db_data.price = data.price
         db_data.current_status = data.current_status
@@ -241,6 +247,7 @@ class OpOrderRealInfoModel(OpBaseModel):
     def to_data(self):
         data = OpOrederRealInfo(
             order_id=self.order_id,
+            project_id = self.project_id,
         )
         data.id = self.id
         data.update_time = self.update_time
@@ -327,12 +334,18 @@ class OpDataBase:
 
     def clear_project(self):
         self.projectModel.delete().execute()
+        self.orderModel.delete().execute()
+        self.orderRealInfoModel.delete().execute()
+        self.logModel.delete().execute()
 
     def clear_log(self):
         self.logModel.delete().execute()
 
     def delete_project(self,id:int):
         self.projectModel.delete().where(self.projectModel.id == id).execute()
+        self.orderModel.delete().where(self.orderModel.project_id == id).execute()
+        self.orderRealInfoModel.delete().where(self.orderRealInfoModel.project_id == id).execute()
+        self.logModel.delete().where(self.logModel.project_id == id).execute()
 
 
     def count_project(self):
@@ -369,18 +382,7 @@ class OpDataBase:
         return data
 
 
-    """
-    返回order实际买入、卖出的价格。
-    """
-    def load_order_sell_buy_price(self,order_id):
-        buy_price = None
-        sell_price = None
-        for log in self.load_log_by_order_id(order_id):
-            if log.type == OpLogType.BUY_SHORT or log.type == OpLogType.BUY_LONG:
-                buy_price = log.price
-            if log.type  == OpLogType.CROSS_FAIL or log.type == OpLogType.CROSS_SUCCESS:
-                sell_price = log.price
-        return buy_price,sell_price
+
 
     def save_log(self, log:OpLog):
         self.save_logs([log])
@@ -394,10 +396,11 @@ class OpDataBase:
 
     def load_order_by_time(self, code:str, create_time:datetime)->OpOrder:
         s = (
-            self.projectModel.select()
+            self.orderModel.select()
                 .where(
-                self.orderModel.code == code
-                & (self.orderModel.create_time == create_time)
+                (self.orderModel.code == code)
+                &
+                (self.orderModel.create_time == create_time)
             )
         )
         if s:
@@ -464,23 +467,26 @@ if __name__ == "__main__":
 
         assert db.count_project() == 1
         db.clear_log()
-        buy,sell = db.load_order_sell_buy_price(13)
-        assert buy is None
-        assert sell is None
 
-        log1 = OpLog(project_id=13,order_id=3,info ="sdfdsf",type= OpLogType.BUY_LONG,price=34.34)
-        db.save_log(log1)
-        assert len(db.load_log_by_order_id(3)) == 1
+        op_code = "343422"
+        op_time = dt
+        op_order_load = db.load_order_by_time(op_code, op_time)
+        assert op_order_load is None
 
-        buy, sell = db.load_order_sell_buy_price(3)
-        assert 34.34 == buy
-        assert sell is None
-        log2 = OpLog(project_id=13,order_id=3,info ="sdfdsf",type= OpLogType.CROSS_FAIL,price=32.34)
-        db.save_log(log2)
-        assert len(db.load_log_by_order_id(3)) == 2
-        buy, sell = db.load_order_sell_buy_price(3)
-        assert 34.34 == buy
-        assert sell ==32.34
+        op_order = OpOrder(code=op_code, code_name="dxjvkld", project_id=13,
+                           create_time=op_time
+                           , buy_price=34.6, sell_price=45)
+        op_order.op_name = f"opName"
+        op_order.status = "新的"
+        op_order.duration = 0
+        db.save_order(op_order)
+        op_order_load = db.load_order_by_time(op_code, op_time)
+
+        assert not op_order_load is None
+        assert op_order_load.op_name == op_order.op_name
+        assert op_order_load.code == op_code
+        assert op_order_load.create_time == op_time
+
 
 
 
