@@ -182,6 +182,8 @@ class OpRunner(object):
                 op_order.status = OpOrderStatus.FINISHED_LOSS
             ###
             op_order.predict_suc = order.status == PredictOrderStatus.SUC
+            op_order.sell_price_real = real_sell_price
+            op_order.buy_price_real = real_buy_price
 
 
     def saveLog(self,log:OpLog):
@@ -350,21 +352,33 @@ class ProjectRunner:
             dealCount = 0
             sucCount = 0
             earnCount = 0
+            max_earn_rate = 0
+            max_loss_rate = 0
+            total_earn_rate = 0
+            total_rate = 0
             for order in order_list:
                 #assert order.status != OpOrderStatus.HOLD and order.status!=OpOrderStatus.NEW
-                if order.status != OpOrderStatus.INVALID:
-                    dealCount +=1
                 if order.predict_suc:
                     sucCount+=1
-                if order.status == OpOrderStatus.FINISHED_EARN:
-                    earnCount+=1
+                if order.status == OpOrderStatus.FINISHED_EARN or order.status == OpOrderStatus.FINISHED_LOSS:
+                    isEarn = order.status == OpOrderStatus.FINISHED_EARN
+                    rate = (order.sell_price_real - order.buy_price_real)/order.buy_price_real
+                    dealCount += 1
+                    total_rate += rate
+                    if isEarn:
+                        earnCount+=1
+                        total_earn_rate+=rate
+                        max_earn_rate = max(max_earn_rate,rate)
+                    else:
+                        max_loss_rate = min(max_loss_rate,rate)
 
             print(f"[交易率:{self.toRateText(dealCount,order_count)}"
                   f"(盈利欺骗占XX.XX%),"
                   f"成功率:{self.toRateText(sucCount,dealCount)},"
                   f"盈利率:{self.toRateText(earnCount,dealCount)},"
-                  f"单均pct:XXX,"
-                  f"盈pct:XXX(XXXX)")
+                  f"单均pct:{self.keep2Foat(self.divide(100*total_rate,dealCount))},"
+                  f"盈pct:{self.keep2Foat(self.divide(100*total_earn_rate,earnCount))}({self.keep2Foat(100*max_earn_rate)}),"
+                  f"亏pct:{self.keep2Foat(self.divide(100* (total_rate - total_earn_rate),dealCount - earnCount))}({self.keep2Foat(100*max_loss_rate)})]")
             """
 [99]=>count:15(sScore:93.333,bScore:53.333),做多:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
 [100]=>count:39(sScore:76.923,bScore:66.666),做多:[交易率:38.46%(盈利欺骗占6.67%),成功率:13.33%,盈利率:33.33%,单均pct:-0.40,盈pct:2.93(6.00),亏pct:-2.07(-7.21)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
@@ -373,7 +387,13 @@ class ProjectRunner:
           """
 
         pass
+    def keep2Foat(self,v:float):
+        return f"%.2f" % (v)
 
+    def divide(self,f1:float,f2:float):
+        if f2 < 0.0001:
+            return 0.0
+        return f1/f2
 
     def toRateText(self,f1:float,f2:float)->str:
         if f2 <0.00001:

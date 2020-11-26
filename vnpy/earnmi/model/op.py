@@ -71,6 +71,9 @@ class OpOrder:
     update_time: datetime = None
     source: int = 0  ##来源：0 为回测数据，1为实盘数据
     desc:str = ""
+    buy_price_real:float = None  ##实际买入
+    sell_price_real:float = None ##实际卖出
+
 
     def __post_init__(self):
         self.update_time = self.create_time
@@ -176,6 +179,9 @@ class OpOrderModel(OpBaseModel):
     project_id = IntegerField(null=False)
     buy_price = FloatField()
     sell_price= FloatField()
+    buy_price_real = FloatField(null=True)
+    sell_price_real = FloatField(null=True)
+
     create_time= DateTimeField()
     status = IntegerField()
     duration = IntegerField()
@@ -201,6 +207,9 @@ class OpOrderModel(OpBaseModel):
         db_data.update_time = data.update_time
         db_data.source = data.source
         db_data.desc = data.desc
+        db_data.buy_price_real = data.buy_price_real
+        db_data.sell_price_real = data.sell_price_real
+
         return db_data
 
     def to_data(self):
@@ -220,6 +229,8 @@ class OpOrderModel(OpBaseModel):
         data.update_time = self.update_time
         data.source = self.source
         data.desc = self.desc
+        data.buy_price_real = self.buy_price_real
+        data.sell_price_real = self.sell_price_real
         return data
 
 
