@@ -1,228 +1,324 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Sequence
-
-from ibapi.common import BarData
-
 from earnmi.model.BarDataSource import BarDataSource
+from earnmi.model.CollectData import CollectData
 from earnmi.model.CoreEngine import CoreEngine
-from earnmi.model.CoreEngineStrategy import CoreEngineStrategy
 from earnmi.model.Dimension import Dimension
 from earnmi.model.PredictData import PredictData
-from earnmi.model.PredictOrder import PredictOrder, PredictOrderStatus
 from earnmi.model.op import *
+from earnmi.uitl.utils import utils
+from vnpy.trader.object import BarData
 
 
-@dataclass
-class _OpOrderDataMap:
-    order:OpOrder = None
-    logs:[] = None
-    def __post_init__(self):
-        self.logs = []
+class OpStrategy:
+    def __init__(self):
+        self.buy_day_max = 2  ## 设定买入交易的最大交易天数（将在这个交易日完成买入）
+        self.max_day = 4  ##表示该策略的最大考虑天数，超过这个天数如果还没完成交割工作将强制割仓（类似止损止盈）
+        self.buy_offset_pct = None #调整买入价格，3表示高于3%的价格买入，-3表示低于3%的价格买入 None表示没有限制。
+        self.sell_offset_pct = None #调整买入价格，3表示高于3%的价格买入，-3表示低于3%的价格买入 None表示没有限制。
+        self.sell_leve_pct_top = None  # sell_leve_pct的范围None表示没有限制
+        self.sell_leve_pct_bottom = None
+        self.buy_leve_pct_top = None  #buy_leve_pct的范围None表示没有限制
+        self.buy_leve_pct_bottom = None
+
+    def getName(self):
+        return "CommonStrategy"
+
+    def getParams(self,dimen_value:int):
+        return None
+
+    def initPrams(self,dimen: Dimension,debugParams: {}):
+        if debugParams is None:
+            debugParams = self.getParams(dimen.value)
+        if debugParams is None:
+            debugParams = {}
+        if debugParams.__contains__('buy_day_max'):
+            self.buy_day_max = debugParams['buy_day_max']
+        if debugParams.__contains__('max_day'):
+            self.max_day = debugParams['max_day']
+        if debugParams.__contains__('buy_offset_pct'):
+            self.buy_offset_pct = debugParams['buy_offset_pct']
+        if debugParams.__contains__('sell_offset_pct'):
+            self.sell_offset_pct = debugParams['sell_offset_pct']
+
+        if debugParams.__contains__('sell_leve_pct_top'):
+            self.sell_leve_pct_top = debugParams['sell_leve_pct_top']
+        if debugParams.__contains__('sell_leve_pct_bottom'):
+            self.sell_leve_pct_bottom = debugParams['sell_leve_pct_bottom']
+
+        if debugParams.__contains__('buy_leve_pct_top'):
+            self.buy_leve_pct_top = debugParams['buy_leve_pct_top']
+        if debugParams.__contains__('buy_leve_pct_bottom'):
+            self.buy_leve_pct_bottom = debugParams['buy_leve_pct_bottom']
+        pass
+
+    def isSupport(self, dimen: Dimension) -> bool:
+        return True
+
+    def makeOpOrder(self,engine:CoreEngine,project:OpProject,predict:PredictData,soruce = 0,params: {} = None)->OpOrder:
+        code = predict.collectData.occurBars[-1].symbol
+        crateDate = predict.collectData.occurBars[-1].datetime
+        predict_sell_pct = predict.getPredictSellPct(engine.getEngineModel())
+        predict_buy_pct = predict.getPredictBuyPct(engine.getEngineModel())
+        start_price = engine.getEngineModel().getYBasePrice(predict.collectData)
+
+        suggestSellPrice = start_price * (1 + predict_sell_pct / 100)
+        suggestBuyPrice = start_price * (1 + predict_buy_pct / 100)
+        self.initPrams(predict.dimen, params)
+        ##根据参数调整买入、卖出价
+        ##调整卖出价
+        if not self.sell_offset_pct is None:
+            selff_offset = self.sell_offset_pct / 100
+            suggestSellPrice = suggestSellPrice * (1 + selff_offset)
+        ##调整买入价
+        if not self.buy_offset_pct is None:
+            buy_offset = self.buy_offset_pct / 100
+            suggestBuyPrice = suggestBuyPrice * (1 + buy_offset)
+        if not self.buy_leve_pct_top is None or not self.buy_leve_pct_bottom is None:
+            raise RuntimeError("暂未支持")
+
+        op_order = OpOrder(code=code, code_name=code, project_id=project.id,
+                           create_time=crateDate
+                           , buy_price=suggestBuyPrice, sell_price=suggestSellPrice)
+        op_order.op_name = f"dimen:{predict.dimen.value}"
+        op_order.duration = 0
+        op_order.source = soruce
+        return op_order
+
+    def onRestoreOrder(self, order: OpOrder)->OpLog:
+        return OpLog(info=f"恢复order环境: project_id:{order.project_id},order_id:{order.id},code:{order.code}")
+
+    def onSaveOrder(self, order: OpOrder)->OpLog:
+        return OpLog(info=f"保存order环境: project_id:{order.project_id},order_id:{order.id},code:{order.code}")
+
+    """准备开始一天的交易"""
+    def onMarketOpen(self, order: OpOrder, params: {} = None)->OpLog:
+        return OpLog(info=f"  开盘, code:{order.code}")
+
+    def onMarketClose(self, order: OpOrder, bar: BarData, params: {} = None)->OpLog:
+        return OpLog(info=f"  收盘, code:{order.code}")
+
+    def onBar(self, order: OpOrder, data:PredictData, bar: BarData, params: {} = None) -> OpLog:
+        self.initPrams(data.dimen, params)
+        ocurrBar_close_price = data.collectData.occurBars[-1].close_price
+        sell_leve_pct = 100 * (order.sell_price - ocurrBar_close_price) / ocurrBar_close_price
+        if not self.sell_leve_pct_top is None and sell_leve_pct > self.sell_leve_pct_top:
+            return OpLog(type=OpLogType.ABANDON)
+        if not self.sell_leve_pct_bottom is None and sell_leve_pct < self.sell_leve_pct_bottom:
+            return OpLog(type=OpLogType.ABANDON)
+        suggestSellPrice = order.sell_price
+        suggestBuyPrice = order.buy_price
+
+        if (order.status == OpOrderStatus.HOLD):
+            if bar.high_price >= suggestSellPrice:
+                return OpLog(type=OpLogType.CROSS_SUCCESS,price=suggestSellPrice, info=f"成功到达卖出价，操作单按预测成功完成！")
+            if order.duration >= self.max_day:
+                return OpLog(type=OpLogType.CROSS_FAIL,price=bar.close_price, info=f"超过持有天数限制并强制减盈（减损），操作单未按预测成功！")
+            order.isOverClosePct = 100 * (bar.close_price - suggestBuyPrice) / suggestBuyPrice  ##低价买入，是否想预期走势走高。
+        elif order.status == OpOrderStatus.NEW:
+            if order.duration > self.buy_day_max:
+                # 超过买入交易时间天数，废弃
+                return OpLog(type=OpLogType.ABANDON, info=f"超过考虑买入交易天数:{self.buy_day_max}")
+            ##这天观察走势,且当天high_price 不能超过预测卖出价
+            # 这里有个坑，
+            # 1、如果当天是超过卖出价之后再跌到买入价，  这时第二天就要考虑止损
+            # 2、如果是到底买入价之后的当天马上涨到卖出价，这时第二天就要考虑止盈
+            # 不管是那种情况，反正第二天就卖出。
+            if suggestBuyPrice >= bar.low_price:
+                ##当天是否盈利欺骗
+                order.isWinCheatBuy = bar.high_price >= suggestSellPrice
+                ##趋势形成的第二天买入。
+                return OpLog(type=OpLogType.BUY_LONG,price=suggestBuyPrice , info=f"成功到达最低价买入！！！，当天是否有超过卖出价:{order.isWinCheatBuy}")
+        return None
 
 class OpRunner(object):
 
-    def __init__(self,order:PredictOrder,op_project:OpProject,db:OpDataBase,strategy:CoreEngineStrategy):
+    def __init__(self,op_project:OpProject,predictData:PredictData,db:OpDataBase,order:OpOrder,strategy:OpStrategy):
         self.op_project = op_project;
-        self.strategy = strategy
-        self.order = order
+        self.strategy:OpStrategy = strategy
+        self.__order = order
+        self.__opLogs= []
+        self.marketTime = None  ##市场时间
         self.db = db
-        self.inited = None
+        self.predictData = predictData
         self.isOpenMarket = False
-        self.opDataCache = _OpOrderDataMap()   ##为了性能，runner过程中把数据保存到cache里面，然后在init读取数据，在uninit保存数据。
-        pass
+        self.buyTime = None
+        assert not order is None
+
+    """
+        恢复运行环境
+    """
+    def restore(self):
+        op_order = self.__order
+        db_op_order = self.db.load_order_by_time(self.op_project.id,op_order.code, op_order.create_time)
+        if db_op_order is None:
+            ##说明使用的未保存的op_order，先保存获取到order_id
+            self.db.save_order(op_order)
+            op_order = self.db.load_order_by_time(self.op_project.id,op_order.code, op_order.create_time)
+            assert not op_order is None
+            self.__order = op_order
+        else:
+            self.__order = db_op_order
+        assert not self.__order.id is None;
+        self.marketTime = self.__order.update_time
+        history_logs = self.db.load_log_by_order_id(op_order.id)
+        if len(history_logs) > 0:
+            self.__opLogs.extend(history_logs)
+        resotre_log = self.strategy.onRestoreOrder(self.__order)
+        self.saveLog(resotre_log)
+
+    """
+    保存运行环境。
+    """
+    def save(self):
+        ##保存所有的缓存后的数据。
+        save_log = self.strategy.onSaveOrder(self.__order)
+        self.saveLog(save_log)
+        self.db.save_order(self.__order)
+        self.db.save_logs(self.__opLogs)
+
 
     def isFinished(self):
-        order = self.order
-        if order.status == PredictOrderStatus.ABANDON or \
-                order.status == PredictOrderStatus.SUC or \
-                order.status == PredictOrderStatus.FAIL:
+        order = self.__order
+        if order.status == OpOrderStatus.INVALID or \
+                order.status == OpOrderStatus.FINISHED_EARN or \
+                order.status == OpOrderStatus.FINISHED_LOSS:
             return True
         return False
 
-    def init(self, debug_parms:{} = None):
-        assert self.inited == None
-        self.inited =True
-        init_log = self.strategy.onBeginOrder(self.order, debug_parms)
-        op_order = self.__loadOpOrder(self.order)
-        assert not op_order is None;
-        history_logs = self.db.load_log_by_order_id(op_order.id)
-        self.opDataCache.order = op_order
-        self.opDataCache.logs.extend(history_logs)
-        self.saveLog(init_log)
+    """
+    今天是否可以交易
+    """
+    def canMarketToday(self):
+        if not self.buyTime is None:
+            return not utils.is_same_day(self.buyTime,self.marketTime)
+        return True
 
     """
     开始一天的交易
     """
     def openMarket(self, time:datetime,debug_parms:{} = None):
-        assert self.inited
-        assert self.isOpenMarket == False
         if self.isFinished():
             return False
-        if (self.opDataCache.order.update_time - time).days > 0:
+        if (self.__order.update_time - time).days > 0:
             ## 过滤历史bar时间。
             return False
+        assert self.isOpenMarket == False
         self.isOpenMarket = True
-        opLog = self.strategy.onOpenTrade(self.order,debug_parms)
+        self.marketTime = time
+        opLog = self.strategy.onMarketOpen(self.__order,debug_parms)
         self.saveLog(opLog)
         return True
 
 
     def update(self,bar:BarData,debug_parms:{} = None):
-        assert self.inited
         assert self.isOpenMarket == True
-
-        if self.opDataCache.order.update_time >= bar.datetime:
+        if not self.canMarketToday() or self.__order.update_time >= bar.datetime:
             ## 跳过已经更新的数据
             return
 
-        order = self.order
+        order = self.__order
         oldStatus = order.status
-        _oldType = order.type
-
-        opLog = self.strategy.onBar(order, bar, debug_parms)
-        if oldStatus != order.status or _oldType != order.type:
-            raise RuntimeError("cant changed PredictOrder status or type！！")
+        opLog = self.strategy.onBar(order,self.predictData, bar, debug_parms)
+        if not order.predict_suc:
+            order.predict_suc = bar.high_price >= order.sell_price
         if not opLog is None:
+            opLog.time = bar.datetime
+            self.saveLog(opLog)
             operation = opLog.type
+            newStatus = None
             if operation == OpLogType.BUY_LONG or operation ==  OpLogType.BUY_SHORT:
-                assert order.type is None and not order.buyPrice is None
-                order.type = operation
-                order.status = PredictOrderStatus.HOLD
+                assert oldStatus == OpOrderStatus.NEW
+                newStatus = OpOrderStatus.HOLD
             elif operation == OpLogType.CROSS_SUCCESS or operation == OpLogType.CROSS_FAIL:
-                assert not order.type is None and not order.sellPrice is None and not order.buyPrice is None and order.status == PredictOrderStatus.HOLD
-                if operation == OpLogType.CROSS_SUCCESS:
-                    order.status = PredictOrderStatus.SUC
-                else:
-                    order.status = PredictOrderStatus.FAIL
+                assert oldStatus == OpOrderStatus.HOLD
+                newStatus = self.corssOrder()
             elif operation == OpLogType.ABANDON:
-                assert order.status == PredictOrderStatus.READY
-                order.status = PredictOrderStatus.ABANDON
+                assert oldStatus == OpOrderStatus.NEW
+                newStatus = OpOrderStatus.INVALID
             else:
                 assert operation == OpLogType.PLAIN
-        order.update_time = bar.datetime
-        if not opLog is None:
-            self.saveLog(opLog)
-        self.__updateOpOrder()
+            if not newStatus is None:
+                self.__updateOpOrder(newStatus,bar.datetime)
 
+    def corssOrder(self):
+        order = self.__order
+        real_buy_price, real_sell_price = self.load_order_sell_buy_price()
+        assert not real_buy_price is None
+        assert not real_sell_price is None
+        cross_status = OpOrderStatus.FINISHED_LOSS
+        if real_sell_price >= real_buy_price:
+            cross_status = OpOrderStatus.FINISHED_EARN
+        ###
+        order.sell_price_real = real_sell_price
+        order.buy_price_real = real_buy_price
+        return cross_status
 
-    def closeMarket(self, lastBar:BarData, debug_parms:{} = None):
-        assert self.inited
-        assert self.isOpenMarket == True
-        self.isOpenMarket = False
-        opLog = self.strategy.onEndTrade(self.order,lastBar, debug_parms)
-        self.saveLog(opLog)
-
-    def unInit(self, endBar:BarData,  debug_parms:{} = None):
-        assert self.inited
-        self.inited = False
-
-        opLog = self.strategy.onEndOrder(self.order, endBar, debug_parms)
-        self.saveLog(opLog)
-
-        order = self.order
-        if endBar:
-            if order.status == PredictOrderStatus.HOLD:
-                order.sellPrice = endBar.close_price
-                order.status = PredictOrderStatus.FAIL
-                cross_op_log = OpLog(type=OpLogType.CROSS_FAIL, info=f"超过持有天数限制，当天收盘价割单", time=endBar.datetime)
-                self.saveLog(cross_op_log)
-            elif order.status == PredictOrderStatus.READY:
-                order.status = PredictOrderStatus.ABANDON
-                cross_op_log = OpLog(type=OpLogType.CROSS_FAIL, info=f"超过持有天数限制,废弃", time=endBar.datetime)
-                self.saveLog(cross_op_log)
-
-        order.update_time = endBar.datetime
-        self.__updateOpOrder()
-
-
-        op_order = self.opDataCache.order
-        buy_price, sell_price = self.load_order_sell_buy_price()
-
-        print(f"final order: status:{op_order.status},buy:{buy_price},sell:{sell_price}")
-        if op_order.status == OpOrderStatus.INVALID:
-            assert buy_price is None and sell_price is None
-        elif op_order.status == OpOrderStatus.HOLD:
-            assert not buy_price is None and sell_price is None
-        else:
-            assert not buy_price is None and not sell_price is None
-
-        ##保存所有的缓存后的数据。
-        self.db.save_order(self.opDataCache.order)
-        self.db.save_logs(self.opDataCache.logs)
-
-
-    def __updateOpOrder(self):
-        order = self.order
-        time = order.update_time
-        op_order = self.opDataCache.order
-        assert time>= op_order.update_time
-        # if time == op_order.update_time:
-        #     return
-        if (op_order.update_time - time).days < 0:
-            op_order.duration +=1
-
-        op_order.update_time = time
-
-        if order.status == PredictOrderStatus.HOLD:
-            op_order.status =  OpOrderStatus.HOLD
+    def __updateOpOrder(self,newStatus:int,currentMarketTime:datetime):
+        order = self.__order
+        if (self.marketTime - currentMarketTime).days < 0:
+            order.duration +=1
+        self.marketTime = currentMarketTime
+        self.__order.update_time = currentMarketTime
+        oldStatus = order.status
+        order.status = newStatus
+        if order.status == OpOrderStatus.HOLD:
             real_buy_price, real_sell_price = self.load_order_sell_buy_price()
             assert not real_buy_price is None
             assert real_sell_price is None
-        elif order.status == PredictOrderStatus.ABANDON:
-            op_order.status = OpOrderStatus.INVALID
-        elif order.status!= PredictOrderStatus.READY:
-            real_buy_price, real_sell_price = self.load_order_sell_buy_price()
-            assert not real_buy_price is None
-            assert not real_sell_price is None
-            assert order.status == PredictOrderStatus.SUC or order.status == PredictOrderStatus.FAIL
-            if real_sell_price>= real_buy_price:
-                op_order.status = OpOrderStatus.FINISHED_EARN
-            else:
-                op_order.status = OpOrderStatus.FINISHED_LOSS
-            ###
-            op_order.predict_suc = order.status == PredictOrderStatus.SUC
-            op_order.sell_price_real = real_sell_price
-            op_order.buy_price_real = real_buy_price
+            order.buy_price_real = real_buy_price
+
+
+    def closeMarket(self, lastBar:BarData, debug_parms:{} = None):
+        assert self.isOpenMarket == True
+        self.isOpenMarket = False
+        opLog = self.strategy.onMarketClose(self.__order,lastBar, debug_parms)
+        self.saveLog(opLog)
+
+    """
+    强制运行结束。一般在回撤环境。
+    """
+    def foreFinish(self, close_price:float, debug_parms:{} = None):
+        order = self.__order
+        if order.status == OpOrderStatus.HOLD:
+            cross_op_log = OpLog(type=OpLogType.CROSS_FAIL, info=f"超过持有天数限制，当天收盘价割单", time=order.update_time,price=close_price)
+            self.saveLog(cross_op_log)
+            newStatus = self.corssOrder()
+            self.__updateOpOrder(newStatus,order.update_time)
+        elif order.status == OpOrderStatus.NEW:
+            cross_op_log = OpLog(type=OpLogType.ABANDON, info=f"超过持有天数限制,废弃", time=order.update_time)
+            self.saveLog(cross_op_log)
+            self.__updateOpOrder(OpOrderStatus.INVALID,order.update_time)
 
 
     def saveLog(self,log:OpLog):
-        log.order_id = self.opDataCache.order.id
+        if log is None:
+            return
+        log.order_id = self.__order.id
         log.project_id = self.op_project.id
         if log.type == OpLogType.BUY_LONG or log.type == OpLogType.BUY_SHORT:
-            assert not self.order.buyPrice is None
-            log.price = self.order.buyPrice
+            assert not log.price is None
+            self.buyTime = log.time
         elif log.type == OpLogType.CROSS_FAIL or log.type == OpLogType.CROSS_SUCCESS:
-            log.price = self.order.sellPrice
-        self.opDataCache.logs.append(log)
+            assert not log.price is None
+        self.__opLogs.append(log)
         print(f"save_log: {log.type},{log.info},price:{log.price}")
 
-    def __loadOpOrder(self, order: PredictOrder) -> OpOrder:
-        op_order = self.db.load_order_by_time(order.code, order.create_time)
-        if op_order is None:
-            op_order = OpOrder(code=order.code, code_name=order.code, project_id=self.op_project.id,
-                               create_time=order.create_time
-                               , buy_price=order.strategyBuyPrice, sell_price=order.strategySellPrice)
-            op_order.op_name = f"dimen:{order.dimen}"
-            op_order.duration = 0
-            self.db.save_order(op_order)
-            op_order = self.db.load_order_by_time(order.code, order.create_time)
-            assert not op_order is None
-        return op_order
 
     """
        返回order实际买入、卖出的价格。
        """
-
     def load_order_sell_buy_price(self):
         buy_price = None
         sell_price = None
-        for log in self.opDataCache.logs:
+        for log in self.__opLogs:
             if log.type == OpLogType.BUY_SHORT or log.type == OpLogType.BUY_LONG:
                 buy_price = log.price
             if log.type == OpLogType.CROSS_FAIL or log.type == OpLogType.CROSS_SUCCESS:
                 sell_price = log.price
         return buy_price, sell_price
+
 
 
 
@@ -258,7 +354,7 @@ class ProjectRunner:
         print(f"[runner|{time}]: {info}")
 
 
-    def runBackTest(self, soruce: BarDataSource, strategy:CoreEngineStrategy):
+    def runBackTest(self, soruce: BarDataSource, strategy:OpStrategy):
         bars, code = soruce.nextBars()
         dataSet = {}
         totalCount = 0
@@ -279,7 +375,7 @@ class ProjectRunner:
         run_cnt = 0
         dataSetCount = len(dataSet)
         for dimen, listData in dataSet.items():
-            if  not self.coreEngine.isSupport(dimen) or not strategy.isSupport(self.coreEngine, dimen):
+            if  not self.coreEngine.isSupport(dimen) or not strategy.isSupport(dimen):
                 self.log(f"不支持的维度:{dimen}")
                 continue
             model = self.coreEngine.loadPredictModel(dimen)
@@ -297,40 +393,52 @@ class ProjectRunner:
         for predict in predictList:
             run_cunt +=1
             print(f"{run_cunt}/{len(predictList)}")
-            order = self.__generatePredictOrder(self.coreEngine, predict)
-            runner = OpRunner(op_project=self.project,db = self.opDB, order= order,strategy = strategy)
-            runner.init(debug_parms)
-            if not runner.isFinished():
-                lastBar = None
-                for bar in predict.collectData.predictBars:
-                    isOpen = runner.openMarket(bar.datetime,debug_parms)
-                    if isOpen:
-                        ##更新每天trick粒度以天，所以回测只有一次update
+            ##根据预测数据创建一个操作订单
+            order = strategy.makeOpOrder(self.coreEngine,self.project,predict,1,debug_parms)  ##self.__generatePredictOrder(self.coreEngine, predict)
+            if order is None:
+                print(f"makeOpOrder 为null")
+                continue
+            runner = OpRunner(op_project=self.project,predictData= predict, db = self.opDB, order= order,strategy = strategy)
 
-                        tickBars = [bar]
-                        for tickBar in tickBars:
-                            runner.update(tickBar,debug_parms)
-                            if(runner.isFinished()):
-                                break
-                        runner.closeMarket(bar, debug_parms)
-                        lastBar = bar
-                runner.unInit(lastBar,debug_parms)
-                assert runner.isFinished()
+            #回复运行环境
+            runner.restore();
+            if runner.isFinished():
+                print(f"订单:project_id = {self.project.id}, order_id = {order.id} is finished!!!!")
+                continue
 
+            lastBar:BarData = None
+            for bar in predict.collectData.predictBars:
+                lastBar = bar
+                if runner.isFinished():
+                    break
+                ##开市
+                canContinue = runner.openMarket(bar.datetime, debug_parms)
+                if not canContinue:
+                    ##历史数据跳过
+                    continue
+                if runner.isFinished():
+                    break;
+                ##更新每天trick粒度以天，所以回测只有一次update
+                tickBars = [bar]
+                for tickBar in tickBars:
+                    runner.update(tickBar, debug_parms)
+                    if (runner.isFinished() or not runner.canMarketToday()):
+                        break
+                if runner.isFinished():
+                    break
+                runner.closeMarket(bar, debug_parms)
 
+            runner.foreFinish(lastBar.close_price, debug_parms)
+            runner.save()
+            ###回测环境每次runner都完成。
+            assert runner.isFinished()
 
-    def __generatePredictOrder(self, engine: CoreEngine, predict: PredictData) -> PredictOrder:
-        code = predict.collectData.occurBars[-1].symbol
-        crateDate = predict.collectData.occurBars[-1].datetime
-        order = PredictOrder(dimen=predict.dimen, code=code, name=code,create_time=crateDate)
-        predict_sell_pct = predict.getPredictSellPct(engine.getEngineModel())
-        predict_buy_pct = predict.getPredictBuyPct(engine.getEngineModel())
-        start_price = engine.getEngineModel().getYBasePrice(predict.collectData)
-        order.suggestSellPrice = start_price * (1 + predict_sell_pct / 100)
-        order.suggestBuyPrice = start_price * (1 + predict_buy_pct / 100)
-        order.power_rate = engine.queryQuantData(predict.dimen).getPowerRate()
-        order.predict = predict
-        return order
+    # op_order = OpOrder(code=order.code, code_name=order.code, project_id=self.op_project.id,
+    #                    create_time=order.create_time
+    #                    , buy_price=order.strategyBuyPrice, sell_price=order.strategySellPrice)
+    # op_order.op_name = f"dimen:{order.dimen}"
+    # op_order.duration = 0
+
 
     def printDetail(self):
 
@@ -358,9 +466,10 @@ class ProjectRunner:
             total_rate = 0
             for order in order_list:
                 #assert order.status != OpOrderStatus.HOLD and order.status!=OpOrderStatus.NEW
-                if order.predict_suc:
-                    sucCount+=1
+
                 if order.status == OpOrderStatus.FINISHED_EARN or order.status == OpOrderStatus.FINISHED_LOSS:
+                    if order.predict_suc:
+                        sucCount += 1
                     isEarn = order.status == OpOrderStatus.FINISHED_EARN
                     rate = (order.sell_price_real - order.buy_price_real)/order.buy_price_real
                     dealCount += 1

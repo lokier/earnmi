@@ -11,6 +11,7 @@ from earnmi.model.CoreEngineModel import CoreEngineModel
 from earnmi.model.CoreEngineRunner import CoreEngineRunner
 from earnmi.model.CoreEngineStrategy import CommonStrategy
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
+from earnmi.model.ProjectRunner import OpStrategy
 from earnmi.uitl.BarUtils import BarUtils
 from vnpy.trader.object import BarData
 
@@ -277,7 +278,7 @@ def runBackTest():
     start = datetime(2015, 10, 1)
     middle = datetime(2019, 9, 30)
     end = datetime(2020, 9, 30)
-    end = datetime(2019,12,30)
+    #end = datetime(2019,12,30)
     historySource = ZZ500DataSource(start, middle)
     futureSouce = ZZ500DataSource(middle, end)
 
@@ -309,14 +310,34 @@ def runBackTest():
 
         def isSupport(self, engine: CoreEngine, dimen: Dimension) -> bool:
             return not self.paramMap.get(dimen.value) is None
-    strategy = MyStrategy()
+
+    class MyStrategy2(OpStrategy):
+        DIMEN = [107, 93, 92, 100, 64, 57, 99]
+
+        def __init__(self):
+            super().__init__()
+            self.paramMap = {}
+            self.paramMap[99] = {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_bottom': 2}
+            self.paramMap[100] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
+            self.paramMap[94] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
+            self.paramMap[58] = {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_bottom': 1}
+
+        def getParams(self, dimen_value: int):
+            return self.paramMap.get(dimen_value)
+
+        def isSupport(self, dimen: Dimension) -> bool:
+            return not self.paramMap.get(dimen.value) is None
+
+
+    # strategy = MyStrategy()
     # runner.backtest(futureSouce, strategy)
 
 
 
     p_runnner = __getBackTestRunner(engine)
     p_runnner.opDB.clear_project()
-    p_runnner.runBackTest(futureSouce,strategy)
+    futureSouce = ZZ500DataSource(middle, end)
+    p_runnner.runBackTest(futureSouce,MyStrategy2())
     p_runnner.printDetail()
 
     # strategy = CommonStrategy()
@@ -399,9 +420,9 @@ def printLaststTops():
 
 if __name__ == "__main__":
     #analysicQuantDataOnly()
-    #runBackTest()
+    runBackTest()
     #printLaststTops()
-    printBackTest()
+    #printBackTest()
     """
 [99]=>count:15(sScore:93.333,bScore:53.333),做多:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
 [100]=>count:39(sScore:76.923,bScore:66.666),做多:[交易率:38.46%(盈利欺骗占6.67%),成功率:13.33%,盈利率:33.33%,单均pct:-0.40,盈pct:2.93(6.00),亏pct:-2.07(-7.21)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]

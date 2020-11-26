@@ -405,10 +405,12 @@ class OpDataBase:
             for c in chunked(dicts, 50):
                 self.logModel.insert_many(c).on_conflict_replace().execute()
 
-    def load_order_by_time(self, code:str, create_time:datetime)->OpOrder:
+    def load_order_by_time(self, project_id:int,code:str, create_time:datetime)->OpOrder:
         s = (
             self.orderModel.select()
                 .where(
+                (self.orderModel.project_id == project_id)
+                &
                 (self.orderModel.code == code)
                 &
                 (self.orderModel.create_time == create_time)
@@ -490,7 +492,7 @@ if __name__ == "__main__":
 
         op_code = "343422"
         op_time = dt
-        op_order_load = db.load_order_by_time(op_code, op_time)
+        op_order_load = db.load_order_by_time(13,op_code, op_time)
         assert op_order_load is None
 
         op_order = OpOrder(code=op_code, code_name="dxjvkld", project_id=13,
@@ -500,7 +502,7 @@ if __name__ == "__main__":
         op_order.status = "新的"
         op_order.duration = 0
         db.save_order(op_order)
-        op_order_load = db.load_order_by_time(op_code, op_time)
+        op_order_load = db.load_order_by_time(13,op_code, op_time)
 
         assert not op_order_load is None
         assert op_order_load.op_name == op_order.op_name
