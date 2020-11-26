@@ -315,7 +315,7 @@ def runBackTest():
 
     p_runnner = __getBackTestRunner(engine)
     p_runnner.runBackTest(futureSouce,strategy)
-
+    p_runnner.printDetail()
 
     # strategy = CommonStrategy()
     # params = {

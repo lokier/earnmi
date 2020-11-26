@@ -410,6 +410,15 @@ class OpDataBase:
                 return data[0]
         return None
 
+    def load_order_all(self,project_id:int)-> Sequence["OpOrder"]:
+        s = (
+            self.orderModel.select()
+                .where(self.orderModel.project_id == project_id)
+        )
+        data = [db_bar.to_data() for db_bar in s]
+        return data
+
+
     def save_order(self, op_order):
         ds = [self.orderModel.from_data(i) for i in [op_order]]
         dicts = [i.to_dict() for i in ds]

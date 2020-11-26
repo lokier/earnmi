@@ -113,7 +113,7 @@ class OpRunner(object):
         opLog = self.strategy.onEndTrade(self.order,lastBar, debug_parms)
         self.saveLog(opLog)
 
-    def unInit(self, endBar:BarData, debug_parms:{} = None):
+    def unInit(self, endBar:BarData,  debug_parms:{} = None):
         assert self.inited
         self.inited = False
         order = self.order
@@ -302,7 +302,54 @@ class ProjectRunner:
         return order
 
     def printDetail(self):
+
+        op_order_list =  self.opDB.load_order_all(self.project.id)
+        print(f"orderList : size = {len(op_order_list)}")
+        op_orde_map_list = {}
+        for order in op_order_list:
+            dimenText = order.op_name
+            order_list = op_orde_map_list.get(dimenText)
+            if order_list is None:
+                order_list = []
+                op_orde_map_list[dimenText] = order_list
+            order_list.append(order)
+
+        for dimenText,order_list in op_orde_map_list.items():
+            order_count = len(order_list)
+            print(f"维度值:{dimenText} : size = {order_count}")
+
+            dealCount = 0
+            sucCount = 0
+            earnCount = 0
+            for order in order_list:
+                #assert order.status != OpOrderStatus.HOLD and order.status!=OpOrderStatus.NEW
+                if order.status != OpOrderStatus.INVALID:
+                    dealCount +=1
+                if order.predict_suc:
+                    sucCount+=1
+                if order.status == OpOrderStatus.FINISHED_EARN:
+                    earnCount+=1
+
+            print(f"[交易率:{self.toRateText(dealCount,order_count)}"
+                  f"(盈利欺骗占XX.XX%),"
+                  f"成功率:{self.toRateText(sucCount,dealCount)},"
+                  f"盈利率:{self.toRateText(earnCount,dealCount)},"
+                  f"单均pct:XXX,"
+                  f"盈pct:XXX(XXXX)")
+            """
+[99]=>count:152(sScore:81.578,bScore:67.763),做多:[交易率:13.16%(盈利欺骗占25.00%),成功率:50.00%,盈利率:75.00%,单均pct:1.24,盈pct:3.37(4.97),
+[100]=>count:480(sScore:81.875,bScore:68.125),做多:[交易率:46.88%(盈利欺骗占22.67%),成功率:37.78%,盈利率:56.44%,单均pct:0.36,盈pct:3.07(7.00)
+[94]=>count:145(sScore:73.793,bScore:73.793),做多:[交易率:60.00%(盈利欺骗占19.54%),成功率:45.98%,盈利率:59.77%,单均pct:0.33,盈pct:3.05(6.16)
+[58]=>count:70(sScore:82.857,bScore:54.285),做多:[交易率:17.14%(盈利欺骗占41.67%),成功率:75.00%,盈利率:83.33%,单均pct:1.03,盈pct:1.79(2.53),
+            """
+
         pass
+
+
+    def toRateText(self,f1:float,f2:float)->str:
+        if f2 <0.00001:
+            return "0%"
+        return f"%.2f%%" % (100*f1/f2)
 
 if __name__ == "__main__":
     pass
