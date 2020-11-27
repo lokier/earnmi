@@ -12,7 +12,6 @@ __all__ = [
     'OpLogLevel',
     'OpLog',
     'OpOrder',
-    'OpOrderRealInfo',
     'OpProject',
     'OpDataBase', ###数据库
 ]
@@ -73,20 +72,12 @@ class OpOrder:
     desc:str = ""
     buy_price_real:float = None  ##实际买入
     sell_price_real:float = None ##实际卖出
+    current_price:float = 0.0  ##当前价格
 
 
     def __post_init__(self):
         self.update_time = self.create_time
 
-
-
-
-@dataclass
-class OpOrderRealInfo:
-    order_id:int
-    price:float = 0.0
-    update_time:datetime = None
-    current_stats:str = ""
 
 
 
@@ -181,7 +172,7 @@ class OpOrderModel(OpBaseModel):
     sell_price= FloatField()
     buy_price_real = FloatField(null=True)
     sell_price_real = FloatField(null=True)
-
+    current_price = FloatField()
     create_time= DateTimeField()
     status = IntegerField()
     duration = IntegerField()
@@ -209,6 +200,7 @@ class OpOrderModel(OpBaseModel):
         db_data.desc = data.desc
         db_data.buy_price_real = data.buy_price_real
         db_data.sell_price_real = data.sell_price_real
+        db_data.current_price = data.current_price
 
         return db_data
 
@@ -231,40 +223,10 @@ class OpOrderModel(OpBaseModel):
         data.desc = self.desc
         data.buy_price_real = self.buy_price_real
         data.sell_price_real = self.sell_price_real
+        data.current_price = self.current_price
         return data
 
 
-
-class OpOrderRealInfoModel(OpBaseModel):
-    table_name = 'op_order_real_info'
-    id = AutoField()
-    project_id = IntegerField(null=False)
-    order_id = IntegerField(null=False)
-    update_time = DateTimeField()
-    price = FloatField()
-    current_status = CharField(max_length=48,null=True)
-
-    @staticmethod
-    def from_data(data: OpOrederRealInfo):
-        db_data = OpOrderRealInfoModel()
-        db_data.id = data.id
-        db_data.order_id = data.order_id
-        db_data.project_id = data.project_id
-        db_data.update_time = data.update_time
-        db_data.price = data.price
-        db_data.current_status = data.current_status
-        return db_data
-
-    def to_data(self):
-        data = OpOrederRealInfo(
-            order_id=self.order_id,
-            project_id = self.project_id,
-        )
-        data.id = self.id
-        data.update_time = self.update_time
-        data.price = self.price
-        data.current_status = self.current_status
-        return data
 
 
 class OpLogModel(OpBaseModel):
@@ -319,10 +281,6 @@ class OpDataBase:
             class Meta:
                 database = db
                 table_name = OpOrderModel.table_name
-        class OpOrderRealInfoModelWrapper(OpOrderRealInfoModel):
-            class Meta:
-                database = db
-                table_name = OpOrderRealInfoModel.table_name
         class OpLogModelWrapper(OpLogModel):
             class Meta:
                 database = db
@@ -332,9 +290,8 @@ class OpDataBase:
         self.projectModel = OpProjectModelWrapper
         self.logModel = OpLogModelWrapper
         self.orderModel = OpOrderModelWrapper
-        self.orderRealInfoModel = OpOrderRealInfoModelWrapper
         db.connect()
-        db.create_tables([OpProjectModelWrapper,OpLogModelWrapper,OpOrderModelWrapper,OpOrderRealInfoModelWrapper])
+        db.create_tables([OpProjectModelWrapper,OpLogModelWrapper,OpOrderModelWrapper])
 
     def save_projects(self, datas: List["OpProject"]):
         ds = [self.projectModel.from_data(i) for i in datas]
@@ -346,7 +303,6 @@ class OpDataBase:
     def clear_project(self):
         self.projectModel.delete().execute()
         self.orderModel.delete().execute()
-        self.orderRealInfoModel.delete().execute()
         self.logModel.delete().execute()
 
     def clear_log(self):
@@ -355,7 +311,6 @@ class OpDataBase:
     def delete_project(self,id:int):
         self.projectModel.delete().where(self.projectModel.id == id).execute()
         self.orderModel.delete().where(self.orderModel.project_id == id).execute()
-        self.orderRealInfoModel.delete().where(self.orderRealInfoModel.project_id == id).execute()
         self.logModel.delete().where(self.logModel.project_id == id).execute()
 
 
@@ -384,10 +339,14 @@ class OpDataBase:
         data = [db_bar.to_data() for db_bar in s]
         return data
 
-    def load_log_by_order_id(self, order_id)-> Sequence["OpLog"]:
+    def load_logs(self,project_id, order_id)-> Sequence["OpLog"]:
         s = (
             self.logModel.select()
-                .where(self.logModel.order_id == order_id)
+                .where(
+                (self.logModel.project_id == project_id)
+                &
+                (self.logModel.order_id == order_id)
+            )
         )
         data = [db_bar.to_data() for db_bar in s]
         return data
@@ -488,7 +447,6 @@ if __name__ == "__main__":
         db.delete_project(13)
 
         assert db.count_project() == 1
-        db.clear_log()
 
         op_code = "343422"
         op_time = dt
@@ -509,6 +467,16 @@ if __name__ == "__main__":
         assert op_order_load.code == op_code
         assert op_order_load.create_time == op_time
 
+        db.clear_log()
+        oplog1 = OpLog(project_id=3,order_id=4,info="1")
+        oplog2 = OpLog(project_id=3,order_id=3,info="2")
+        oplog3 = OpLog(project_id=4,order_id=4,info="3")
+        oplog4 = OpLog(project_id=3,order_id=6,info="4")
+        oplog5 = OpLog(project_id=3,order_id=3,info="5")
+        db.save_logs([oplog1,oplog2,oplog3,oplog4,oplog5])
+
+        logs = db.load_logs(3,3)
+        assert len(logs) ==2
 
 
 

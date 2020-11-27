@@ -1,12 +1,12 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Sequence
-from earnmi.model.BarDataSource import BarDataSource
-from earnmi.model.CollectData import CollectData
+from earnmi.model.BarDataSource import BarDataSource, ZZ500DataSource
 from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.Dimension import Dimension
 from earnmi.model.PredictData import PredictData
 from earnmi.model.op import *
+from earnmi.uitl.jqSdk import jqSdk
 from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 
@@ -132,6 +132,30 @@ class OpStrategy:
                 return OpLog(type=OpLogType.BUY_LONG,price=suggestBuyPrice , info=f"成功到达最低价买入！！！，当天是否有超过卖出价:{order.isWinCheatBuy}")
         return None
 
+class TradeRunner:
+
+    """
+    (启动程序，或者在第二天一早执行）
+    """
+    def onLoad(self):
+        pass
+
+    """
+    准备开盘。
+    """
+    def onOpen(self):
+        pass
+    """
+      股票开市时执行。 返回下一次执行时间。单位秒，或者默认一分钟。
+    """
+    def onTrick(self):
+        pass
+    """
+    当天收盘
+    """
+    def onClose(self):
+        pass
+
 class OpRunner(object):
 
     def __init__(self,op_project:OpProject,predictData:PredictData,db:OpDataBase,order:OpOrder,strategy:OpStrategy):
@@ -146,6 +170,9 @@ class OpRunner(object):
         self.buyTime = None
         assert not order is None
 
+    def getOrder(self)->OpOrder:
+        return self.__order
+
     """
         恢复运行环境
     """
@@ -158,13 +185,12 @@ class OpRunner(object):
             op_order = self.db.load_order_by_time(self.op_project.id,op_order.code, op_order.create_time)
             assert not op_order is None
             self.__order = op_order
+            self.__opLogs =[]
         else:
             self.__order = db_op_order
-        assert not self.__order.id is None;
+            self.__opLogs = self.db.load_logs(self.op_project.id,self.__order.id)
+        assert not self.__order.id is None
         self.marketTime = self.__order.update_time
-        history_logs = self.db.load_log_by_order_id(op_order.id)
-        if len(history_logs) > 0:
-            self.__opLogs.extend(history_logs)
         resotre_log = self.strategy.onRestoreOrder(self.__order)
         self.saveLog(resotre_log)
 
@@ -217,8 +243,8 @@ class OpRunner(object):
         if not self.canMarketToday() or self.__order.update_time >= bar.datetime:
             ## 跳过已经更新的数据
             return
-
         order = self.__order
+        order.current_price = bar.close_price
         oldStatus = order.status
         opLog = self.strategy.onBar(order,self.predictData, bar, debug_parms)
         if not order.predict_suc:
@@ -305,7 +331,16 @@ class OpRunner(object):
         self.__opLogs.append(log)
         print(f"save_log: {log.type},{log.info},price:{log.price}")
 
-
+    def log(self, info: str, level: int = 100, type: int = OpLogType.PLAIN, time: datetime = None, price: float = 0.0):
+        if time is None:
+            time = datetime.now()
+        log = OpLog(order_id=self.__order.id)
+        log.type = type
+        log.level = level
+        log.time = time
+        log.price = price
+        log.info = info
+        self.saveLog(log)
     """
        返回order实际买入、卖出的价格。
        """
@@ -330,8 +365,6 @@ class ProjectRunner:
         self.opDB = opDB
         assert not project.id is None
         self.opDB.save_projects([project])
-
-
     """
     level日志等级：
         0: verbse 
@@ -384,60 +417,155 @@ class ProjectRunner:
                 continue
             run_cnt +=1
             self.log(f"开始回测维度:{dimen},进度:[{run_cnt}/{dataSetCount}]")
-            self.__run_backtest(model,strategy,dimen,listData);
-
-    def __run_backtest(self,model,strategy,dimen:Dimension,listData:Sequence['CollectData'],debug_parms:{} = None):
-        predictList: Sequence['PredictData'] = model.predict(listData)
-        run_cunt = 0
-
-        for predict in predictList:
-            run_cunt +=1
-            print(f"{run_cunt}/{len(predictList)}")
-            ##根据预测数据创建一个操作订单
-            order = strategy.makeOpOrder(self.coreEngine,self.project,predict,1,debug_parms)  ##self.__generatePredictOrder(self.coreEngine, predict)
-            if order is None:
-                print(f"makeOpOrder 为null")
-                continue
-            runner = OpRunner(op_project=self.project,predictData= predict, db = self.opDB, order= order,strategy = strategy)
-
-            #回复运行环境
-            runner.restore();
-            if runner.isFinished():
-                print(f"订单:project_id = {self.project.id}, order_id = {order.id} is finished!!!!")
-                continue
-
-            lastBar:BarData = None
-            for bar in predict.collectData.predictBars:
-                lastBar = bar
-                if runner.isFinished():
-                    break
-                ##开市
-                canContinue = runner.openMarket(bar.datetime, debug_parms)
-                if not canContinue:
-                    ##历史数据跳过
+            predictList: Sequence['PredictData'] = model.predict(listData)
+            run_cunt = 0
+            for predict in predictList:
+                run_cunt += 1
+                print(f"{run_cunt}/{len(predictList)}")
+                runner = self._initRunner(strategy, predict, foreceClose=True, debug_parms=None)
+                if runner is None:
                     continue
-                if runner.isFinished():
-                    break;
-                ##更新每天trick粒度以天，所以回测只有一次update
-                tickBars = [bar]
-                for tickBar in tickBars:
-                    runner.update(tickBar, debug_parms)
-                    if (runner.isFinished() or not runner.canMarketToday()):
-                        break
-                if runner.isFinished():
+                ###回测环境每次runner都完成。
+                assert runner.isFinished()
+
+
+    def _initRunner(self,strategy,predict:PredictData,foreceClose=False,debug_parms:{} = None)->OpRunner:
+        ##根据预测数据创建一个操作订单
+        order = strategy.makeOpOrder(self.coreEngine, self.project, predict, 1,
+                                     debug_parms)  ##self.__generatePredictOrder(self.coreEngine, predict)
+        if order is None:
+            print(f"makeOpOrder 为null")
+            return None
+        runner = OpRunner(op_project=self.project, predictData=predict, db=self.opDB, order=order, strategy=strategy)
+        # 回复运行环境
+        runner.restore();
+        if runner.isFinished():
+            print(f"订单:project_id = {self.project.id}, order_id = {order.id} is finished!!!!")
+            return runner
+
+        lastBar: BarData = None
+        for bar in predict.collectData.predictBars:
+            lastBar = bar
+            if runner.isFinished():
+                break
+            ##开市
+            canContinue = runner.openMarket(bar.datetime, debug_parms)
+            if not canContinue:
+                ##历史数据跳过
+                continue
+            if runner.isFinished():
+                break;
+            ##更新每天trick粒度以天，所以回测只有一次update
+            tickBars = [bar]
+            for tickBar in tickBars:
+                runner.update(tickBar, debug_parms)
+                if (runner.isFinished() or not runner.canMarketToday()):
                     break
-                runner.closeMarket(bar, debug_parms)
-
-            runner.foreFinish(lastBar.close_price, debug_parms)
+            if runner.isFinished():
+                break
+            runner.closeMarket(bar, debug_parms)
+            if foreceClose:
+                runner.foreFinish(lastBar.close_price, debug_parms)
             runner.save()
-            ###回测环境每次runner都完成。
-            assert runner.isFinished()
 
-    # op_order = OpOrder(code=order.code, code_name=order.code, project_id=self.op_project.id,
-    #                    create_time=order.create_time
-    #                    , buy_price=order.strategyBuyPrice, sell_price=order.strategySellPrice)
-    # op_order.op_name = f"dimen:{order.dimen}"
-    # op_order.duration = 0
+
+    def loadZZ500NowRunner(self,strategy:OpStrategy)->TradeRunner:
+        engine = self.coreEngine
+        project_runner = self
+        class MyRunner(TradeRunner):
+            """
+            (启动程序，或者在第二天一早执行）
+            """
+            def onLoad(self):
+                today = datetime.now()
+                end = utils.to_end_date(today - timedelta(days=1))
+                start = end - timedelta(days=90)
+                project_runner.log(f"load history barData, start:{start},end:{end}")
+                soruce = ZZ500DataSource(start, end)
+                bars, code = soruce.nextBars()
+                model = engine.getEngineModel()
+                dataSet = {}
+                while not bars is None:
+                    finished, stop = model.collectBars(bars, code)
+                    project_runner.log(
+                        f"[getTops]: collect code:{code}, finished:{len(finished)},stop:{len(stop)},last date: {bars[-1].datetime},volume={bars[-1].volume}")
+                    bars, code = soruce.nextBars()
+                    all_data_list = list(finished) + list(stop)
+                    for data in all_data_list:
+                        listData: [] = dataSet.get(data.dimen)
+                        if listData is None:
+                            listData = []
+                            dataSet[data.dimen] = listData
+                        listData.append(data)
+                if len(dataSet) < 1:
+                    project_runner.log("当前没有出现特征数据！！")
+
+                ##计算那些未完成的order
+                unfinished_runners = []
+                for dimen, listData in dataSet.items():
+                    if not strategy.isSupport(dimen):
+                        continue
+                    model = engine.loadPredictModel(dimen)
+                    if model is None:
+                        project_runner.log(f"不支持的维度:{dimen}")
+                        continue
+                    project_runner.log(f"开始实盘计算维度:{dimen}]")
+                    predictList: Sequence['PredictData'] = model.predict(listData)
+                    for predict in predictList:
+                        ##产生一个预测单,
+                        runner = project_runner._initRunner(strategy, predict, foreceClose=False, debug_parms=None)
+                        if runner is None:
+                            continue
+                        if not runner.isFinished():
+                            unfinished_runners.append(runner)
+                self.unfinished_runners = unfinished_runners;
+                project_runner.log(f"load historyfinished！！")
+            """
+            准备开盘。
+            """
+            def onOpen(self):
+                for runner in self.unfinished_runners:
+                    runner.log("开盘")
+                    runner.save()
+            """
+              股票开市时执行。 返回下一次执行时间。单位秒，或者默认一分钟。
+            """
+            def onTrick(self):
+                ###更新当前股票价格。
+                runner_size = len(self.unfinished_runners)
+                project_runner.log(f"开始更新价格 : runner_size = {runner_size}")
+                todayBarsMap= []
+                try:
+                    todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
+                except:
+                    project_runner.log(info="Error: 更新zz500股票池价格失败",level=OpLogLevel.ERROR)
+                    return 60
+
+                to_delete_runner = []
+                ####更新实时价格
+                for runner in self.unfinished_runners:
+                    code = runner.getOrder().code
+                    bar: BarData = todayBarsMap.get(code)
+                    if bar is None:
+                        project_runner.log(info="获取{code}的bar信息失败！！", level=OpLogLevel.WARN)
+                        continue
+                    runner.update(bar, None)
+                    runner.save()
+                    if (runner.isFinished() or not runner.canMarketToday()):
+                        to_delete_runner.append(runner)
+                        break
+
+                for to_delete_runner in to_delete_runner:
+                    self.unfinished_runners.remove(to_delete_runner)
+
+            """
+            当天收盘
+            """
+            def onClose(self):
+                for runner in self.unfinished_runners:
+                    runner.log("收盘")
+                    runner.save()
+        return MyRunner()
 
 
     def printDetail(self):
