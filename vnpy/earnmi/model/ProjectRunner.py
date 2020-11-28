@@ -81,7 +81,7 @@ class OpStrategy:
         op_order = OpOrder(code=code, code_name=code, project_id=project.id,
                            create_time=crateDate
                            , buy_price=suggestBuyPrice, sell_price=suggestSellPrice)
-        op_order.op_name = f"dimen:{predict.dimen.value}"
+        op_order.dimen = f"{predict.dimen.value}"
         op_order.duration = 0
         op_order.source = soruce
         return op_order

@@ -63,7 +63,7 @@ class OpOrder:
     sell_price: float
     create_time: datetime;  ##创建时间、发生时间
     id :int = None
-    op_name:str = None
+    dimen:str = None
     status: int = OpOrderStatus.NEW
     duration: int = 0
     predict_suc: bool = None  ##是否预测成功，只在完成状态有效。
@@ -166,7 +166,7 @@ class OpOrderModel(OpBaseModel):
     id = AutoField()
     code = CharField(max_length=48,null=False)
     code_name = CharField(max_length=125,null=False)
-    op_name = CharField(max_length=125,null=False)
+    dimen = CharField(max_length=256,null=False,index=True)
     project_id = IntegerField(null=False)
     buy_price = FloatField()
     sell_price= FloatField()
@@ -186,7 +186,7 @@ class OpOrderModel(OpBaseModel):
         db_data = OpOrderModel()
         db_data.id = data.id
         db_data.code = data.code
-        db_data.op_name = data.op_name
+        db_data.dimen = data.dimen
         db_data.code_name = data.code_name
         db_data.project_id = data.project_id
         db_data.buy_price = data.buy_price
@@ -214,7 +214,7 @@ class OpOrderModel(OpBaseModel):
             create_time=self.create_time,
         )
         data.id = self.id
-        data.op_name = self.op_name
+        data.dimen = self.dimen
         data.status = self.status
         data.duration = self.duration
         data.predict_suc = self.predict_suc
@@ -456,14 +456,14 @@ if __name__ == "__main__":
         op_order = OpOrder(code=op_code, code_name="dxjvkld", project_id=13,
                            create_time=op_time
                            , buy_price=34.6, sell_price=45)
-        op_order.op_name = f"opName"
+        op_order.dimen = f"opName"
         op_order.status = "新的"
         op_order.duration = 0
         db.save_order(op_order)
         op_order_load = db.load_order_by_time(13,op_code, op_time)
 
         assert not op_order_load is None
-        assert op_order_load.op_name == op_order.op_name
+        assert op_order_load.dimen == op_order.dimen
         assert op_order_load.code == op_code
         assert op_order_load.create_time == op_time
 
