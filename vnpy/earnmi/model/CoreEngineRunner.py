@@ -289,11 +289,19 @@ class CoreEngineRunner():
         _testData = BackTestData(dimen=dimen)  ##某个维度的数据。
         _testData.abilityData = self.coreEngine.queryPredictAbilityData(dimen)
         _testData.quant = self.coreEngine.queryQuantData(dimen)
+
+        runt_count = 0
+        total_count = len(predictList)
         for predict in predictList:
             order = self.__generatePredictOrder(self.coreEngine, predict)
             strategy.onBeginOrder(order, debug_parms)
-            self.__updateOrdres(strategy, order, predict.collectData.predictBars,debug_parms = debug_parms);
+            logs = self.__updateOrdres(strategy, order, predict.collectData.predictBars,debug_parms = debug_parms);
             self.putToStatistics(_testData, order, predict)
+            runt_count+=1
+            print(f"{runt_count}/{total_count}:  code={order.code}")
+            for log in logs:
+                print(f"  {log.info}")
+
         return _testData
 
     def __updateOrdres(self, strategy:CoreEngineStrategy,order,bars:[],debug_parms:{} = None,foce_close_order= True):

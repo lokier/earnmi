@@ -54,7 +54,7 @@ class CommonStrategy(CoreEngineStrategy):
 
     def __init__(self):
         self.buy_day_max = 2  ## 设定买入交易的最大交易天数（将在这个交易日完成买入）
-        self.max_day = 4  ##表示该策略的最大考虑天数，超过这个天数如果还没完成交割工作将强制割仓（类似止损止盈）
+        self.max_day = 3  ##表示该策略的最大考虑天数，超过这个天数如果还没完成交割工作将强制割仓（类似止损止盈）
         self.buy_offset_pct = None #调整买入价格，3表示高于3%的价格买入，-3表示低于3%的价格买入 None表示没有限制。
         self.sell_offset_pct = None #调整买入价格，3表示高于3%的价格买入，-3表示低于3%的价格买入 None表示没有限制。
         self.sell_leve_pct_top = None  # sell_leve_pct的范围None表示没有限制
@@ -180,7 +180,7 @@ class CommonStrategy(CoreEngineStrategy):
                 order.sellPrice = suggestSellPrice
                 order.opTips = f"成功到达卖出价，操作单按预测成功完成！"
                 return OpLogType.CROSS_SUCCESS
-            if order.durationDay >= self.max_day:
+            if isTodayLastBar and order.durationDay >= self.max_day:
                 order.sellPrice = bar.close_price
                 order.opTips = f"超过持有天数限制并强制减盈（减损），操作单未按预测成功！"
                 return OpLogType.CROSS_FAIL

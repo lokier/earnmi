@@ -15,7 +15,7 @@ from vnpy.trader.object import BarData
 class OpStrategy:
     def __init__(self):
         self.buy_day_max = 2  ## 设定买入交易的最大交易天数（将在这个交易日完成买入）
-        self.max_day = 4  ##表示该策略的最大考虑天数，超过这个天数如果还没完成交割工作将强制割仓（类似止损止盈）
+        self.max_day = 3  ##表示该策略的最大考虑天数，超过这个天数如果还没完成交割工作将强制割仓（类似止损止盈）
         self.buy_offset_pct = None #调整买入价格，3表示高于3%的价格买入，-3表示低于3%的价格买入 None表示没有限制。
         self.sell_offset_pct = None #调整买入价格，3表示高于3%的价格买入，-3表示低于3%的价格买入 None表示没有限制。
         self.sell_leve_pct_top = None  # sell_leve_pct的范围None表示没有限制
@@ -115,7 +115,9 @@ class OpStrategy:
         if (order.status == OpOrderStatus.HOLD):
             if bar.high_price >= suggestSellPrice:
                 return OpLog(type=OpLogType.CROSS_SUCCESS,price=suggestSellPrice, info=f"成功到达卖出价，操作单按预测成功完成！")
-            if order.duration >= self.max_day:
+
+            willClose = bar.datetime.hour >=14 and bar.datetime.minute >=40
+            if willClose and order.duration >= self.max_day:
                 return OpLog(type=OpLogType.CROSS_FAIL,price=bar.close_price, info=f"超过持有天数限制并强制减盈（减损），操作单未按预测成功！")
             order.isOverClosePct = 100 * (bar.close_price - suggestBuyPrice) / suggestBuyPrice  ##低价买入，是否想预期走势走高。
         elif order.status == OpOrderStatus.NEW:
@@ -257,6 +259,8 @@ class OpRunner(object):
         order = self.__order
         order.current_price = bar.close_price
         oldStatus = order.status
+        self.__updateTradeTime(bar.datetime)
+        self.__updateOrderTime(bar.datetime)
         opLog = self.strategy.onBar(order,self.predictData, bar, debug_parms)
         if not order.predict_suc:
             order.predict_suc = bar.high_price >= order.sell_price
@@ -278,8 +282,7 @@ class OpRunner(object):
                 assert operation == OpLogType.PLAIN
             if not newStatus is None:
                 self.__updateOpOrder(newStatus)
-        self.__updateOrderTime(bar.datetime)
-        self.__updateTradeTime()
+
 
     def corssOrder(self):
         order = self.__order
@@ -299,8 +302,7 @@ class OpRunner(object):
         if self.__order.update_time < time:
             self.__order.update_time = time
 
-    def __updateTradeTime(self):
-        time = self.__order.update_time
+    def __updateTradeTime(self,time:datetime):
         if self.__order.current_trade_time is None:
             self.__order.current_trade_time = time
             self.__order.duration =1
@@ -341,12 +343,12 @@ class OpRunner(object):
     def foreFinish(self, close_price:float, debug_parms:{} = None):
         order = self.__order
         if order.status == OpOrderStatus.HOLD:
-            cross_op_log = OpLog(type=OpLogType.CROSS_FAIL, info=f"超过持有天数限制，当天收盘价割单", time=order.update_time,price=close_price)
+            cross_op_log = OpLog(type=OpLogType.CROSS_FAIL, info=f"ForeFinish:超过持有天数限制，当天收盘价割单", time=order.update_time,price=close_price)
             self.saveLog(cross_op_log)
             newStatus = self.corssOrder()
             self.__updateOpOrder(newStatus)
         elif order.status == OpOrderStatus.NEW:
-            cross_op_log = OpLog(type=OpLogType.ABANDON, info=f"超过持有天数限制,废弃", time=order.update_time)
+            cross_op_log = OpLog(type=OpLogType.ABANDON, info=f"ForeFinish:超过持有天数限制,废弃", time=order.update_time)
             self.saveLog(cross_op_log)
             self.__updateOpOrder(OpOrderStatus.INVALID)
 
@@ -501,8 +503,8 @@ class ProjectRunner:
                     break
             bar.datetime = utils.changeTime(bar.datetime,hour=15,minute=00,second=0)
             runner.closeMarket(bar, debug_parms)
-            if foreceClose:
-                runner.foreFinish(lastBar.close_price, debug_parms)
+        if foreceClose:
+            runner.foreFinish(lastBar.close_price, debug_parms)
         runner.saveIfChagned()
 
     def loadZZ500NowRunner(self,strategy:OpStrategy)->TradeRunner:
@@ -610,7 +612,7 @@ class ProjectRunner:
         print(f"orderList : size = {len(op_order_list)}")
         op_orde_map_list = {}
         for order in op_order_list:
-            dimenText = order.op_name
+            dimenText = order.dimen
             order_list = op_orde_map_list.get(dimenText)
             if order_list is None:
                 order_list = []
