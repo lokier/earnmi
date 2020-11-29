@@ -135,8 +135,8 @@ class OpProjectModel(OpBaseModel):
     create_time = DateTimeField(index=True)
     update_time = DateTimeField(index=True)
     status = CharField(max_length=128)
-    summary = CharField(max_length=10240,null=True)
-    url = CharField(max_length=10240,null=True)
+    summary = CharField(max_length=2048,null=True)
+    url = CharField(max_length=2048,null=True)
 
     @staticmethod
     def from_data(data: OpProject):
@@ -179,7 +179,7 @@ class OpOrderModel(OpBaseModel):
     predict_suc = BooleanField(null=True)
     update_time = DateTimeField()
     source = IntegerField()
-    desc = CharField(max_length=10240,null=True)
+    desc = CharField(max_length=2048,null=True)
 
     @staticmethod
     def from_data(data: OpOrder):
@@ -238,8 +238,8 @@ class OpLogModel(OpBaseModel):
     level = IntegerField(null=False,default=0)
     time = DateTimeField()
     price = FloatField(null=True)
-    info = CharField(max_length=10240,null=True)
-    extraJasonText = CharField(max_length=10240,null=True)
+    info = CharField(max_length=2048,null=True)
+    extraJasonText = CharField(max_length=2048,null=True)
 
     @staticmethod
     def from_data(data: OpLog):
