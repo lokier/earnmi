@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Sequence
@@ -84,6 +85,7 @@ class OpStrategy:
         op_order.dimen = f"{predict.dimen.value}"
         op_order.duration = 0
         op_order.source = soruce
+
         return op_order
 
     def onRestoreOrder(self, order: OpOrder)->OpLog:
@@ -104,9 +106,9 @@ class OpStrategy:
         ocurrBar_close_price = data.collectData.occurBars[-1].close_price
         sell_leve_pct = 100 * (order.sell_price - ocurrBar_close_price) / ocurrBar_close_price
         if not self.sell_leve_pct_top is None and sell_leve_pct > self.sell_leve_pct_top:
-            return OpLog(type=OpLogType.ABANDON)
+            return OpLog(type=OpLogType.ABANDON,info = "当天走势不满足策略要求，废弃该操作单")
         if not self.sell_leve_pct_bottom is None and sell_leve_pct < self.sell_leve_pct_bottom:
-            return OpLog(type=OpLogType.ABANDON)
+            return OpLog(type=OpLogType.ABANDON,info = "当天走势不满足策略要求，废弃该操作单")
         suggestSellPrice = order.sell_price
         suggestBuyPrice = order.buy_price
 
@@ -190,13 +192,18 @@ class OpRunner(object):
             self.__order = db_op_order
             self.__opLogs = self.db.load_logs(self.op_project.id,self.__order.id)
         assert not self.__order.id is None
-        self.marketTime = self.__order.update_time
+        self.__order_backup = copy.copy(self.__order)
         resotre_log = self.strategy.onRestoreOrder(self.__order)
         self.saveLog(resotre_log)
 
     """
-    保存运行环境。
+     有变动时保存数据。
     """
+    def saveIfChagned(self):
+        assert not self.__order_backup is None
+        if self.__order_backup!=self.__order:
+            self.save()
+
     def save(self):
         ##保存所有的缓存后的数据。
         save_log = self.strategy.onSaveOrder(self.__order)
@@ -225,20 +232,24 @@ class OpRunner(object):
     开始一天的交易
     """
     def openMarket(self, time:datetime,debug_parms:{} = None):
+        self.marketTime = time
+
         if self.isFinished():
-            return False
-        if (self.__order.update_time - time).days > 0:
-            ## 过滤历史bar时间。
             return False
         assert self.isOpenMarket == False
         self.isOpenMarket = True
-        self.marketTime = time
+        if self.__order.update_time >= time:
+            return False
+
         opLog = self.strategy.onMarketOpen(self.__order,debug_parms)
+        opLog.time = time
         self.saveLog(opLog)
+        self.__updateOrderTime(time)
         return True
 
 
     def update(self,bar:BarData,debug_parms:{} = None):
+        self.marketTime = bar.datetime
         assert self.isOpenMarket == True
         if not self.canMarketToday() or self.__order.update_time >= bar.datetime:
             ## 跳过已经更新的数据
@@ -266,7 +277,9 @@ class OpRunner(object):
             else:
                 assert operation == OpLogType.PLAIN
             if not newStatus is None:
-                self.__updateOpOrder(newStatus,bar.datetime)
+                self.__updateOpOrder(newStatus)
+        self.__updateOrderTime(bar.datetime)
+        self.__updateTradeTime()
 
     def corssOrder(self):
         order = self.__order
@@ -281,12 +294,26 @@ class OpRunner(object):
         order.buy_price_real = real_buy_price
         return cross_status
 
-    def __updateOpOrder(self,newStatus:int,currentMarketTime:datetime):
+    def __updateOrderTime(self,time:datetime):
+        assert self.__order.update_time <= time
+        if self.__order.update_time < time:
+            self.__order.update_time = time
+
+    def __updateTradeTime(self):
+        time = self.__order.update_time
+        if self.__order.current_trade_time is None:
+            self.__order.current_trade_time = time
+            self.__order.duration =1
+            return
+        assert self.__order.current_trade_time <= time
+        if self.__order.current_trade_time < time:
+            if not utils.is_same_day(self.__order.current_trade_time,time):
+                self.__order.duration +=1
+            self.__order.current_trade_time = time
+
+
+    def __updateOpOrder(self,newStatus:int):
         order = self.__order
-        if (self.marketTime - currentMarketTime).days < 0:
-            order.duration +=1
-        self.marketTime = currentMarketTime
-        self.__order.update_time = currentMarketTime
         oldStatus = order.status
         order.status = newStatus
         if order.status == OpOrderStatus.HOLD:
@@ -297,10 +324,16 @@ class OpRunner(object):
 
 
     def closeMarket(self, lastBar:BarData, debug_parms:{} = None):
+        self.marketTime = lastBar.datetime
         assert self.isOpenMarket == True
         self.isOpenMarket = False
+        if self.__order.update_time >= lastBar.datetime:
+            ##旧数据跳过
+            return
         opLog = self.strategy.onMarketClose(self.__order,lastBar, debug_parms)
+        opLog.time = lastBar.datetime
         self.saveLog(opLog)
+        self.__updateOrderTime(lastBar.datetime)
 
     """
     强制运行结束。一般在回撤环境。
@@ -311,11 +344,11 @@ class OpRunner(object):
             cross_op_log = OpLog(type=OpLogType.CROSS_FAIL, info=f"超过持有天数限制，当天收盘价割单", time=order.update_time,price=close_price)
             self.saveLog(cross_op_log)
             newStatus = self.corssOrder()
-            self.__updateOpOrder(newStatus,order.update_time)
+            self.__updateOpOrder(newStatus)
         elif order.status == OpOrderStatus.NEW:
             cross_op_log = OpLog(type=OpLogType.ABANDON, info=f"超过持有天数限制,废弃", time=order.update_time)
             self.saveLog(cross_op_log)
-            self.__updateOpOrder(OpOrderStatus.INVALID,order.update_time)
+            self.__updateOpOrder(OpOrderStatus.INVALID)
 
 
     def saveLog(self,log:OpLog):
@@ -422,14 +455,17 @@ class ProjectRunner:
             for predict in predictList:
                 run_cunt += 1
                 print(f"{run_cunt}/{len(predictList)}")
-                runner = self._initRunner(strategy, predict, foreceClose=True, debug_parms=None)
+                runner = self._loadRunner(strategy, predict, foreceClose=True, debug_parms=None)
                 if runner is None:
                     continue
                 ###回测环境每次runner都完成。
                 assert runner.isFinished()
 
-
-    def _initRunner(self,strategy,predict:PredictData,foreceClose=False,debug_parms:{} = None)->OpRunner:
+    """
+    加载Runner。
+    多次加载，需要去除加载操作。
+    """
+    def _loadRunner(self, strategy, predict:PredictData, foreceClose=False, debug_parms:{} = None)->OpRunner:
         ##根据预测数据创建一个操作订单
         order = strategy.makeOpOrder(self.coreEngine, self.project, predict, 1,
                                      debug_parms)  ##self.__generatePredictOrder(self.coreEngine, predict)
@@ -449,6 +485,7 @@ class ProjectRunner:
             if runner.isFinished():
                 break
             ##开市
+            bar.datetime = utils.changeTime(bar.datetime,hour=9,minute=30,second=0)
             canContinue = runner.openMarket(bar.datetime, debug_parms)
             if not canContinue:
                 ##历史数据跳过
@@ -457,17 +494,16 @@ class ProjectRunner:
                 break;
             ##更新每天trick粒度以天，所以回测只有一次update
             tickBars = [bar]
+            bar.datetime = utils.changeTime(bar.datetime,hour=14,minute=57,second=0)
             for tickBar in tickBars:
                 runner.update(tickBar, debug_parms)
                 if (runner.isFinished() or not runner.canMarketToday()):
                     break
-            if runner.isFinished():
-                break
+            bar.datetime = utils.changeTime(bar.datetime,hour=15,minute=00,second=0)
             runner.closeMarket(bar, debug_parms)
             if foreceClose:
                 runner.foreFinish(lastBar.close_price, debug_parms)
-            runner.save()
-
+        runner.saveIfChagned()
 
     def loadZZ500NowRunner(self,strategy:OpStrategy)->TradeRunner:
         engine = self.coreEngine
@@ -513,7 +549,7 @@ class ProjectRunner:
                     predictList: Sequence['PredictData'] = model.predict(listData)
                     for predict in predictList:
                         ##产生一个预测单,
-                        runner = project_runner._initRunner(strategy, predict, foreceClose=False, debug_parms=None)
+                        runner = project_runner._loadRunner(strategy, predict, foreceClose=False, debug_parms=None)
                         if runner is None:
                             continue
                         if not runner.isFinished():
@@ -526,7 +562,7 @@ class ProjectRunner:
             def onOpen(self):
                 for runner in self.unfinished_runners:
                     runner.log("开盘")
-                    runner.save()
+                    runner.saveIfChagned()
             """
               股票开市时执行。 返回下一次执行时间。单位秒，或者默认一分钟。
             """
@@ -550,7 +586,7 @@ class ProjectRunner:
                         project_runner.log(info="获取{code}的bar信息失败！！", level=OpLogLevel.WARN)
                         continue
                     runner.update(bar, None)
-                    runner.save()
+                    runner.saveIfChagned()
                     if (runner.isFinished() or not runner.canMarketToday()):
                         to_delete_runner.append(runner)
                         break
@@ -564,7 +600,7 @@ class ProjectRunner:
             def onClose(self):
                 for runner in self.unfinished_runners:
                     runner.log("收盘")
-                    runner.save()
+                    runner.saveIfChagned()
         return MyRunner()
 
 

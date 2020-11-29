@@ -147,3 +147,20 @@ class utils:
         for value in values:
             param[key] = value
             utils.__expandParamMapList(list, originParams, param, keyList, index + 1)
+
+    @classmethod
+    def changeTime(cls, dt:datetime, year:int =None,month = None, day = None, hour:int = None,minute:int = None,second = None):
+        if year is None:
+            year = dt.year
+        if month is None:
+            month = dt.month
+        if day is None:
+            day = dt.day
+        if hour is None:
+            hour = dt.hour
+        if minute is None:
+            minute = dt.minute
+        if second is None:
+            second = dt.second
+
+        return datetime(year=year,month=month,day=day,hour=hour,minute=minute,second=second)

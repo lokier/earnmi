@@ -74,6 +74,7 @@ class OpOrder:
     sell_price_real:float = None ##实际卖出
     current_price:float = 0.0  ##当前价格
 
+    current_trade_time = None  ##当前交易的时间
 
     def __post_init__(self):
         self.update_time = self.create_time
@@ -181,6 +182,8 @@ class OpOrderModel(OpBaseModel):
     source = IntegerField()
     desc = CharField(max_length=2048,null=True)
 
+    current_trade_time = DateTimeField(null=True)
+
     @staticmethod
     def from_data(data: OpOrder):
         db_data = OpOrderModel()
@@ -201,6 +204,7 @@ class OpOrderModel(OpBaseModel):
         db_data.buy_price_real = data.buy_price_real
         db_data.sell_price_real = data.sell_price_real
         db_data.current_price = data.current_price
+        db_data.current_trade_time = data.current_trade_time
 
         return db_data
 
@@ -224,6 +228,8 @@ class OpOrderModel(OpBaseModel):
         data.buy_price_real = self.buy_price_real
         data.sell_price_real = self.sell_price_real
         data.current_price = self.current_price
+        data.current_trade_time = self.current_trade_time
+
         return data
 
 
@@ -458,7 +464,8 @@ if __name__ == "__main__":
                            , buy_price=34.6, sell_price=45)
         op_order.dimen = f"opName"
         op_order.status = "新的"
-        op_order.duration = 0
+        op_order.duration = 3
+        op_order.current_trade_time = datetime.now()
         db.save_order(op_order)
         op_order_load = db.load_order_by_time(13,op_code, op_time)
 
@@ -466,6 +473,9 @@ if __name__ == "__main__":
         assert op_order_load.dimen == op_order.dimen
         assert op_order_load.code == op_code
         assert op_order_load.create_time == op_time
+        assert op_order_load.duration == op_order.duration
+        assert op_order_load.current_trade_time == op_order.current_trade_time
+
 
         db.clear_log()
         oplog1 = OpLog(project_id=3,order_id=4,info="1")

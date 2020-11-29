@@ -101,19 +101,19 @@ def InitSKDJ_zz500_Project_TradRunner(isBuild:bool)->TradeRunner:
             return not self.paramMap.get(dimen.value) is None
     from peewee import MySQLDatabase
     # db = MySQLDatabase(**settings)
-    dbSetting = {"database": "vnpy", "user": "root", "password": "123456", "host": "localhost", "port": 3306}
+    dbSetting = {"database": "vnpy", "user": "root", "password": "Qwer4321", "host": "localhost", "port": 3306}
     # db = SqliteDatabase("opdata.db")
     db = MySQLDatabase(**dbSetting)
     project = OpProject(id=1, status="new", name="skdj_500", create_time=datetime(year=2020, month=11, day=26))
     opDB = OpDataBase(db)
+    opDB.delete_project(1)
     projectRunner =  ProjectRunner(project, opDB, engine)
-    #projectRunner.opDB.clear_project()
     return projectRunner.loadZZ500NowRunner(MyStrategy())
 
 
 
 if __name__ == "__main__":
-    runnerThread1 = _TradeRunnerThread(InitSKDJ_zz500_Project_TradRunner(False))
+    runnerThread1 = _TradeRunnerThread(InitSKDJ_zz500_Project_TradRunner(isBuild=False))
     runnerThread1.run()
 
 
