@@ -170,7 +170,6 @@ class OpRunner(object):
         self.marketTime = None  ##市场时间
         self.db = db
         self.predictData = predictData
-        self.isOpenMarket = False
         self.buyTime = None
         assert not order is None
 
@@ -205,6 +204,8 @@ class OpRunner(object):
         assert not self.__order_backup is None
         if self.__order_backup!=self.__order:
             self.save()
+        else:
+            print(f"   skip save : because no chagned!!")
 
     def save(self):
         ##保存所有的缓存后的数据。
@@ -238,8 +239,7 @@ class OpRunner(object):
 
         if self.isFinished():
             return False
-        assert self.isOpenMarket == False
-        self.isOpenMarket = True
+
         if self.__order.update_time >= time:
             return False
 
@@ -252,7 +252,6 @@ class OpRunner(object):
 
     def update(self,bar:BarData,debug_parms:{} = None):
         self.marketTime = bar.datetime
-        assert self.isOpenMarket == True
         if not self.canMarketToday() or self.__order.update_time >= bar.datetime:
             ## 跳过已经更新的数据
             return
@@ -327,8 +326,6 @@ class OpRunner(object):
 
     def closeMarket(self, lastBar:BarData, debug_parms:{} = None):
         self.marketTime = lastBar.datetime
-        assert self.isOpenMarket == True
-        self.isOpenMarket = False
         if self.__order.update_time >= lastBar.datetime:
             ##旧数据跳过
             return
@@ -477,8 +474,9 @@ class ProjectRunner:
         runner = OpRunner(op_project=self.project, predictData=predict, db=self.opDB, order=order, strategy=strategy)
         # 回复运行环境
         runner.restore();
+        order = runner.getOrder()
         if runner.isFinished():
-            print(f"订单:project_id = {self.project.id}, order_id = {order.id} is finished!!!!")
+            print(f"   skip save : runner is already finished!!!!")
             return runner
 
         lastBar: BarData = None
