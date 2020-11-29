@@ -28,6 +28,7 @@ class _TradeRunnerThread:
         self.schedule = sched.scheduler( time.time,time.sleep)
         self.runner.onLoad()
         self.now = datetime.now()
+        self.isOpen = self.isOpenTime(self.now)
         self.schedule.enter(0, 0, self.__run, ())
         self.schedule.run()
 
@@ -38,6 +39,7 @@ class _TradeRunnerThread:
         if isDayChanged:
             print(f"{[self.now]} runner : dayChanged!!!!!!!!!")
             self.runner.onLoad()
+            self.isOpen = self.isOpenTime(datetime.now())
             self.schedule.enter(1, 0, self.__run, ())
             return
         isOpenTime = self.isOpenTime(self.now)

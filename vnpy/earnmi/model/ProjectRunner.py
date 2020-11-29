@@ -250,11 +250,11 @@ class OpRunner(object):
         return True
 
 
-    def update(self,bar:BarData,debug_parms:{} = None):
+    def update(self,bar:BarData,debug_parms:{} = None)->bool:
         self.marketTime = bar.datetime
         if not self.canMarketToday() or self.__order.update_time >= bar.datetime:
             ## 跳过已经更新的数据
-            return
+            return False
         order = self.__order
         order.current_price = bar.close_price
         oldStatus = order.status
@@ -281,7 +281,7 @@ class OpRunner(object):
                 assert operation == OpLogType.PLAIN
             if not newStatus is None:
                 self.__updateOpOrder(newStatus)
-
+        return True
 
     def corssOrder(self):
         order = self.__order
@@ -562,14 +562,13 @@ class ProjectRunner:
             def onOpen(self):
                 for runner in self.unfinished_runners:
                     runner.log("开盘")
-                    runner.saveIfChagned()
+                    runner.save()
             """
               股票开市时执行。 返回下一次执行时间。单位秒，或者默认一分钟。
             """
             def onTrick(self):
                 ###更新当前股票价格。
                 runner_size = len(self.unfinished_runners)
-                project_runner.log(f"开始更新价格 : runner_size = {runner_size}")
                 todayBarsMap= []
                 try:
                     todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
@@ -577,7 +576,7 @@ class ProjectRunner:
                     project_runner.log(info="Error: 更新zz500股票池价格失败",level=OpLogLevel.ERROR)
                     return 60
 
-                to_delete_runner = []
+                to_delete_runners = []
                 ####更新实时价格
                 for runner in self.unfinished_runners:
                     code = runner.getOrder().code
@@ -585,14 +584,15 @@ class ProjectRunner:
                     if bar is None:
                         project_runner.log(info="获取{code}的bar信息失败！！", level=OpLogLevel.WARN)
                         continue
-                    runner.update(bar, None)
-                    runner.saveIfChagned()
+                    is_updated = runner.update(bar, None)
+                    if is_updated:
+                        runner.save()
                     if (runner.isFinished() or not runner.canMarketToday()):
-                        to_delete_runner.append(runner)
+                        to_delete_runners.append(runner)
                         break
-
-                for to_delete_runner in to_delete_runner:
-                    self.unfinished_runners.remove(to_delete_runner)
+                project_runner.log(f" [onTrick]: update_size = {runner_size},finished_size = {len(to_delete_runners)}")
+                for to_delete in to_delete_runners:
+                    self.unfinished_runners.remove(to_delete)
 
             """
             当天收盘
@@ -600,7 +600,7 @@ class ProjectRunner:
             def onClose(self):
                 for runner in self.unfinished_runners:
                     runner.log("收盘")
-                    runner.saveIfChagned()
+                    runner.save()
         return MyRunner()
 
 
