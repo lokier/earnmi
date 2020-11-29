@@ -32,7 +32,7 @@ import numpy as np
 class FetcherDailyBar:
 
 
-    def __init__(self, code: str,batch_size = 900,file_preffix="daily_bar_"):
+    def __init__(self, code: str,batch_size = 900,file_preffix="daily_bar_v1_"):
         self.__database_manager: "BaseDatabaseManager" = None
         self.__update_batch_size = 900
         self.__oldest_bar_datetime: datetime = None
