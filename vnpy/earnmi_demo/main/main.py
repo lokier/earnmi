@@ -4,6 +4,7 @@ from earnmi.model.BarDataSource import ZZ500DataSource
 from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.CoreEngineRunner import CoreEngineRunner
 from earnmi.model.Dimension import Dimension
+from earnmi.model.bar import LatestBarDB
 from earnmi_demo.main.skdj_zz500_main import SKDJ_EngineModelV2
 
 from earnmi.data.MarketImpl import MarketImpl
@@ -13,37 +14,45 @@ from earnmi.data.SWImpl import SWImpl
 from earnmi.model.ProjectRunner import TradeRunner, OpStrategy, OpProject, ProjectRunner, OpDataBase
 from earnmi.uitl.utils import utils
 from vnpy.event import Event
-
+from peewee import Database
 import time
 import sched
 
 class _TradeRunnerThread:
 
-    def __init__(self,runner:TradeRunner):
+    def __init__(self,name:str,runner:TradeRunner):
         self.schedule = sched.scheduler( time.time,time.sleep)
         self.runner = runner
         self.isOpen = False
+        self.name = name
 
-    def run(self):
-        self.schedule = sched.scheduler( time.time,time.sleep)
-        self.runner.onLoad()
-        self.now = datetime.now()
-        self.isOpen = self.isOpenTime(self.now)
-        self.schedule.enter(0, 0, self.__run, ())
-        self.schedule.run()
+    def start(self,backgournd = False):
+        import _thread
+        thread = self
+        def runner_inner():
+            thread.schedule = sched.scheduler( time.time,time.sleep)
+            thread.runner.onLoad()
+            thread.now = datetime.now()
+            thread.isOpen = thread.isOpenTime(thread.now)
+            thread.schedule.enter(0, 0, thread.__run, ())
+            thread.schedule.run()
+        if backgournd:
+            _thread.start_new_thread(runner_inner, ())
+        else:
+            runner_inner()
 
     def __run(self):
         oldTime = self.now
         self.now = datetime.now()
         isDayChanged  = not utils.is_same_day(oldTime,self.now)
         if isDayChanged:
-            print(f"{[self.now]} runner : dayChanged!!!!!!!!!")
+            print(f"{[self.now]} {self.name} : dayChanged!!!!!!!!!")
             self.runner.onLoad()
             self.isOpen = self.isOpenTime(datetime.now())
             self.schedule.enter(1, 0, self.__run, ())
             return
         isOpenTime = self.isOpenTime(self.now)
-        print(f"{self.now} runner : isOpen={self.isOpen},isOpenTime={isOpenTime}")
+        print(f"{self.now} {self.name} : isOpen={self.isOpen},isOpenTime={isOpenTime}")
         if(isOpenTime != self.isOpen):
             if isOpenTime:
                 self.isOpen = True
@@ -60,7 +69,7 @@ class _TradeRunnerThread:
                 next_second = 60
             self.schedule.enter(next_second, 0, self.__run, ())
             return
-        self.schedule.enter(5, 0, self.__run, ())
+        self.schedule.enter(15, 0, self.__run, ())
 
     def isOpenTime(self,time:datetime)->bool:
         if time.hour == 9:
@@ -72,7 +81,33 @@ class _TradeRunnerThread:
         return time.hour>=13 and time.hour<=15
 
 
-def InitSKDJ_zz500_Project_TradRunner(isBuild:bool)->TradeRunner:
+class UpdateRealBarRunner(TradeRunner):
+
+    def __init__(self,db:Database):
+        self.db = LatestBarDB(db)
+
+    def onLoad(self):
+        print("UpdateRealBarRunner load!!!!!")
+        pass
+
+    """
+    准备开盘。
+    """
+    def onOpen(self):
+        print("更新数据:ZZ500DataSource实时数据")
+        self.db.update(ZZ500DataSource.SZ500_JQ_CODE_LIST)
+
+    def onTrick(self):
+        print("更新数据:ZZ500DataSource实时数据")
+        self.db.update(ZZ500DataSource.SZ500_JQ_CODE_LIST)
+        return 55
+
+    def onClose(self):
+        print("更新数据:ZZ500DataSource实时数据")
+        self.db.update(ZZ500DataSource.SZ500_JQ_CODE_LIST)
+
+
+def InitSKDJ_zz500_Project_TradRunner(db:Database,isBuild:bool)->TradeRunner:
     _dirName = "models/runner_skdj_zz500"
     model = SKDJ_EngineModelV2()
     engine = None
@@ -101,22 +136,32 @@ def InitSKDJ_zz500_Project_TradRunner(isBuild:bool)->TradeRunner:
 
         def isSupport(self, dimen: Dimension) -> bool:
             return not self.paramMap.get(dimen.value) is None
-    from peewee import MySQLDatabase
-    # db = MySQLDatabase(**settings)
-    dbSetting = {"database": "vnpy", "user": "root", "password": "Qwer4321", "host": "localhost", "port": 3306}
-    # db = SqliteDatabase("opdata.db")
-    db = MySQLDatabase(**dbSetting)
+
     project = OpProject(id=1, status="new", name="skdj_500", create_time=datetime(year=2020, month=11, day=26))
     opDB = OpDataBase(db)
-    #opDB.delete_project(1)
+    latestBarDB = LatestBarDB(db)
+    if isBuild:
+        opDB.delete_project(1)
     projectRunner =  ProjectRunner(project, opDB, engine)
-    return projectRunner.loadZZ500NowRunner(MyStrategy())
+    return projectRunner.loadZZ500NowRunner(latestBarDB,MyStrategy())
 
 
 
 if __name__ == "__main__":
-    runnerThread1 = _TradeRunnerThread(InitSKDJ_zz500_Project_TradRunner(isBuild=False))
-    runnerThread1.run()
+    from peewee import MySQLDatabase, Database, Database, Database
+
+    # db = MySQLDatabase(**settings)
+    dbSetting = {"database": "vnpy", "user": "root", "password": "123456", "host": "localhost", "port": 3306}
+    # db = SqliteDatabase("opdata.db")
+    db = MySQLDatabase(**dbSetting)
+
+
+
+    real_bar_update_Thread = _TradeRunnerThread("实时bar更新器",UpdateRealBarRunner(db))
+    sdkj_zz500_Thread = _TradeRunnerThread("skdj_ZZ500",InitSKDJ_zz500_Project_TradRunner(db,isBuild=False))
+
+    real_bar_update_Thread.start(backgournd=True)
+    sdkj_zz500_Thread.start()
 
 
 

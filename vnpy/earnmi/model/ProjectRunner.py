@@ -6,8 +6,9 @@ from earnmi.model.BarDataSource import BarDataSource, ZZ500DataSource
 from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.Dimension import Dimension
 from earnmi.model.PredictData import PredictData
+from earnmi.model.bar import LatestBarDB, LatestBar
 from earnmi.model.op import *
-from earnmi.uitl.jqSdk import jqSdk
+from earnmi.uitl.BarUtils import BarUtils
 from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 
@@ -255,11 +256,16 @@ class OpRunner(object):
         if not self.canMarketToday() or self.__order.update_time >= bar.datetime:
             ## 跳过已经更新的数据
             return False
+
         order = self.__order
         order.current_price = bar.close_price
         oldStatus = order.status
         self.__updateTradeTime(bar.datetime)
         self.__updateOrderTime(bar.datetime)
+
+        if not BarUtils.isOpen(bar):
+            return True
+
         opLog = self.strategy.onBar(order,self.predictData, bar, debug_parms)
         if not order.predict_suc:
             order.predict_suc = bar.high_price >= order.sell_price
@@ -505,9 +511,10 @@ class ProjectRunner:
             runner.foreFinish(lastBar.close_price, debug_parms)
         runner.saveIfChagned()
 
-    def loadZZ500NowRunner(self,strategy:OpStrategy)->TradeRunner:
+    def loadZZ500NowRunner(self,latestDB:LatestBarDB,strategy:OpStrategy)->TradeRunner:
         engine = self.coreEngine
         project_runner = self
+        latestDB = latestDB
         class MyRunner(TradeRunner):
             """
             (启动程序，或者在第二天一早执行）
@@ -569,22 +576,19 @@ class ProjectRunner:
             def onTrick(self):
                 ###更新当前股票价格。
                 runner_size = len(self.unfinished_runners)
-                todayBarsMap= []
-                try:
-                    todayBarsMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
-                except:
-                    project_runner.log(info="Error: 更新zz500股票池价格失败",level=OpLogLevel.ERROR)
-                    return 60
+
+                ##获取今天的实时信息。
+                todayBarsMap= latestDB.load(ZZ500DataSource.SZ500_JQ_CODE_LIST)
 
                 to_delete_runners = []
                 ####更新实时价格
                 for runner in self.unfinished_runners:
                     code = runner.getOrder().code
-                    bar: BarData = todayBarsMap.get(code)
+                    bar: LatestBar = todayBarsMap.get(code)
                     if bar is None:
                         project_runner.log(info="获取{code}的bar信息失败！！", level=OpLogLevel.WARN)
                         continue
-                    is_updated = runner.update(bar, None)
+                    is_updated = runner.update(bar.toBarData(), None)
                     if is_updated:
                         runner.save()
                     if (runner.isFinished() or not runner.canMarketToday()):

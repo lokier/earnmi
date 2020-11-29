@@ -296,7 +296,8 @@ class OpDataBase:
         self.projectModel = OpProjectModelWrapper
         self.logModel = OpLogModelWrapper
         self.orderModel = OpOrderModelWrapper
-        db.connect()
+        if db.is_closed():
+            db.connect()
         db.create_tables([OpProjectModelWrapper,OpLogModelWrapper,OpOrderModelWrapper])
 
     def save_projects(self, datas: List["OpProject"]):

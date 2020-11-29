@@ -7,21 +7,17 @@ import talib
 import time
 import sched
 
+from earnmi.model.BarDataSource import ZZ500DataSource
 from earnmi.model.op import OpOrder
+from earnmi.uitl.jqSdk import jqSdk
 
-op_code = "344"
-op_time =datetime.now()
-op_order = OpOrder(code=op_code, code_name="dxjvkld", project_id=13,
-                           create_time=op_time
-                           , buy_price=34.6, sell_price=45)
 
-import copy
-op_order2 = copy.copy(op_order)
-op_order.code_name = "dxjvkld"
-assert op_order == op_order2
 
-op_order2.status=-1
+barMap = jqSdk.fethcNowDailyBars(ZZ500DataSource.SZ500_JQ_CODE_LIST)
 
-assert op_order != op_order2
+for code,bar in barMap.items():
+
+    print(f"[{code}]: {bar}")
+    pass
 
 

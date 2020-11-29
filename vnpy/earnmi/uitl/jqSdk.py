@@ -20,7 +20,7 @@ class jqSdk(object):
         :return:
         """
         if(not self._isInit):
-            jq.auth('13530336157', 'Qwer4321')  # ID是申请时所填写的手机号；Password为聚宽官网登录密码，新申请用户默认为手机号后6位
+            jq.auth('17666120227', 'Qwer4321')  # ID是申请时所填写的手机号；Password为聚宽官网登录密码，新申请用户默认为手机号后6位
 
         if (not jq.is_auth()):
             return False
@@ -39,11 +39,12 @@ class jqSdk(object):
 
     """
     """
-    def fethcNowDailyBars(self,codeList:[]):
+    def fethcNowDailyBars(self,codeList:[],start= None,end= None):
         self.checkOk()
         ret = {}
-        end = datetime.now()
-        start = utils.to_start_date(end)
+        if start == None or end == None:
+            end = datetime.now()
+            start = utils.to_start_date(end)
         df = jq.get_price(codeList, start_date=start, end_date=end, frequency='1d')
         for code in codeList:
             if len(df['close']) == 0:
