@@ -298,7 +298,12 @@ class OpDataBase:
         self.orderModel = OpOrderModelWrapper
         if db.is_closed():
             db.connect()
-        db.create_tables([OpProjectModelWrapper,OpLogModelWrapper,OpOrderModelWrapper])
+        self.table_list = [OpProjectModelWrapper,OpLogModelWrapper,OpOrderModelWrapper]
+        db.create_tables(self.table_list)
+
+    def clearAll(self):
+        self.db.drop_tables(self.table_list)
+        self.db.create_tables(self.table_list)
 
     def save_projects(self, datas: List["OpProject"]):
         ds = [self.projectModel.from_data(i) for i in datas]
@@ -307,10 +312,7 @@ class OpDataBase:
             for c in chunked(dicts, 50):
                 self.projectModel.insert_many(c).on_conflict_replace().execute()
 
-    def clear_project(self):
-        self.projectModel.delete().execute()
-        self.orderModel.delete().execute()
-        self.logModel.delete().execute()
+
 
     def clear_log(self):
         self.logModel.delete().execute()

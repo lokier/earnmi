@@ -139,9 +139,11 @@ def InitSKDJ_zz500_Project_TradRunner(db:Database,isBuild:bool)->TradeRunner:
 
     project = OpProject(id=1, status="new", name="skdj_500", create_time=datetime(year=2020, month=11, day=26))
     opDB = OpDataBase(db)
+
     latestBarDB = LatestBarDB(db)
+
     if isBuild:
-        opDB.delete_project(1)
+        opDB.clearAll()
     projectRunner =  ProjectRunner(project, opDB, engine)
     return projectRunner.loadZZ500NowRunner(latestBarDB,MyStrategy())
 
