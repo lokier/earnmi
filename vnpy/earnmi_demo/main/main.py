@@ -69,7 +69,6 @@ class _TradeRunnerThread:
                 if(next_second is None):
                     next_second = 60
                 self.schedule.enter(next_second, 0, self.__run, ())
-            return
         self.schedule.enter(15, 0, self.__run, ())
 
 
