@@ -71,6 +71,7 @@ class _TradeRunnerThread:
                 if next_second < 2:
                     next_second = 2
                 self.schedule.enter(next_second, 0, self.__run, ())
+                return
         self.schedule.enter(15, 0, self.__run, ())
 
 
