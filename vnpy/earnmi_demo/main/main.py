@@ -68,6 +68,8 @@ class _TradeRunnerThread:
                 next_second = self.runner.onTrick()
                 if(next_second is None):
                     next_second = 60
+                if next_second < 2:
+                    next_second = 2
                 self.schedule.enter(next_second, 0, self.__run, ())
         self.schedule.enter(15, 0, self.__run, ())
 

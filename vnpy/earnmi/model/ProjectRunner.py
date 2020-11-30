@@ -598,6 +598,7 @@ class ProjectRunner:
                 project_runner.log(f" [onTrick]: update_size = {runner_size},finished_size = {len(to_delete_runners)}")
                 for to_delete in to_delete_runners:
                     self.unfinished_runners.remove(to_delete)
+                return 60
 
             """
             当天收盘
