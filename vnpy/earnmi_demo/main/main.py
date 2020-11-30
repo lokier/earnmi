@@ -64,20 +64,28 @@ class _TradeRunnerThread:
             return
         if self.isOpen:
             ##正在开盘
-            next_second = self.runner.onTrick()
-            if(next_second is None):
-                next_second = 60
-            self.schedule.enter(next_second, 0, self.__run, ())
+            if self.isTradingTime(self.now):
+                next_second = self.runner.onTrick()
+                if(next_second is None):
+                    next_second = 60
+                self.schedule.enter(next_second, 0, self.__run, ())
             return
         self.schedule.enter(15, 0, self.__run, ())
 
+
+
     def isOpenTime(self,time:datetime)->bool:
         if time.hour == 9:
-            return time.hour >=29
+            return time.minute >=29
+        return time.hour>=10 and time.hour<=15
+
+    def isTradingTime(self,time:datetime)->bool:
+        if time.hour == 9:
+            return time.minute >=29
         if time.hour== 10:
             return True
         if time.hour==11:
-            return time.hour<=30
+            return time.minute<=30
         return time.hour>=13 and time.hour<=15
 
 
@@ -153,7 +161,7 @@ if __name__ == "__main__":
     from peewee import MySQLDatabase, Database, Database, Database
 
     # db = MySQLDatabase(**settings)
-    dbSetting = {"database": "vnpy", "user": "root", "password": "123456", "host": "localhost", "port": 3306}
+    dbSetting = {"database": "vnpy", "user": "root", "password": "Qwer4321", "host": "localhost", "port": 3306}
     # db = SqliteDatabase("opdata.db")
     db = MySQLDatabase(**dbSetting)
 

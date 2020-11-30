@@ -510,6 +510,7 @@ class ProjectRunner:
         if foreceClose:
             runner.foreFinish(lastBar.close_price, debug_parms)
         runner.saveIfChagned()
+        return runner
 
     def loadZZ500NowRunner(self,latestDB:LatestBarDB,strategy:OpStrategy)->TradeRunner:
         engine = self.coreEngine
