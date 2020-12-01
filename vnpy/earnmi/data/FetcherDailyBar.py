@@ -32,7 +32,7 @@ import numpy as np
 class FetcherDailyBar:
 
 
-    def __init__(self, code: str,batch_size = 900,file_preffix="daily_bar_v1_"):
+    def __init__(self, code: str,batch_size = 900,file_preffix="daily_bar_v2_"):
         self.__database_manager: "BaseDatabaseManager" = None
         self.__update_batch_size = 900
         self.__oldest_bar_datetime: datetime = None
@@ -86,22 +86,14 @@ class FetcherDailyBar:
                 end = now
             if start < data_start:
                 update_end = data_start - timedelta(days=1)
-                deltaDay = (update_end - start).days
-                if deltaDay < self.__update_batch_size:
-                    deltaDay = self.__update_batch_size
-                update_start = update_end - timedelta(days=deltaDay)
-                if update_end > now:
-                    update_end = now
+                update_start = start
+                assert update_end < now
                 assert update_start <= update_end
                 self.__update_bar_data_from_jqdata(update_start, update_end)
             if end >  data_end:
                 update_start = data_end + timedelta(days=1)
-                deltaDay = (end - update_start).days
-                if deltaDay < self.__update_batch_size:
-                    deltaDay = self.__update_batch_size
-                update_end = update_start + timedelta(days=deltaDay)
-                if update_end > now:
-                    update_end = now
+                update_end = end
+                assert update_end < now
                 assert update_start <= update_end
                 self.__update_bar_data_from_jqdata(update_start, update_end)
 
@@ -215,13 +207,13 @@ if __name__ == "__main__":
     code = "000050"
     #start = datetime.now() - timedelta(days=200)
     start = datetime(2015, 10, 1)
-    end = datetime.now()
+    end = datetime.now() + timedelta(days=10)
 
     # start_1 = datetime.now() -timedelta(days=1000)
     # end_1 = datetime.now() -timedelta(days=500)
     #
     fetcher = FetcherDailyBar(code)
-    fetcher.clearAll()
+    #fetcher.clearAll()
     # bars = fetcher.fetch(start_1,end_1)
     bars = fetcher.fetch(start,end)
     chart = Chart()
