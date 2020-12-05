@@ -15,6 +15,9 @@ class BarDataSource:
     def nextBars(self) -> Tuple[Sequence['BarData'], str]:
         pass
 
+    def reset(self):
+        pass
+
 
 """
 申万二级各行业日行情
@@ -56,6 +59,9 @@ class ZZ500DataSource(BarDataSource):
         self.limitSize = len(ZZ500DataSource.SZ500_JQ_CODE_LIST)
         if limit_size > 0:
             self.limitSize = min(limit_size,self.limitSize)
+
+    def reset(self):
+        self.index = 0
 
     """
     清空缓存

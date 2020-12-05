@@ -60,7 +60,11 @@ class OpStrategy:
 
     def makeOpOrder(self,engine:CoreEngine,project:OpProject,predict:PredictData,soruce = 0,params: {} = None)->OpOrder:
         code = predict.collectData.occurBars[-1].symbol
-        crateDate = predict.collectData.occurBars[-1].datetime
+        crateDate = utils.changeTime(
+            predict.collectData.occurBars[-1].datetime,
+            hour=0,
+            minute=0,
+            second=0)
         predict_sell_pct = predict.getPredictSellPct(engine.getEngineModel())
         predict_buy_pct = predict.getPredictBuyPct(engine.getEngineModel())
         start_price = engine.getEngineModel().getYBasePrice(predict.collectData)
@@ -90,7 +94,7 @@ class OpStrategy:
         return op_order
 
     def onRestoreOrder(self, order: OpOrder)->OpLog:
-        return OpLog(info=f"恢复order环境: project_id:{order.project_id},order_id:{order.id},code:{order.code}")
+        return OpLog(info=f"恢复order环境: project_id:{order.project_id},order_id:{order.id},code:{order.code},time:{order.create_time}")
 
     def onSaveOrder(self, order: OpOrder)->OpLog:
         return OpLog(info=f"保存order环境: project_id:{order.project_id},order_id:{order.id},code:{order.code}")
@@ -167,11 +171,13 @@ class OpRunner(object):
         self.op_project = op_project;
         self.strategy:OpStrategy = strategy
         self.__order = order
-        self.__opLogs= []
+        self.__opLogs= []   ##新的logs
         self.marketTime = None  ##市场时间
         self.db = db
         self.predictData = predictData
         self.buyTime = None
+        self.isSave = False
+        self.isChanged = False
         assert not order is None
 
     def getOrder(self)->OpOrder:
@@ -189,12 +195,12 @@ class OpRunner(object):
             op_order = self.db.load_order_by_time(self.op_project.id,op_order.code, op_order.create_time)
             assert not op_order is None
             self.__order = op_order
-            self.__opLogs =[]
         else:
             self.__order = db_op_order
-            self.__opLogs = self.db.load_logs(self.op_project.id,self.__order.id)
+            #self.__opLogs = self.db.load_logs(self.op_project.id,self.__order.id)
         assert not self.__order.id is None
-        self.__order_backup = copy.copy(self.__order)
+        self.isChanged = False
+        self.__opLogs = []  ##新保存的log
         resotre_log = self.strategy.onRestoreOrder(self.__order)
         self.saveLog(resotre_log)
 
@@ -202,18 +208,22 @@ class OpRunner(object):
      有变动时保存数据。
     """
     def saveIfChagned(self):
-        assert not self.__order_backup is None
-        if self.__order_backup!=self.__order:
+        if self.isChanged:
             self.save()
-        else:
-            print(f"   skip save : because no chagned!!")
+
 
     def save(self):
         ##保存所有的缓存后的数据。
         save_log = self.strategy.onSaveOrder(self.__order)
+        self.isChanged = False
         self.saveLog(save_log)
         self.db.save_order(self.__order)
         self.db.save_logs(self.__opLogs)
+        self.isSave = True
+        print(f"save order : code:{self.__order.code},time = {self.__order.create_time},log_count:{len(self.__opLogs)}")
+        for log in self.__opLogs:
+            print(f"   log: {log.type},{log.info},price:{log.price}")
+
 
 
     def isFinished(self):
@@ -306,16 +316,19 @@ class OpRunner(object):
         assert self.__order.update_time <= time
         if self.__order.update_time < time:
             self.__order.update_time = time
+            self.isChanged = True
 
     def __updateTradeTime(self,time:datetime):
         if self.__order.current_trade_time is None:
             self.__order.current_trade_time = time
             self.__order.duration =1
+            self.isChanged = True
             return
         assert self.__order.current_trade_time <= time
         if self.__order.current_trade_time < time:
             if not utils.is_same_day(self.__order.current_trade_time,time):
                 self.__order.duration +=1
+                self.isChanged = True
             self.__order.current_trade_time = time
 
 
@@ -323,6 +336,7 @@ class OpRunner(object):
         order = self.__order
         oldStatus = order.status
         order.status = newStatus
+        self.isChanged = True
         if order.status == OpOrderStatus.HOLD:
             real_buy_price, real_sell_price = self.load_order_sell_buy_price()
             assert not real_buy_price is None
@@ -367,7 +381,6 @@ class OpRunner(object):
         elif log.type == OpLogType.CROSS_FAIL or log.type == OpLogType.CROSS_SUCCESS:
             assert not log.price is None
         self.__opLogs.append(log)
-        print(f"save_log: {log.type},{log.info},price:{log.price}")
 
     def log(self, info: str, level: int = 100, type: int = OpLogType.PLAIN, time: datetime = None, price: float = 0.0):
         if time is None:
@@ -426,25 +439,10 @@ class ProjectRunner:
 
 
     def runBackTest(self, soruce: BarDataSource, strategy:OpStrategy):
-        bars, code = soruce.nextBars()
-        dataSet = {}
-        totalCount = 0
-        model = self.coreEngine.getEngineModel()
-        while not bars is None:
-            finished, stop = model.collectBars(bars, code)
-            self.log(f"collect code:{code}, finished:{len(finished)},stop:{len(stop)}")
-            totalCount += len(finished)
-            bars, code = soruce.nextBars()
-            for data in finished:
-                ##收录
-                listData: [] = dataSet.get(data.dimen)
-                if listData is None:
-                    listData = []
-                    dataSet[data.dimen] = listData
-                listData.append(data)
-
+        dataSet = self.initCollectData(soruce,exclueUnFinihsedData=True)
         run_cnt = 0
         dataSetCount = len(dataSet)
+        saveOrderCount = 0
         for dimen, listData in dataSet.items():
             if  not self.coreEngine.isSupport(dimen) or not strategy.isSupport(dimen):
                 self.log(f"不支持的维度:{dimen}")
@@ -463,8 +461,42 @@ class ProjectRunner:
                 runner = self._loadRunner(strategy, predict, foreceClose=True, debug_parms=None)
                 if runner is None:
                     continue
+                if runner.isSave:
+                    saveOrderCount+=1
                 ###回测环境每次runner都完成。
                 assert runner.isFinished()
+        return saveOrderCount
+
+    def initCollectData(self, soruce: BarDataSource, exclueUnFinihsedData:bool = True):
+        model = self.coreEngine.getEngineModel()
+        bars, code = soruce.nextBars()
+        dataSet = {}
+        finishedTotalCount = 0
+        unfinishedTotalCount = 0
+        self.log(f"[initCollectData] start,now = {datetime.now()}")
+        while not bars is None:
+            finished, stop = model.collectBars(bars, code)
+            _finished_size = len(finished)
+            _unfinished_size = len(stop)
+            self.log(f"    collect code:{code}, finished:{_finished_size},unfinished:{_unfinished_size}, last date: {bars[-1].datetime},volume={bars[-1].volume}")
+            finishedTotalCount += _finished_size
+            unfinishedTotalCount += _unfinished_size
+            for data in finished:
+                listData: [] = dataSet.get(data.dimen)
+                if listData is None:
+                    listData = []
+                    dataSet[data.dimen] = listData
+                listData.append(data)
+            if not exclueUnFinihsedData:
+                for data in stop:
+                    listData: [] = dataSet.get(data.dimen)
+                    if listData is None:
+                        listData = []
+                        dataSet[data.dimen] = listData
+                    listData.append(data)
+            bars, code = soruce.nextBars()
+        self.log(f"[initCollectData] finished, finished:{finishedTotalCount},unfinished:{unfinishedTotalCount}")
+        return dataSet
 
     """
     加载Runner。
@@ -482,7 +514,7 @@ class ProjectRunner:
         runner.restore();
         order = runner.getOrder()
         if runner.isFinished():
-            print(f"   skip save : runner is already finished!!!!")
+            ##print(f"   skip save : runner is already finished!!!!")
             return runner
 
         lastBar: BarData = None
@@ -526,24 +558,7 @@ class ProjectRunner:
                 start = end - timedelta(days=90)
                 project_runner.log(f"load history barData, start:{start},end:{end}")
                 soruce = ZZ500DataSource(start, end)
-                bars, code = soruce.nextBars()
-                model = engine.getEngineModel()
-                dataSet = {}
-                while not bars is None:
-                    finished, stop = model.collectBars(bars, code)
-                    project_runner.log(
-                        f"[getTops]: collect code:{code}, finished:{len(finished)},stop:{len(stop)},last date: {bars[-1].datetime},volume={bars[-1].volume}")
-                    bars, code = soruce.nextBars()
-                    all_data_list = list(finished) + list(stop)
-                    for data in all_data_list:
-                        listData: [] = dataSet.get(data.dimen)
-                        if listData is None:
-                            listData = []
-                            dataSet[data.dimen] = listData
-                        listData.append(data)
-                if len(dataSet) < 1:
-                    project_runner.log("当前没有出现特征数据！！")
-
+                dataSet = project_runner.initCollectData(soruce,exclueUnFinihsedData=False)
                 ##计算那些未完成的order
                 unfinished_runners = []
                 for dimen, listData in dataSet.items():
@@ -560,6 +575,8 @@ class ProjectRunner:
                         runner = project_runner._loadRunner(strategy, predict, foreceClose=False, debug_parms=None)
                         if runner is None:
                             continue
+                        if predict.collectData.isFinished():
+                            assert runner.isFinished()
                         if not runner.isFinished():
                             unfinished_runners.append(runner)
                 self.unfinished_runners = unfinished_runners;
