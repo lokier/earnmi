@@ -220,11 +220,19 @@ class OpRunner(object):
         self.isChanged = False
         self.saveLog(save_log)
         self.db.save_order(self.__order)
-        self.db.save_logs(self.__opNewLogs)
-        self.isSave = True
         print(f"save order : code:{self.__order.code},time = {self.__order.create_time},log_count:{len(self.__opNewLogs)}")
-        for log in self.__opNewLogs:
-            print(f"   log: {log.type},{log.info},price:{log.price}")
+        self.isSave = True
+        if len(self.__opNewLogs) > 0:
+            self.db.save_logs(self.__opNewLogs)
+            for log in self.__opNewLogs:
+                print(f"   log: {log.type},{log.info},price:{log.price}")
+            self.__opOldLogs.extend(self.__opNewLogs)
+            self.__opNewLogs = []
+
+    def saveLatestPrice(self, close_price:float):
+        if self.__order.current_price != close_price:
+             self.__order.current_price = close_price
+             self.db.save_order(self.__order)
 
 
 
@@ -551,6 +559,7 @@ class ProjectRunner:
             runner.closeMarket(bar, debug_parms)
         if foreceClose:
             runner.foreFinish(lastBar.close_price, debug_parms)
+        assert runner.isSave == False
         runner.saveIfChagned()
         return runner
 
@@ -567,11 +576,12 @@ class ProjectRunner:
                 today = datetime.now()
                 end = utils.to_end_date(today - timedelta(days=1))
                 start = end - timedelta(days=90)
-                project_runner.log(f"load history barData, start:{start},end:{end}")
+                project_runner.log(f"[onLoad start]:{start},end:{end}")
                 soruce = ZZ500DataSource(start, end)
                 dataSet = project_runner.initCollectData(soruce,exclueUnFinihsedData=False)
                 ##计算那些未完成的order
                 unfinished_runners = []
+                saveOrderCount = 0
                 for dimen, listData in dataSet.items():
                     if not strategy.isSupport(dimen):
                         continue
@@ -586,12 +596,26 @@ class ProjectRunner:
                         runner = project_runner._loadRunner(strategy, predict, foreceClose=False, debug_parms=None)
                         if runner is None:
                             continue
+                        if runner.isSave:
+                            saveOrderCount += 1
                         if predict.collectData.isFinished():
                             assert runner.isFinished()
                         if not runner.isFinished():
                             unfinished_runners.append(runner)
                 self.unfinished_runners = unfinished_runners;
-                project_runner.log(f"load historyfinished！！")
+                project_runner.log(f"[onLoad finished]: unfishedSize = {len(self.unfinished_runners)},  save = {saveOrderCount}")
+
+                ##获取今天的实时信息。
+                todayBarsMap = latestDB.load(ZZ500DataSource.SZ500_JQ_CODE_LIST)
+                ####更新实时价格
+                for runner in self.unfinished_runners:
+                    code = runner.getOrder().code
+                    bar: LatestBar = todayBarsMap.get(code)
+                    if bar is None:
+                        continue
+                    runner.saveLatestPrice(bar.close_price);
+                   
+
             """
             准备开盘。
             """

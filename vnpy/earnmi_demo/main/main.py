@@ -152,6 +152,7 @@ def InitSKDJ_zz500_Project_TradRunner(db:Database,isBuild:bool)->TradeRunner:
 
     latestBarDB = LatestBarDB(db)
 
+    #isBuild = True
     if isBuild:
         opDB.clearAll()
     projectRunner =  ProjectRunner(project, opDB, engine)

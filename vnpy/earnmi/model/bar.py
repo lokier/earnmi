@@ -113,6 +113,12 @@ class LatestBarDB:
             ret[code] = bar
         return ret
 
+
+    def loadLatestBar(self,code:str)->LatestBar:
+        latest_bar_map = self.__loadCache()
+        bar = latest_bar_map.get(code)
+        return bar
+
     def update(self, codeList: [], start=None, end=None):
         if start == None or end == None:
             end = datetime.now()
