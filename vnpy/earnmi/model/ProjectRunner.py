@@ -171,7 +171,8 @@ class OpRunner(object):
         self.op_project = op_project;
         self.strategy:OpStrategy = strategy
         self.__order = order
-        self.__opLogs= []   ##新的logs
+        self.__opOldLogs= []   ##老的logs
+        self.__opNewLogs= []   ##新的logs
         self.marketTime = None  ##市场时间
         self.db = db
         self.predictData = predictData
@@ -195,12 +196,13 @@ class OpRunner(object):
             op_order = self.db.load_order_by_time(self.op_project.id,op_order.code, op_order.create_time)
             assert not op_order is None
             self.__order = op_order
+            self.__opOldLogs = []
         else:
             self.__order = db_op_order
-            #self.__opLogs = self.db.load_logs(self.op_project.id,self.__order.id)
+            self.__opOldLogs = self.db.load_logs(self.op_project.id,self.__order.id)
         assert not self.__order.id is None
         self.isChanged = False
-        self.__opLogs = []  ##新保存的log
+        self.__opNewLogs = []  ##新保存的log
         resotre_log = self.strategy.onRestoreOrder(self.__order)
         self.saveLog(resotre_log)
 
@@ -218,10 +220,10 @@ class OpRunner(object):
         self.isChanged = False
         self.saveLog(save_log)
         self.db.save_order(self.__order)
-        self.db.save_logs(self.__opLogs)
+        self.db.save_logs(self.__opNewLogs)
         self.isSave = True
-        print(f"save order : code:{self.__order.code},time = {self.__order.create_time},log_count:{len(self.__opLogs)}")
-        for log in self.__opLogs:
+        print(f"save order : code:{self.__order.code},time = {self.__order.create_time},log_count:{len(self.__opNewLogs)}")
+        for log in self.__opNewLogs:
             print(f"   log: {log.type},{log.info},price:{log.price}")
 
 
@@ -380,7 +382,7 @@ class OpRunner(object):
             self.buyTime = log.time
         elif log.type == OpLogType.CROSS_FAIL or log.type == OpLogType.CROSS_SUCCESS:
             assert not log.price is None
-        self.__opLogs.append(log)
+        self.__opNewLogs.append(log)
 
     def log(self, info: str, level: int = 100, type: int = OpLogType.PLAIN, time: datetime = None, price: float = 0.0):
         if time is None:
@@ -398,11 +400,19 @@ class OpRunner(object):
     def load_order_sell_buy_price(self):
         buy_price = None
         sell_price = None
-        for log in self.__opLogs:
+
+        for log in self.__opOldLogs:
             if log.type == OpLogType.BUY_SHORT or log.type == OpLogType.BUY_LONG:
                 buy_price = log.price
             if log.type == OpLogType.CROSS_FAIL or log.type == OpLogType.CROSS_SUCCESS:
                 sell_price = log.price
+
+        for log in self.__opNewLogs:
+            if log.type == OpLogType.BUY_SHORT or log.type == OpLogType.BUY_LONG:
+                buy_price = log.price
+            if log.type == OpLogType.CROSS_FAIL or log.type == OpLogType.CROSS_SUCCESS:
+                sell_price = log.price
+
         return buy_price, sell_price
 
 
@@ -553,6 +563,7 @@ class ProjectRunner:
             (启动程序，或者在第二天一早执行）
             """
             def onLoad(self):
+                project_runner.opDB.checkConneted()
                 today = datetime.now()
                 end = utils.to_end_date(today - timedelta(days=1))
                 start = end - timedelta(days=90)
@@ -585,6 +596,7 @@ class ProjectRunner:
             准备开盘。
             """
             def onOpen(self):
+                project_runner.opDB.checkConneted()
                 for runner in self.unfinished_runners:
                     runner.log("开盘")
                     runner.save()
@@ -592,6 +604,8 @@ class ProjectRunner:
               股票开市时执行。 返回下一次执行时间。单位秒，或者默认一分钟。
             """
             def onTrick(self):
+                project_runner.opDB.checkConneted()
+
                 ###更新当前股票价格。
                 runner_size = len(self.unfinished_runners)
 
@@ -621,6 +635,7 @@ class ProjectRunner:
             当天收盘
             """
             def onClose(self):
+                project_runner.opDB.checkConneted()
                 for runner in self.unfinished_runners:
                     runner.log("收盘")
                     runner.save()

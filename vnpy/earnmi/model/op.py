@@ -296,10 +296,13 @@ class OpDataBase:
         self.projectModel = OpProjectModelWrapper
         self.logModel = OpLogModelWrapper
         self.orderModel = OpOrderModelWrapper
-        if db.is_closed():
-            db.connect()
+        self.checkConneted()
         self.table_list = [OpProjectModelWrapper,OpLogModelWrapper,OpOrderModelWrapper]
         db.create_tables(self.table_list)
+
+    def checkConneted(self):
+        if self.db.is_closed():
+            self.db.connect()
 
     def clearAll(self):
         self.db.drop_tables(self.table_list)
