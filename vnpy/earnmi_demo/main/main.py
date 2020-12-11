@@ -163,15 +163,24 @@ def InitSKDJ_zz500_Project_TradRunner(db:Database,isBuild:bool)->TradeRunner:
 if __name__ == "__main__":
     from peewee import MySQLDatabase, Database, Database, Database
 
+    # _*_ coding:utf-8 _*_
+
+    from playhouse.pool import PooledMySQLDatabase
+    from playhouse.shortcuts import ReconnectMixin
+
+    class RetryMySQLDatabase(ReconnectMixin, MySQLDatabase):
+        pass
+
     # db = MySQLDatabase(**settings)
     dbSetting = {"database": "vnpy", "user": "root", "password": "Qwer4321", "host": "localhost", "port": 3306}
     # db = SqliteDatabase("opdata.db")
-    db = MySQLDatabase(**dbSetting)
+    db1 = RetryMySQLDatabase(**dbSetting)
+    db2 = RetryMySQLDatabase(**dbSetting)
 
 
 
-    real_bar_update_Thread = _TradeRunnerThread("实时bar更新器",UpdateRealBarRunner(db))
-    sdkj_zz500_Thread = _TradeRunnerThread("skdj_ZZ500",InitSKDJ_zz500_Project_TradRunner(db,isBuild=False))
+    real_bar_update_Thread = _TradeRunnerThread("实时bar更新器",UpdateRealBarRunner(db1))
+    sdkj_zz500_Thread = _TradeRunnerThread("skdj_ZZ500",InitSKDJ_zz500_Project_TradRunner(db2,isBuild=False))
 
     real_bar_update_Thread.start(backgournd=True)
     sdkj_zz500_Thread.start()
