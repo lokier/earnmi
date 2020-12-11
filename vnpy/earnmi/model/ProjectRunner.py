@@ -476,7 +476,7 @@ class ProjectRunner:
             for predict in predictList:
                 run_cunt += 1
                 print(f"{run_cunt}/{len(predictList)}")
-                runner = self._loadRunner(strategy, predict, foreceClose=True, debug_parms=None)
+                runner = self._loadRunner(strategy, predict, debug_parms=None)
                 if runner is None:
                     continue
                 if runner.isSave:
@@ -520,7 +520,7 @@ class ProjectRunner:
     加载Runner。
     多次加载，需要去除加载操作。
     """
-    def _loadRunner(self, strategy, predict:PredictData, foreceClose=False, debug_parms:{} = None)->OpRunner:
+    def _loadRunner(self, strategy, predict:PredictData, debug_parms:{} = None)->OpRunner:
         ##根据预测数据创建一个操作订单
         order = strategy.makeOpOrder(self.coreEngine, self.project, predict, 1,
                                      debug_parms)  ##self.__generatePredictOrder(self.coreEngine, predict)
@@ -557,6 +557,7 @@ class ProjectRunner:
                     break
             bar.datetime = utils.changeTime(bar.datetime,hour=15,minute=00,second=0)
             runner.closeMarket(bar, debug_parms)
+        foreceClose = predict.collectData.isFinished()
         if foreceClose:
             runner.foreFinish(lastBar.close_price, debug_parms)
         assert runner.isSave == False
@@ -593,7 +594,7 @@ class ProjectRunner:
                     predictList: Sequence['PredictData'] = model.predict(listData)
                     for predict in predictList:
                         ##产生一个预测单,
-                        runner = project_runner._loadRunner(strategy, predict, foreceClose=False, debug_parms=None)
+                        runner = project_runner._loadRunner(strategy, predict, debug_parms=None)
                         if runner is None:
                             continue
                         if runner.isSave:
