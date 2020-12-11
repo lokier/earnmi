@@ -45,7 +45,9 @@ class jqSdk(object):
         if start == None or end == None:
             end = datetime.now()
             start = utils.to_start_date(end)
+        print(f"start fethcNowDailyBars")
         df = jq.get_price(codeList, start_date=start, end_date=end, frequency='1d')
+        print(f"end fethcNowDailyBars")
         for code in codeList:
             if len(df['close']) == 0:
                 ret[code] = None
