@@ -5,11 +5,13 @@ from typing import List, Sequence
 from peewee import Model, AutoField, CharField, DateTimeField, FloatField, Database, SqliteDatabase, chunked
 
 from earnmi.model.BarDataSource import ZZ500DataSource
-from earnmi.uitl.jqSdk import jqSdk
 from earnmi.uitl.utils import utils
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
+import requests
 
+import numpy as np
+import re
 """
 最新的bar
 """
@@ -17,6 +19,7 @@ from vnpy.trader.object import BarData
 class LatestBar(object):
     code: str
     datetime: datetime
+    name:str = None
     volume: float = 0
     open_price: float = 0
     high_price: float = 0
@@ -44,6 +47,7 @@ class LatestBar(object):
 class LatestBarModel(Model):
     table_name = 'latest_bar'
     code = CharField(primary_key=True)
+    name = CharField()
     datetime = DateTimeField()
     volume = FloatField()
     open_price = FloatField()
@@ -59,6 +63,7 @@ class LatestBarModel(Model):
     def from_data(data: LatestBar):
         db_data = LatestBarModel()
         db_data.code = data.code
+        db_data.name = data.name
         db_data.datetime = data.datetime
         db_data.volume = data.volume
         db_data.open_price = data.open_price
@@ -72,6 +77,7 @@ class LatestBarModel(Model):
             code=self.code,
             datetime= self.datetime
         )
+        data.name = self.name
         data.volume = self.volume
         data.open_price = self.open_price
         data.high_price = self.high_price
@@ -125,30 +131,24 @@ class LatestBarDB:
             start = utils.to_start_date(end)
         update_time = end
         assert not update_time is None
-        todayBarsMap = jqSdk.fethcNowDailyBars(codeList,start,end)
+        latest_bar_list = self.fetchLatestBarFromSina(codeList)
+
         old_latest_bar_map = self.__loadCache()
         to_update_latest_bar = []
-        for code,bar in  todayBarsMap.items():
-            if bar is None:
-                continue
-            old_latestBar = old_latest_bar_map.get(code)
+        for latest_bar in  latest_bar_list:
+            old_latestBar = old_latest_bar_map.get(latest_bar.code)
             if not old_latestBar is None:
-                if old_latestBar.datetime >= bar.datetime:
+                if old_latestBar.datetime >= latest_bar.datetime:
                     ##非最新的数据，跳过
                     continue
-            lastest_bar = LatestBar(code=bar.symbol,datetime=update_time)
-            lastest_bar.volume = bar.volume
-            lastest_bar.high_price = bar.high_price
-            lastest_bar.low_price = bar.low_price
-            lastest_bar.open_price = bar.open_price
-            lastest_bar.close_price = bar.close_price
-            to_update_latest_bar.append(lastest_bar)
+            to_update_latest_bar.append(latest_bar)
+
         update_count = len(to_update_latest_bar)
         print(f"[LatestBarDB]: update count = {update_count}")
         if update_count > 0:
             self.__save(to_update_latest_bar)
             for latest_bar in to_update_latest_bar:
-                self.__cach_latest_bar_map[latest_bar.code] = lastest_bar
+                self.__cach_latest_bar_map[latest_bar.code] = latest_bar
 
     def __save(self, datas: List["LatestBar"]):
         ds = [self.latestBarModel.from_data(i) for i in datas]
@@ -158,6 +158,61 @@ class LatestBarDB:
                 self.latestBarModel.insert_many(c).on_conflict_replace().execute()
 
 
+    def toSinCode(self,code: str):
+        offset = code.index(".")
+        if offset > 0:
+            code = code[:offset]
+        assert code.isdigit()
+        if code.startswith("6"):
+            return f"sh{code}"
+        else:
+            return f"sz{code}"
+
+    def fetchLatestBarFromSina(self, codeList):
+        batch_size = 100
+        size = len(codeList)
+        bar_list = []
+        for i in range(0,size,batch_size):
+            sub_code_list = codeList[i:i+batch_size]
+            sub_bar_list = self._fetchLatestBarFromSinaByBatch(sub_code_list)
+            bar_list.extend(sub_bar_list)
+        return bar_list
+
+
+    def _fetchLatestBarFromSinaByBatch(self,codeList):
+        codeSize = len(codeList)
+        assert codeSize <=100
+        sinaCodeList = np.array(codeList)
+        for i in range(0, codeSize):
+            sinaCodeList[i] = self.toSinCode(codeList[i])
+
+        urlParams = ','.join(sinaCodeList)
+        url = f"http://hq.sinajs.cn/list={urlParams}"
+        res = requests.get(url=url)
+        text = res.text
+        matchObj = re.findall('var hq_str_.*?="([\s\S]+?)";', text, re.M | re.I)
+
+        latestBarList = []
+        if matchObj:
+            for index, item in enumerate(matchObj):
+                tokens = item.split(",")
+                if len(tokens) < 32:
+                    continue
+                dt = datetime.strptime(f"{tokens[30]} {tokens[31]}", "%Y-%m-%d %H:%M:%S")
+                bar = LatestBar(
+                    code=codeList[index],
+                    datetime=dt
+                )
+                bar.name = tokens[0]
+                bar.open_price = float(tokens[1])
+                bar.close_price = float(tokens[3])
+                bar.high_price = float(tokens[4])
+                bar.low_price = float(tokens[5])
+                bar.volume = float(tokens[8])
+                latestBarList.append(bar)
+        return latestBarList
+
+
 if __name__ == "__main__":
 
     db_file = SqliteDatabase("latest_bar2.db")
@@ -165,7 +220,7 @@ if __name__ == "__main__":
     now = datetime.now()
 
     print(f"size = {len(db.load(ZZ500DataSource.SZ500_JQ_CODE_LIST))}")
-    #db.update(ZZ500DataSource.SZ500_JQ_CODE_LIST)
+    db.update(ZZ500DataSource.SZ500_JQ_CODE_LIST)
 
     # time = datetime.now() - timedelta(days=5)
     #
