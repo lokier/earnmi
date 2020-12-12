@@ -151,7 +151,7 @@ def InitSKDJ_zz500_Project_TradRunner(db:Database,isBuild:bool)->TradeRunner:
     opDB = OpDataBase(db)
 
     latestBarDB = LatestBarDB(db)
-
+    latestBarDB.update(ZZ500DataSource.SZ500_JQ_CODE_LIST)
     #isBuild = True
     if isBuild:
         opDB.clearAll()
@@ -172,7 +172,7 @@ if __name__ == "__main__":
         pass
 
     # db = MySQLDatabase(**settings)
-    dbSetting = {"database": "vnpy", "user": "root", "password": "Qwer4321", "host": "localhost", "port": 3306}
+    dbSetting = {"database": "vnpy", "user": "root", "password": "123456", "host": "localhost", "port": 3306}
     # db = SqliteDatabase("opdata.db")
     db1 = RetryMySQLDatabase(**dbSetting)
     db2 = RetryMySQLDatabase(**dbSetting)
