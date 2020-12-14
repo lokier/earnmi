@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Sequence
 from earnmi.model.BarDataSource import BarDataSource, ZZ500DataSource
 from earnmi.model.CoreEngine import CoreEngine
+from earnmi.model.DataSource import DatabaseSource
 from earnmi.model.Dimension import Dimension
 from earnmi.model.PredictData import PredictData
 from earnmi.model.bar import LatestBarDB, LatestBar
@@ -154,6 +155,10 @@ class TradeRunner:
     """
     def onOpen(self):
         pass
+
+    def onStart(self):
+        pass
+
     """
       股票开市时执行。 返回下一次执行时间。单位秒，或者默认一分钟。
     """
@@ -564,16 +569,16 @@ class ProjectRunner:
         runner.saveIfChagned()
         return runner
 
-    def loadZZ500NowRunner(self,latestDB:LatestBarDB,strategy:OpStrategy)->TradeRunner:
+    def loadZZ500NowRunner(self,source:DatabaseSource,strategy:OpStrategy)->TradeRunner:
         engine = self.coreEngine
         project_runner = self
-        latestDB = latestDB
         class MyRunner(TradeRunner):
             """
             (启动程序，或者在第二天一早执行）
             """
             def onLoad(self):
-                project_runner.opDB.checkConneted()
+                theDb = source.createDatabase()
+                project_runner.opDB.setDatabase(theDb)
                 today = datetime.now()
                 end = utils.to_end_date(today - timedelta(days=1))
                 start = end - timedelta(days=90)
@@ -607,6 +612,7 @@ class ProjectRunner:
                 project_runner.log(f"[onLoad finished]: unfishedSize = {len(self.unfinished_runners)},  save = {saveOrderCount}")
 
                 ##获取今天的实时信息。
+                latestDB = LatestBarDB(theDb)
                 todayBarsMap = latestDB.load(ZZ500DataSource.SZ500_JQ_CODE_LIST)
                 ####更新实时价格
                 for runner in self.unfinished_runners:
@@ -621,19 +627,23 @@ class ProjectRunner:
             准备开盘。
             """
             def onOpen(self):
-                project_runner.opDB.checkConneted()
                 for runner in self.unfinished_runners:
                     runner.log("开盘")
                     runner.save()
+
+            def onStart(self):
+                ###重新设置数据连接，避免连接过期。
+                theDb = source.createDatabase()
+                project_runner.opDB.setDatabase(theDb)
+                self.latestDB = LatestBarDB(theDb)
+
             """
               股票开市时执行。 返回下一次执行时间。单位秒，或者默认一分钟。
             """
             def onTrick(self):
-                project_runner.opDB.checkConneted()
-
                 ###更新当前股票价格。
                 runner_size = len(self.unfinished_runners)
-
+                latestDB = self.latestDB
                 ##获取今天的实时信息。
                 todayBarsMap= latestDB.load(ZZ500DataSource.SZ500_JQ_CODE_LIST)
 
@@ -660,7 +670,6 @@ class ProjectRunner:
             当天收盘
             """
             def onClose(self):
-                project_runner.opDB.checkConneted()
                 for runner in self.unfinished_runners:
                     runner.log("收盘")
                     runner.save()

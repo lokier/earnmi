@@ -279,14 +279,19 @@ class OpLogModel(OpBaseModel):
 class OpDataBase:
 
     def __init__(self,db:Database):
+       self.setDatabase(db)
+
+    def setDatabase(self, db:Database):
         class OpProjectModelWrapper(OpProjectModel):
             class Meta:
                 database = db
                 table_name = OpProjectModel.table_name
+
         class OpOrderModelWrapper(OpOrderModel):
             class Meta:
                 database = db
                 table_name = OpOrderModel.table_name
+
         class OpLogModelWrapper(OpLogModel):
             class Meta:
                 database = db
@@ -297,7 +302,7 @@ class OpDataBase:
         self.logModel = OpLogModelWrapper
         self.orderModel = OpOrderModelWrapper
         self.checkConneted()
-        self.table_list = [OpProjectModelWrapper,OpLogModelWrapper,OpOrderModelWrapper]
+        self.table_list = [OpProjectModelWrapper, OpLogModelWrapper, OpOrderModelWrapper]
         db.create_tables(self.table_list)
 
     def checkConneted(self):
@@ -409,6 +414,8 @@ class OpDataBase:
         with self.db.atomic():
             for c in chunked(dicts, 50):
                 self.orderModel.insert_many(c).on_conflict_replace().execute()
+
+
 
 
 if __name__ == "__main__":

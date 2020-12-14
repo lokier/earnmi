@@ -3,6 +3,7 @@ from datetime import datetime
 from earnmi.model.BarDataSource import ZZ500DataSource
 from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.CoreEngineRunner import CoreEngineRunner
+from earnmi.model.DataSource import DatabaseSource
 from earnmi.model.Dimension import Dimension
 from earnmi.model.bar import LatestBarDB
 from earnmi_demo.main.skdj_zz500_main import SKDJ_EngineModelV2
@@ -25,6 +26,7 @@ class _TradeRunnerThread:
         self.runner = runner
         self.isOpen = False
         self.name = name
+        self.isStart = False
 
     def start(self,backgournd = False):
         import _thread
@@ -55,16 +57,24 @@ class _TradeRunnerThread:
         print(f"{self.now} {self.name} : isOpen={self.isOpen},isOpenTime={isOpenTime}")
         if(isOpenTime != self.isOpen):
             if isOpenTime:
+                self.isStart = True
+                self.runner.onStart();
                 self.isOpen = True
                 self.runner.onOpen()
             else:
                 self.isOpen = False
+                self.isStart = False
                 self.runner.onClose()
             self.schedule.enter(1, 0, self.__run, ())
             return
         if self.isOpen:
             ##正在开盘
             if self.isTradingTime(self.now):
+                if  not self.isStart:
+                    self.isStart = True
+                    self.runner.onStart()
+                    self.schedule.enter(1, 0, self.__run, ())
+                    return
                 next_second = self.runner.onTrick()
                 if(next_second is None):
                     next_second = 60
@@ -93,11 +103,16 @@ class _TradeRunnerThread:
 
 class UpdateRealBarRunner(TradeRunner):
 
-    def __init__(self,db:Database):
-        self.db = LatestBarDB(db)
+    def __init__(self,source:DatabaseSource):
+        self.source = source
+        self.db:LatestBarDB = None
 
     def onLoad(self):
         print("UpdateRealBarRunner load!!!!!")
+        pass
+
+    def onStart(self):
+        self.db = LatestBarDB(self.source.createDatabase())
         pass
 
     """
@@ -117,7 +132,7 @@ class UpdateRealBarRunner(TradeRunner):
         self.db.update(ZZ500DataSource.SZ500_JQ_CODE_LIST)
 
 
-def InitSKDJ_zz500_Project_TradRunner(db:Database,isBuild:bool)->TradeRunner:
+def InitSKDJ_zz500_Project_TradRunner(dbSource:DatabaseSource,isBuild:bool)->TradeRunner:
     _dirName = "models/runner_skdj_zz500"
     model = SKDJ_EngineModelV2()
     engine = None
@@ -148,15 +163,13 @@ def InitSKDJ_zz500_Project_TradRunner(db:Database,isBuild:bool)->TradeRunner:
             return not self.paramMap.get(dimen.value) is None
 
     project = OpProject(id=1, status="new", name="skdj_500", create_time=datetime(year=2020, month=11, day=26))
-    opDB = OpDataBase(db)
-
-    latestBarDB = LatestBarDB(db)
+    opDB = OpDataBase(dbSource.createDatabase())
 
     #isBuild = True
     if isBuild:
         opDB.clearAll()
     projectRunner =  ProjectRunner(project, opDB, engine)
-    return projectRunner.loadZZ500NowRunner(latestBarDB,MyStrategy())
+    return projectRunner.loadZZ500NowRunner(dbSource,MyStrategy())
 
 
 
@@ -172,15 +185,19 @@ if __name__ == "__main__":
         pass
 
     # db = MySQLDatabase(**settings)
-    dbSetting = {"database": "vnpy", "user": "root", "password": "Qwer4321", "host": "localhost", "port": 3306}
+
     # db = SqliteDatabase("opdata.db")
-    db1 = RetryMySQLDatabase(**dbSetting)
-    db2 = RetryMySQLDatabase(**dbSetting)
+    class MyDatabaseSource(DatabaseSource):
+        def createDatabase(self) -> Database:
+            dbSetting = {"database": "vnpy", "user": "root", "password": "Qwer4321", "host": "localhost", "port": 3306}
+            return RetryMySQLDatabase(**dbSetting)
 
+    dataSouce = MyDatabaseSource();
+    #db1 = RetryMySQLDatabase(**dbSetting)
+    #db2 = RetryMySQLDatabase(**dbSetting)
 
-
-    real_bar_update_Thread = _TradeRunnerThread("实时bar更新器",UpdateRealBarRunner(db1))
-    sdkj_zz500_Thread = _TradeRunnerThread("skdj_ZZ500",InitSKDJ_zz500_Project_TradRunner(db2,isBuild=False))
+    real_bar_update_Thread = _TradeRunnerThread("实时bar更新器",UpdateRealBarRunner(dataSouce))
+    sdkj_zz500_Thread = _TradeRunnerThread("skdj_ZZ500",InitSKDJ_zz500_Project_TradRunner(dataSouce,isBuild=False))
 
     real_bar_update_Thread.start(backgournd=True)
     sdkj_zz500_Thread.start()
