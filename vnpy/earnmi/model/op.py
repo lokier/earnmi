@@ -72,7 +72,6 @@ class OpOrder:
     desc:str = ""
     buy_price_real:float = None  ##实际买入
     sell_price_real:float = None ##实际卖出
-    current_price:float = 0.0  ##当前价格
 
     current_trade_time = None  ##当前交易的时间
 
@@ -173,7 +172,6 @@ class OpOrderModel(OpBaseModel):
     sell_price= FloatField()
     buy_price_real = FloatField(null=True)
     sell_price_real = FloatField(null=True)
-    current_price = FloatField()
     create_time= DateTimeField()
     status = IntegerField()
     duration = IntegerField()
@@ -203,7 +201,6 @@ class OpOrderModel(OpBaseModel):
         db_data.desc = data.desc
         db_data.buy_price_real = data.buy_price_real
         db_data.sell_price_real = data.sell_price_real
-        db_data.current_price = data.current_price
         db_data.current_trade_time = data.current_trade_time
 
         return db_data
@@ -227,7 +224,6 @@ class OpOrderModel(OpBaseModel):
         data.desc = self.desc
         data.buy_price_real = self.buy_price_real
         data.sell_price_real = self.sell_price_real
-        data.current_price = self.current_price
         data.current_trade_time = self.current_trade_time
 
         return data

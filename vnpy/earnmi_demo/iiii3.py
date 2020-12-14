@@ -37,3 +37,9 @@ print(f"{new_stockList}")
 #
 # print(f"{new_list}")
 
+
+from earnmi.data.FetcherDailyBar import FetcherDailyBar
+
+fetcher = FetcherDailyBar()
+
+fetcher.clearAll()

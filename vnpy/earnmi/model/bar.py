@@ -17,6 +17,7 @@ import re
 """
 @dataclass
 class LatestBar(object):
+
     code: str
     datetime: datetime
     name:str = None

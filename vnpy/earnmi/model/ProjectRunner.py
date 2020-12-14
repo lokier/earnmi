@@ -234,10 +234,6 @@ class OpRunner(object):
             self.__opOldLogs.extend(self.__opNewLogs)
             self.__opNewLogs = []
 
-    def saveLatestPrice(self, close_price:float):
-        if self.__order.current_price != close_price:
-             self.__order.current_price = close_price
-             self.db.save_order(self.__order)
 
 
 
@@ -283,7 +279,6 @@ class OpRunner(object):
             return False
 
         order = self.__order
-        order.current_price = bar.close_price
         oldStatus = order.status
         self.__updateTradeTime(bar.datetime)
         self.__updateOrderTime(bar.datetime)
@@ -611,16 +606,7 @@ class ProjectRunner:
                 self.unfinished_runners = unfinished_runners;
                 project_runner.log(f"[onLoad finished]: unfishedSize = {len(self.unfinished_runners)},  save = {saveOrderCount}")
 
-                ##获取今天的实时信息。
-                latestDB = LatestBarDB(theDb)
-                todayBarsMap = latestDB.load(ZZ500DataSource.SZ500_JQ_CODE_LIST)
-                ####更新实时价格
-                for runner in self.unfinished_runners:
-                    code = runner.getOrder().code
-                    bar: LatestBar = todayBarsMap.get(code)
-                    if bar is None:
-                        continue
-                    runner.saveLatestPrice(bar.close_price);
+
                    
 
             """
