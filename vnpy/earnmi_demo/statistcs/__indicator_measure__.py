@@ -12,6 +12,7 @@ from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 import numpy as np
 
+
 """
 度量各指标因子：
     根据指标的计算一段HoldBar, 通过计算holdbar的
@@ -34,6 +35,9 @@ class IndicatorMeasure:
     是否持有。
     """
     def measure(self, name: str, bar: BarData, isHold: bool,putIntoWhileNotHold:bool = True):
+        """
+        putIntoWhileNotHold：不包含的那一天，是否放在holdbar里面。
+        """
         holdingBar:HoldBar = self.holdingBarMap.get(name)
         if isHold:
             if holdingBar is None:
@@ -169,6 +173,8 @@ def getLast10KdjHoldDay(indicator,min_dist):
             break
         holdDay +=1
     return holdDay
+
+
 
 
 if __name__ == "__main__":
