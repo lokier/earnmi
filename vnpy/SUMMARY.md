@@ -1,4 +1,5 @@
-# By Traders, For Traders.
+# Earnmi工程.
 
-#[前沿] earnmi
+* [介绍](README.md)
+* [基本安装](installation/README.md)
 
