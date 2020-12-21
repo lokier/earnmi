@@ -127,6 +127,13 @@ class IndicatorMeasure:
         def _item_cmp(o1,o2):
             return o1.pct - o2.pct
         dataItemList = sorted(dataItemList,key=cmp_to_key(_item_cmp),reverse=True)
+
+        ####输入markdown类的日志
+        print(f"输出markdown格式内容:");
+        print(f"名称| holdbar总数 | 持有天数 | pct |pct_sell| 覆盖率")
+        print(f":--|:--:|:--|:--|:--|:--:")
+
+
         for dataItem in dataItemList:
             name = dataItem.name
             holdBarSize = dataItem.holdbarSize
@@ -134,8 +141,8 @@ class IndicatorMeasure:
             day_list = dataItem.day_list
             pct_list = dataItem.pct_list
             pct_sell_list = dataItem.pct_sell_list
-            print(f"因子【{name}】评测结果: holdbar总数:{holdBarSize},持有天数:%.2f,pct:%.2f,覆盖率:%.2f%%" % (day_list.mean(),pct_list.mean(),coverity * 100))
-            print( f"     天数:{day_list.mean()},值分布:{FloatRange.toStr(day_encoder.computeValueDisbustion(day_list), day_encoder)}")
+            #print(f"因子【{name}】评测结果: holdbar总数:{holdBarSize},持有天数:%.2f,pct:%.2f,覆盖率:%.2f%%" % (day_list.mean(),pct_list.mean(),coverity * 100))
+            #print( f"     天数:{day_list.mean()},值分布:{FloatRange.toStr(day_encoder.computeValueDisbustion(day_list), day_encoder)}")
 
             ##计算每天分布的对应pct值。
             day_pct_list= np.full(day_encoder.mask(),None)
@@ -150,13 +157,45 @@ class IndicatorMeasure:
                     continue
                 _pct_list = np.array(day_pct_list[encode])
                 _min,_max = day_encoder.parseEncode(encode)
-                print( f"           天数[{_min},{_max})的pct均值为：{_pct_list.mean()}")
+                #print( f"           天数[{_min},{_max})的pct均值为：{_pct_list.mean()}")
+            #print( f"     pct:{pct_list.mean()},值分布:{FloatRange.toStr(pct_encoder.computeValueDisbustion(pct_list), pct_encoder)}")
+            #print( f"     pct_sell:{pct_sell_list.mean()},值分布:{FloatRange.toStr(pct_encoder.computeValueDisbustion(pct_sell_list), pct_encoder)}")
+            day_cell_desc = self.to_markdown_Disbustion(day_list,day_encoder)
+            pct_cell_desc = self.to_markdown_Disbustion(pct_list,pct_encoder)
+            pct_sell_cell_desc = self.to_markdown_Disbustion(pct_sell_list,pct_encoder)
+            print(f"{name}| {holdBarSize} | {day_cell_desc} | {pct_cell_desc} |{pct_sell_cell_desc}| {f'%.2f%%' % (coverity * 100)}")
 
-            print( f"     pct:{pct_list.mean()},值分布:{FloatRange.toStr(pct_encoder.computeValueDisbustion(pct_list), pct_encoder)}")
-            print( f"     pct_sell:{pct_sell_list.mean()},值分布:{FloatRange.toStr(pct_encoder.computeValueDisbustion(pct_sell_list), pct_encoder)}")
+    def to_markdown_Disbustion(self,pct_list, pct_encoder):
 
-            # if len(barList) > 1:
-            #     chart.show(barList, savefig=f'imgs\\{code}.png')
+        desc = "%.2f" % pct_list.mean()
+        ragneList = pct_encoder.computeValueDisbustion(pct_list)
+        other_probal = None
+        for i in range(0, len(ragneList)):
+            r: FloatRange = ragneList[i]
+            if r.probal < 0.01:
+                ##小于1%，归为other
+                if other_probal is None:
+                    other_probal = r.probal
+                else:
+                    other_probal += r.probal
+                continue
+            _min, _max = pct_encoder.parseEncode(r.encode)
+            if _min is None:
+                _min = "min"
+            else:
+                _min = f"%.1f" % _min
+            if _max is None:
+                _max = "max"
+            else:
+                _max = f"%.2f" % _max
+            desc += f" <br>[{_min}:{_max})=%.2f%%," % (100 * r.probal)
+
+        if not other_probal is None:
+            desc += f" <br>其它=%.2f%%," % (100 * other_probal)
+
+        return desc
+
+
 
     def run(self, souces:BarDataSource, startegy):
         bars, code = souces.nextBars()
@@ -244,3 +283,14 @@ if __name__ == "__main__":
     measure.run(souces,startegy)
 
     measure.printBest()
+    """
+    因子【di指标因子:{'period': 14, 'min_dist': 15, 'x': 2, 'duration': 4}】评测结果: holdbar总数:5203,持有天数:2.09,pct:1.74,覆盖率:97.68%
+     天数:2.0876417451470304,值分布:[[min:1.00)=0.00%,[1.00:3.00)=72.29%,[3.00:5.00)=21.56%,[5.00:8.00)=6.13%,[8.00:12.00)=0.02%,[12.00:15.00)=0.00%,[15.00:max)=0.00%,]
+           天数[1,3)的pct均值为：0.3766889008876466
+           天数[3,5)的pct均值为：4.460444868507723
+           天数[5,8)的pct均值为：8.187512883858655
+           天数[8,12)的pct均值为：7.994340290060141
+     pct:1.737681539293691,值分布:[[min:-1.00)=14.18%,[-1.00:0.50)=35.27%,[0.50:1.50)=15.39%,[1.50:3.00)=13.32%,[3.00:5.00)=9.01%,[5.00:8.00)=6.07%,[8.00:15.00)=4.98%,[15.00:22.00)=1.04%,[22.00:max)=0.73%,]
+     pct_sell:2.9412162923268568,值分布:[[min:-1.00)=0.62%,[-1.00:0.50)=21.35%,[0.50:1.50)=26.89%,[1.50:3.00)=21.01%,[3.00:5.00)=13.05%,[5.00:8.00)=8.38%,[8.00:15.00)=6.52%,[15.00:22.00)=1.36%,[22.00:max)=0.83%,]
+
+    """
