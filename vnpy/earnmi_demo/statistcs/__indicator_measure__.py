@@ -6,7 +6,7 @@ from earnmi.chart.Chart import HoldBar
 from earnmi.chart.Factory import Factory
 from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange
 from earnmi.chart.Indicator import Indicator
-from earnmi.model.BarDataSource import ZZ500DataSource
+from earnmi.model.BarDataSource import ZZ500DataSource, BarDataSource
 from earnmi.uitl.BarUtils import BarUtils
 from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
@@ -25,6 +25,7 @@ class IndicatorMeasure:
         self.barOccurDay={} ##交易日
         self.holdBarMapList = {}
         self.holdingBarMap = {}
+        self.runing_strategy = None
 
     def startSession(self):
         pass
@@ -70,10 +71,7 @@ class IndicatorMeasure:
 
     def __crateHoldBars(self,bar:BarData):
         holdBar = HoldBar(code=bar.symbol, start_time=bar.datetime, end_time=bar.datetime)
-        """
-             真正的盈利开始算是从第一天收盘价作为买入点,这里于
-         """
-        holdBar.open_price = (bar.open_price + bar.close_price) / 2
+        holdBar.open_price = self.runing_strategy.getHoldBarOpenPrice(bar)
         return holdBar
 
     def __onHoldUpdate(self,holdBar:HoldBar,bar:BarData):
@@ -160,76 +158,89 @@ class IndicatorMeasure:
             # if len(barList) > 1:
             #     chart.show(barList, savefig=f'imgs\\{code}.png')
 
-def getLast10KdjHoldDay(indicator,min_dist):
-    k, d, j = indicator.kdj(fast_period=9, slow_period=3, array=True)
-    dif, dea, macd = indicator.macd(fast_period=12, slow_period=26, signal_period=9,array=True)
-    p_di = indicator.plus_di(period, array=True)
-    m_di = indicator.minus_di(period, array=True)
-    holdDay = 0
-    for i in range(-1,-8,-1):
-        #isHold = k[i] >= d[i] and p_di[i] - m_di[i] > min_dist
-        isHold = k[i] >= d[i] and dif[i] > 0 and dif[i] > dea[i]
-        if not isHold:
-            break
-        holdDay +=1
-    return holdDay
+    def run(self, souces:BarDataSource, startegy):
+        bars, code = souces.nextBars()
+        self.runing_strategy = startegy
+        while not bars is None:
+            print(f"new session=>code:{code},bar.size = {len(bars)}")
+            measure.startSession()
+            code = bars[-1].symbol
+            startegy.onMeasureStart(code)
+            for bar in bars:
+                if not BarUtils.isOpen(bar):
+                    continue
+                startegy.onMeasureBar(measure, bar)
+            startegy.onMeasureEnd(code)
+            measure.endSession()
+            bars, code = souces.nextBars()
+        ##打印因子策略结果
+        self.runing_strategy = None
+
+class MeasureStartegy:
+
+
+    def onMeasureStart(self,code:str):
+        self.indicator = Indicator(42)
+
+    def onMeasureBar(self,measure:IndicatorMeasure,bar:BarData):
+        pass
+    """
+       真正的盈利开始算是从第一天收盘价作为买入点,这里于
+    """
+    def getHoldBarOpenPrice(self, bar: BarData):
+        pass
+
+    def onMeasureEnd(self,code:str):
+        pass
 
 
 
 
 if __name__ == "__main__":
+    class SampleMeasureStartegy:
+
+        def onMeasureStart(self, code: str):
+            self.indicator = Indicator(42)
+
+        def onMeasureBar(self, measure: IndicatorMeasure, bar: BarData):
+            indicator = self.indicator
+            indicator.update_bar(bar)
+            if not indicator.inited:
+                return
+            paramsMap = {
+                # "period": [14],
+                # 'min_dist': [10, 15, 20],
+                'x': [2],
+                'duration': [4]
+            }
+            paramList = utils.expandParamsMap(paramsMap)
+            for param in paramList:
+                # period = param['period']
+                # min_dist = param['min_dist']
+                x = param['x']
+                duration = param['duration']
+                k, d, j = indicator.kdj(fast_period=9, slow_period=3, array=True)
+                dif, dea, macd = indicator.macd(fast_period=12, slow_period=26, signal_period=9, array=True)
+                holdDay = 0
+                for i in range(-1, -8, -1):
+                    isHold = k[i] >= d[i] and dif[i] > 0 and dif[i] > dea[i]
+                    if not isHold:
+                        break
+                    holdDay += 1
+                hold = holdDay >= x and holdDay <= x + duration
+                measure.measure(f"di指标因子:{param}", bar, hold, putIntoWhileNotHold=False)
+
+        def getHoldBarOpenPrice(self, bar: BarData):
+            return (bar.open_price + bar.close_price) / 2
+
+        def onMeasureEnd(self, code: str):
+            pass
+
     start = datetime(2017, 10, 1)
     end = datetime(2020, 9, 30)
     souces = ZZ500DataSource(start, end)
     measure = IndicatorMeasure()
-    bars, code = souces.nextBars()
-    while not bars is None:
-        print(f"new session=>code:{code},bar.size = {len(bars)}")
-        measure.startSession()
-        indicator = Indicator(42)
-        latesBars = []
-        for bar in bars:
-            if not BarUtils.isOpen(bar):
-                continue
-            indicator.update_bar(bar)
-            latesBars.append(bar)
-            if not indicator.inited:
-                continue
+    startegy = SampleMeasureStartegy();
+    measure.run(souces,startegy)
 
-            paramsMap = {
-                "period":[14],
-                'min_dist': [10,15,20],
-                'x':[2],
-                'duration':[4]
-                #'max_dist': [ 70],
-                #'min_p_id': [4,7,10,13,15,50],
-            }
-
-            paramList = utils.expandParamsMap(paramsMap)
-            for param in paramList:
-                period = param['period']
-                min_dist = param['min_dist']
-                x = param['x']
-                duration = param['duration']
-
-                #max_dist = param['max_dist']
-                # p_di = indicator.plus_di(period)
-                # m_di = indicator.minus_di(period)
-
-
-                holdKdjDay = getLast10KdjHoldDay(indicator,min_dist)
-
-                # dist = p_di - m_di
-                ##金叉形成之后有一天的缓冲时间去考虑是否买入，所以holdKdjDay>1
-                hold =  holdKdjDay >= x and holdKdjDay <= x+duration
-
-                # ema30 = indicator.ema(30)
-                # ema20 = indicator.ema(20)
-                # ema10 = indicator.ema(10)
-
-                measure.measure(f"di指标因子:{param}",bar,hold,putIntoWhileNotHold=False)
-
-        measure.endSession()
-        bars, code = souces.nextBars()
-    ##打印因子策略结果
     measure.printBest()
