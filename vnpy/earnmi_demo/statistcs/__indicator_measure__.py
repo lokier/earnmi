@@ -196,7 +196,6 @@ class IndicatorMeasure:
         return desc
 
 
-
     def run(self, souces:BarDataSource, startegy):
         bars, code = souces.nextBars()
         self.runing_strategy = startegy
@@ -236,8 +235,9 @@ class MeasureStartegy:
 
 
 if __name__ == "__main__":
-    class SampleMeasureStartegy:
 
+
+    class SampleMeasureStartegy(MeasureStartegy):
         def onMeasureStart(self, code: str):
             self.indicator = Indicator(42)
 
@@ -246,18 +246,12 @@ if __name__ == "__main__":
             indicator.update_bar(bar)
             if not indicator.inited:
                 return
+
             paramsMap = {
-                # "period": [14],
-                # 'min_dist': [10, 15, 20],
-                'x': [2],
-                'duration': [4]
-            }
+                'day': [1,2,3],            }
             paramList = utils.expandParamsMap(paramsMap)
             for param in paramList:
-                # period = param['period']
-                # min_dist = param['min_dist']
-                x = param['x']
-                duration = param['duration']
+                day = param['day']
                 k, d, j = indicator.kdj(fast_period=9, slow_period=3, array=True)
                 dif, dea, macd = indicator.macd(fast_period=12, slow_period=26, signal_period=9, array=True)
                 holdDay = 0
@@ -266,20 +260,20 @@ if __name__ == "__main__":
                     if not isHold:
                         break
                     holdDay += 1
-                hold = holdDay >= x and holdDay <= x + duration
-                measure.measure(f"di指标因子:{param}", bar, hold, putIntoWhileNotHold=False)
+                hold = holdDay >= day
+                measure.measure(f"kdj/mackd双金叉指标<br>day={day}", bar, hold, putIntoWhileNotHold=False)
 
         def getHoldBarOpenPrice(self, bar: BarData):
-            return (bar.open_price + bar.close_price) / 2
+            # 第一天的收盘价作为holdbar的开始价格。
+            return  bar.close_price
 
-        def onMeasureEnd(self, code: str):
-            pass
+
 
     start = datetime(2017, 10, 1)
     end = datetime(2020, 9, 30)
     souces = ZZ500DataSource(start, end)
     measure = IndicatorMeasure()
-    startegy = SampleMeasureStartegy();
+    startegy = SampleMeasureStartegy()
     measure.run(souces,startegy)
 
     measure.printBest()
