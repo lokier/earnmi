@@ -9,6 +9,7 @@ from earnmi.model.Dimension import Dimension
 from earnmi.model.PredictData import PredictData
 from earnmi.model.bar import LatestBarDB, LatestBar
 from earnmi.model.op import *
+from earnmi.model.op import OpStatistic
 from earnmi.uitl.BarUtils import BarUtils
 from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
@@ -605,9 +606,7 @@ class ProjectRunner:
                             unfinished_runners.append(runner)
                 self.unfinished_runners = unfinished_runners;
                 project_runner.log(f"[onLoad finished]: unfishedSize = {len(self.unfinished_runners)},  save = {saveOrderCount}")
-
-
-                   
+                project_runner.updateStatisitcs()  ##更新统计数据。
 
             """
             准备开盘。
@@ -661,9 +660,57 @@ class ProjectRunner:
                     runner.save()
         return MyRunner()
 
+    """
+    生成统计数据。
+    """
+    def makeStatistic(self,order_list:['OpStatistic'],startTime = None)->OpStatistic:
+        statistic = OpStatistic(start_time = startTime,project_id=self.project.id)
+        if len(order_list) == 0:
+            return statistic
+
+        statistic.count = len(order_list)
+        for order in order_list:
+            if order.predict_suc:
+                statistic.predict_suc_count += 1
+            if order.status == OpOrderStatus.FINISHED_EARN or order.status == OpOrderStatus.FINISHED_LOSS:
+                if order.predict_suc:
+                    statistic.predict_suc_deal_count += 1
+                isEarn = order.status == OpOrderStatus.FINISHED_EARN
+                rate = (order.sell_price_real - order.buy_price_real) / order.buy_price_real
+                statistic.dealCount += 1
+                statistic.totalPct += rate
+                if isEarn:
+                    statistic.earnCount += 1
+                    statistic.totalEarnPct += rate
+                    statistic.maxEarnPct = max(statistic.maxEarnPct, rate)
+                else:
+                    statistic.maxLossPct = min(statistic.maxLossPct, rate)
+
+
+        return statistic
+
+
+    def updateStatisitcs(self):
+        ###dt = datetime - timedelta(days=60)
+        ##主键，0: 最近1个月，1：最近3个月，2: 最近6个月，3：最近1年
+        typeDayMap = {}
+        typeDayMap[0] = 30
+        typeDayMap[1] = 91
+        typeDayMap[2] = 183
+        typeDayMap[3] = 365
+        now = datetime.now()
+        data_list = []
+        for type,days in typeDayMap.items():
+            start_time = now - timedelta(days=days)
+            order_list  =  self.opDB.load_order_all(self.project.id,finishOrder=True,start_time=start_time)
+            statistic = self.makeStatistic(order_list,startTime = start_time)
+            statistic.type = type
+            data_list.append(statistic)
+            print(f"type={type},days={days},start_time ={start_time},count = {statistic.count}")
+        self.opDB.save_statistices(data_list)
+
 
     def printDetail(self):
-
         op_order_list =  self.opDB.load_order_all(self.project.id)
         print(f"orderList : size = {len(op_order_list)}")
         op_orde_map_list = {}
@@ -678,46 +725,15 @@ class ProjectRunner:
         for dimenText,order_list in op_orde_map_list.items():
             order_count = len(order_list)
             print(f"维度值:{dimenText} : size = {order_count}")
-
-            dealCount = 0
-            sucCount = 0
-            earnCount = 0
-            max_earn_rate = 0
-            max_loss_rate = 0
-            total_earn_rate = 0
-            total_rate = 0
-            for order in order_list:
-                #assert order.status != OpOrderStatus.HOLD and order.status!=OpOrderStatus.NEW
-
-                if order.status == OpOrderStatus.FINISHED_EARN or order.status == OpOrderStatus.FINISHED_LOSS:
-                    if order.predict_suc:
-                        sucCount += 1
-                    isEarn = order.status == OpOrderStatus.FINISHED_EARN
-                    rate = (order.sell_price_real - order.buy_price_real)/order.buy_price_real
-                    dealCount += 1
-                    total_rate += rate
-                    if isEarn:
-                        earnCount+=1
-                        total_earn_rate+=rate
-                        max_earn_rate = max(max_earn_rate,rate)
-                    else:
-                        max_loss_rate = min(max_loss_rate,rate)
-
-            print(f"[交易率:{self.toRateText(dealCount,order_count)}"
+            statistic = self.makeStatistic(order_list)
+            print(f"[交易率:{self.toRateText(statistic.dealCount, statistic.count)}"
                   f"(盈利欺骗占XX.XX%),"
-                  f"成功率:{self.toRateText(sucCount,dealCount)},"
-                  f"盈利率:{self.toRateText(earnCount,dealCount)},"
-                  f"单均pct:{self.keep2Foat(self.divide(100*total_rate,dealCount))},"
-                  f"盈pct:{self.keep2Foat(self.divide(100*total_earn_rate,earnCount))}({self.keep2Foat(100*max_earn_rate)}),"
-                  f"亏pct:{self.keep2Foat(self.divide(100* (total_rate - total_earn_rate),dealCount - earnCount))}({self.keep2Foat(100*max_loss_rate)})]")
-            """
-[99]=>count:15(sScore:93.333,bScore:53.333),做多:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
-[100]=>count:39(sScore:76.923,bScore:66.666),做多:[交易率:38.46%(盈利欺骗占6.67%),成功率:13.33%,盈利率:33.33%,单均pct:-0.40,盈pct:2.93(6.00),亏pct:-2.07(-7.21)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
-[58]=>count:10(sScore:80.0,bScore:60.0),做多:[交易率:40.00%(盈利欺骗占25.00%),成功率:75.00%,盈利率:75.00%,单均pct:1.24,盈pct:1.67(1.69),亏pct:-0.07(-0.07)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
-[94]=>count:10(sScore:70.0,bScore:80.0),做多:[交易率:50.00%(盈利欺骗占0.00%),成功率:60.00%,盈利率:60.00%,单均pct:0.93,盈pct:2.94(3.51),亏pct:-2.09(-3.97)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
-          """
+                  f"成功率:{self.toRateText(statistic.predict_suc_deal_count, statistic.dealCount)},"
+                  f"盈利率:{self.toRateText(statistic.earnCount, statistic.dealCount)},"
+                  f"单均pct:{self.keep2Foat(self.divide(100 * statistic.totalPct, statistic.dealCount))},"
+                  f"盈pct:{self.keep2Foat(self.divide(100 * statistic.totalEarnPct, statistic.earnCount))}({self.keep2Foat(100 * statistic.maxEarnPct)}),"
+                  f"亏pct:{self.keep2Foat(self.divide(100 * (statistic.totalPct - statistic.totalEarnPct), statistic.dealCount - statistic.earnCount))}({self.keep2Foat(100 * statistic.maxLossPct)})]")
 
-        pass
     def keep2Foat(self,v:float):
         return f"%.2f" % (v)
 

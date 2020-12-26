@@ -98,6 +98,22 @@ class OpProject:
 
     pass
 
+
+@dataclass
+class OpStatistic:
+    project_id : int
+    start_time :datetime  ## 统计开始时间
+    type : int  = 0   ##主键，0: 最近1个月，1：最近3个月，2: 最近6个月，3：最近1年
+    predict_suc_count = 0 ## int | 预测成功总数
+    count = 0 ## 产出操作单的总数
+    dealCount = 0  ## | 产出交易的个数
+    earnCount = 0 ##  盈利总数
+    predict_suc_deal_count= 0 ## 预测成功总数（不含无效单)
+    totalPct = 0.0 ## 盈利情况
+    totalEarnPct = 0.0  ## 盈利情况(不含亏损单)
+    maxEarnPct = -999999  ## 最大盈利单
+    maxLossPct = 999999  ## 最大亏损单
+
 """
 实时信息
 """
@@ -271,6 +287,56 @@ class OpLogModel(OpBaseModel):
         data.extraJasonText = self.extraJasonText
         return data
 
+class OpStatisticModel(OpBaseModel):
+    table_name = 'op_statistic'
+
+    project_id = IntegerField(null=False)
+    start_time = DateTimeField()
+    type = AutoField(null=False) ##主键，0: 最近1个月，1：最近3个月，2: 最近6个月，3：最近1年
+    predict_suc_count = IntegerField(null=False) ## int | 预测成功总数
+    count = IntegerField(null=False) ## 产出操作单的总数
+    dealCount = IntegerField(null=False)  ## | 产出交易的个数
+    earnCount = IntegerField(null=False) ##  盈利总数
+    predict_suc_deal_count= IntegerField(null=False)  ## 预测成功总数（不含无效单)
+    totalPct = FloatField(null=False) ## 盈利情况
+    totalEarnPct = FloatField(null=False)  ## 盈利情况(不含亏损单)
+    maxEarnPct = FloatField(null=False)  ## 最大盈利单
+    maxLossPct = FloatField(null=False)  ## 最大亏损单
+
+    @staticmethod
+    def from_data(data: OpStatistic):
+        db_data = OpStatisticModel()
+        db_data.project_id = data.project_id
+        db_data.start_time = data.start_time
+        db_data.type = data.type
+        db_data.predict_suc_count = data.predict_suc_count
+        db_data.count = data.count
+        db_data.dealCount = data.dealCount
+        db_data.earnCount = data.earnCount
+        db_data.predict_suc_deal_count = data.predict_suc_deal_count
+        db_data.totalPct = data.totalPct
+        db_data.totalEarnPct = data.totalEarnPct
+        db_data.maxEarnPct = data.maxEarnPct
+        db_data.maxLossPct = data.maxLossPct
+        return db_data
+
+    def to_data(self):
+        data = OpStatistic(
+            project_id=self.project_id,
+            start_time=self.start_time
+        )
+        data.type = self.type
+        data.predict_suc_count = self.predict_suc_count
+        data.count = self.count
+        data.dealCount = self.dealCount
+        data.earnCount = self.earnCount
+        data.predict_suc_deal_count = self.predict_suc_deal_count
+        data.totalPct = self.totalPct
+        data.totalEarnPct = self.totalEarnPct
+        data.maxEarnPct = self.maxEarnPct
+        data.maxLossPct = self.maxLossPct
+        return data
+
 
 class OpDataBase:
 
@@ -293,12 +359,18 @@ class OpDataBase:
                 database = db
                 table_name = OpLogModel.table_name
 
+        class OpStatisticModelWrapper(OpStatisticModel):
+            class Meta:
+                database = db
+                table_name = OpStatisticModel.table_name
+
         self.db = db
         self.projectModel = OpProjectModelWrapper
         self.logModel = OpLogModelWrapper
         self.orderModel = OpOrderModelWrapper
+        self.statisticModel = OpStatisticModelWrapper
         self.checkConneted()
-        self.table_list = [OpProjectModelWrapper, OpLogModelWrapper, OpOrderModelWrapper]
+        self.table_list = [OpProjectModelWrapper, OpLogModelWrapper, OpOrderModelWrapper,OpStatisticModelWrapper]
         db.create_tables(self.table_list)
 
     def checkConneted(self):
@@ -395,11 +467,35 @@ class OpDataBase:
                 return data[0]
         return None
 
-    def load_order_all(self,project_id:int)-> Sequence["OpOrder"]:
-        s = (
-            self.orderModel.select()
-                .where(self.orderModel.project_id == project_id)
-        )
+    def load_order_all(self,project_id:int,finishOrder = None,start_time:datetime = None)-> Sequence["OpOrder"]:
+        s = None
+        if finishOrder is None:
+            s = (
+                self.orderModel.select()
+                    .where(self.orderModel.project_id == project_id)
+            )
+        elif finishOrder == True:
+            s = (
+                self.orderModel.select()
+                    .where(
+                    (self.orderModel.project_id == project_id)
+                    &
+                    (self.orderModel.status != 0 & self.orderModel.status!=1)
+                    &
+                    (self.orderModel.create_time >= start_time)
+                )
+            )
+        else:
+            s = (
+                self.orderModel.select()
+                    .where(
+                    (self.orderModel.project_id == project_id)
+                    &
+                    (self.orderModel.status == 0 or self.orderModel.status == 1)
+                    &
+                    (self.orderModel.create_time >= start_time)
+                )
+            )
         data = [db_bar.to_data() for db_bar in s]
         return data
 
@@ -411,7 +507,20 @@ class OpDataBase:
             for c in chunked(dicts, 50):
                 self.orderModel.insert_many(c).on_conflict_replace().execute()
 
+    def save_statistices(self, datas: List["OpStatistic"]):
+        ds = [self.statisticModel.from_data(i) for i in datas]
+        dicts = [i.to_dict() for i in ds]
+        with self.db.atomic():
+            for c in chunked(dicts, 50):
+                self.statisticModel.insert_many(c).on_conflict_replace().execute()
 
+    def load_statistic_all(self) -> Sequence["OpStatistic"]:
+        s = (
+            self.statisticModel.select()
+                .order_by(self.statisticModel.type.asc())
+        )
+        datas = [db_bar.to_data() for db_bar in s]
+        return datas
 
 
 if __name__ == "__main__":
@@ -430,7 +539,8 @@ if __name__ == "__main__":
         )
         project.summary = "summary1"
         project.url = "url"
-        db.clear_project()
+        db.clearAll()
+
         assert db.count_project() == 0
         db.save_projects([project])
         assert db.count_project() == 1
@@ -496,6 +606,25 @@ if __name__ == "__main__":
 
         logs = db.load_logs(3,3)
         assert len(logs) ==2
+
+        statisticData = OpStatistic(project_id = 1, start_time=now)
+        statisticData.type = 1
+        statisticData.earnCount = 34
+        statisticData.totalEarnPct = 54.3
+        db.save_statistices([statisticData])
+
+        statisticData.type = 2
+        statisticData.earnCount = 53
+        db.save_statistices([statisticData])
+
+
+        statisticData = db.load_statistic_all()
+        assert  len(statisticData) == 2
+        assert  statisticData[0].type == 1
+        assert  statisticData[1].type == 2
+        assert statisticData[0].earnCount == 34
+        assert statisticData[1].earnCount == 53
+
 
 
 
