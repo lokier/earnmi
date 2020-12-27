@@ -709,8 +709,6 @@ class ProjectRunner:
             statistic = self.makeStatistic(order_list,startTime = now)
             statistic.type = type
             data_list.append(statistic)
-            print(f"type={type},days={days},start_time ={statistic.start_time},count = {statistic.count}")
-        print(f"save count = {len(data_list)}")
 
         self.opDB.save_statistices(data_list)
 
