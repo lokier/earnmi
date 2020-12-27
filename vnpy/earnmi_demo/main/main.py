@@ -189,7 +189,7 @@ if __name__ == "__main__":
     # db = SqliteDatabase("opdata.db")
     class MyDatabaseSource(DatabaseSource):
         def createDatabase(self) -> Database:
-            dbSetting = {"database": "vnpy", "user": "root", "password": "Qwer4321", "host": "localhost", "port": 3306}
+            dbSetting = {"database": "vnpy", "user": "root", "password": "123456", "host": "localhost", "port": 3306}
             return RetryMySQLDatabase(**dbSetting)
 
     dataSouce = MyDatabaseSource();

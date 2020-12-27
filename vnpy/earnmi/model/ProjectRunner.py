@@ -670,6 +670,9 @@ class ProjectRunner:
 
         statistic.count = len(order_list)
         for order in order_list:
+            if not statistic.start_time is None:
+                if statistic.start_time > order.create_time:
+                    statistic.start_time = order.create_time
             if order.predict_suc:
                 statistic.predict_suc_count += 1
             if order.status == OpOrderStatus.FINISHED_EARN or order.status == OpOrderStatus.FINISHED_LOSS:
@@ -694,19 +697,21 @@ class ProjectRunner:
         ###dt = datetime - timedelta(days=60)
         ##主键，0: 最近1个月，1：最近3个月，2: 最近6个月，3：最近1年
         typeDayMap = {}
-        typeDayMap[0] = 30
-        typeDayMap[1] = 91
-        typeDayMap[2] = 183
-        typeDayMap[3] = 365
+        typeDayMap[1] = 30
+        typeDayMap[2] = 91
+        typeDayMap[3] = 183
+        typeDayMap[4] = 365
         now = datetime.now()
         data_list = []
         for type,days in typeDayMap.items():
             start_time = now - timedelta(days=days)
             order_list  =  self.opDB.load_order_all(self.project.id,finishOrder=True,start_time=start_time)
-            statistic = self.makeStatistic(order_list,startTime = start_time)
+            statistic = self.makeStatistic(order_list,startTime = now)
             statistic.type = type
             data_list.append(statistic)
-            print(f"type={type},days={days},start_time ={start_time},count = {statistic.count}")
+            print(f"type={type},days={days},start_time ={statistic.start_time},count = {statistic.count}")
+        print(f"save count = {len(data_list)}")
+
         self.opDB.save_statistices(data_list)
 
 

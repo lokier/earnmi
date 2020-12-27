@@ -103,7 +103,7 @@ class OpProject:
 class OpStatistic:
     project_id : int
     start_time :datetime  ## 统计开始时间
-    type : int  = 0   ##主键，0: 最近1个月，1：最近3个月，2: 最近6个月，3：最近1年
+    type : int  = None   ##主键，1: 最近1个月，2：最近3个月，3: 最近6个月，4：最近1年
     predict_suc_count = 0 ## int | 预测成功总数
     count = 0 ## 产出操作单的总数
     dealCount = 0  ## | 产出交易的个数
@@ -292,7 +292,7 @@ class OpStatisticModel(OpBaseModel):
 
     project_id = IntegerField(null=False)
     start_time = DateTimeField()
-    type = AutoField(null=False) ##主键，0: 最近1个月，1：最近3个月，2: 最近6个月，3：最近1年
+    type = AutoField(null=False) ##主键，1: 最近1个月，2：最近3个月，3: 最近6个月，4：最近1年
     predict_suc_count = IntegerField(null=False) ## int | 预测成功总数
     count = IntegerField(null=False) ## 产出操作单的总数
     dealCount = IntegerField(null=False)  ## | 产出交易的个数
