@@ -6,6 +6,7 @@
     * [CollectData:数据收集]()
     * [PredictModeL:预测模型]()
     * [OpProject:回测和实盘](earnmi_docs/book/op_project.md)
+    * [实盘运行框架](earnmi_docs/book/实盘运行框架.md)
     * [自建指标](earnmi_docs/book/自建指标.md)
      
 * [VN文档](README.md)
