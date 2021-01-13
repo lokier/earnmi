@@ -42,20 +42,23 @@ class CallableEngine:
         self._current_run_time:datetime = None
         self._thread: Thread = Thread(target=self._run)  ##实盘运行线程。
         self.task_queue = Q.PriorityQueue()
+        self.dayChangedListeners_list = []
         self.__condition = Condition()
         self._token = 0
 
-    def addListenerDayChanged(self,callback:Callable,args:dict = {}):
+    def addDayChangedListener(self,callback:Callable):
         """
         监听天数变化
+        callback :
+        def callback(engine:CallableEinge):
         """
-        pass
+        self.dayChangedListeners_list.append(callback)
 
-    def removeListenerDayChanged(self,callback:Callable):
+    def removeDayChangedListener(self,callback:Callable):
         """
         监听天数变化
         """
-        pass
+        self.dayChangedListeners_list.remove(callback)
 
     def postDelay(self,delay_second,callback:Callable,args:dict = {}):
         """
@@ -141,11 +144,11 @@ class CallableEngine:
                 sleep(1)
 
 
-    def onDayChanged(self):
+    def _onDayChanged(self):
         """
         天数变化时间。
         """
-        print(f"onDayChanged:[{self.now()}]\n")
+        [callback(self) for callback in self.dayChangedListeners_list]
 
     def _run(self) -> None:
         """
@@ -208,7 +211,7 @@ class CallableEngine:
         old_time = self._current_run_time
         self._current_run_time = time
         if old_time.day != self._current_run_time.day:
-            self.onDayChanged()
+            self._onDayChanged()
         if not task is None:
             task.callback(**task.callback_args)
         #print(f"__run_at_time:[{time}]\n")

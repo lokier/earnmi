@@ -56,10 +56,15 @@ def case1(asserter: Asserter):
     asserter.sleep(1) ##等待1s
     engine.post(asserter.eventOccurAt, {"time": timePoint + timedelta(seconds=1), "msg": "1s后发生"})  ##时间在10秒后发生。
 
+
+
 def testAllCase(asserter: Asserter):
     case1(asserter)
     pass
 
+
+def onDayChanged(engine:CallableEngine):
+    print(f"[{engine.now()}]: onDayChanged")
 
 ###测试实盘环境
 start = datetime(year=2019, month=6, day=30, hour=23)
@@ -68,9 +73,11 @@ end = datetime(year=2019, month=9, day=30, hour=23)
 asserter = Asserter()
 ###实盘环境。
 # asserter.engine.run()
-# testAllCase(asserter);
+# testAllCase(asserter)
 
 asserter_backtest = Asserter()  ###回测环境。
+asserter_backtest.engine.addDayChangedListener(onDayChanged)
 asserter_backtest.engine.run_backtest(start)
 testAllCase(asserter_backtest)
+
 asserter_backtest.engine.go(3600*24*10) ##开始回撤执行。

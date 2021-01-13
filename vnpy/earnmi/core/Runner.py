@@ -4,6 +4,8 @@
 """
 from abc import abstractmethod
 from datetime import datetime
+from typing import Callable
+
 
 class RunnerInitor:
     """
@@ -17,23 +19,25 @@ class RunnerInitor:
     run_daily(after_market_close, time='after_close', reference_security='000906.XSHG')
 
     """
+    @abstractmethod
     def run_monthly(self,function):
         """
         每月执行。
         """
         pass
 
+    @abstractmethod
     def run_weekly(self,function):
         """
         每周执行。
         """
         pass
 
-    def run_daily(self,function,run_if_miss_time = True):
+    @abstractmethod
+    def run_daily(self,hour_minute_seconde:str,function:Callable, args = {}, run_if_miss_time = True):
         """
         每天执行。
-
-        run_if_miss_time 如果当前启动时，错过时间点时的处理方式。
+        run_if_miss_time 如果今天启动时，错过时间点时的处理方式。
         为True时，表示依旧处理。
         为False是，表示不处理。
         """
@@ -43,27 +47,28 @@ class RunnerInitor:
 
 class RunnerContext:
 
-    def run_delay(self,function,second:int, session:str=None, cancel_confict = True):
+    @abstractmethod
+    def run_delay(self,second:int, function:Callable,args = {}):
         """
-        延迟second秒之后执行。 只对今天有效。
-        session: 如果不为none时，如果遇到当前还等待执行的session。
-        1） cancel_confict为True，则会取消本次session的提交。
-        2）cancel_confict 为False，则会替换上一次的session，继续延迟额外second秒时间。
+        延迟second秒之后执行。
         """
         pass
 
+    @abstractmethod
     def now(self)->datetime:
         """
         获取当前时间。(实盘环境的对应的是当前时间，回撤环境对应的回撤时间）。
         """
         pass
 
+    @abstractmethod
     def is_backtest(self)->bool:
         """
         是否回测环境。
         """
         return False
 
+    @abstractmethod
     def log(self,msg:str):
         """
         打印日志。
@@ -74,7 +79,7 @@ class RunnerContext:
 class Runner:
 
     def __init__(self):
-        context:RunnerContext = None
+        self.context:RunnerContext = None
 
     @abstractmethod
     def getName(self):
@@ -82,8 +87,6 @@ class Runner:
           返回程序的名字。必须唯一。
         """
         pass
-
-
 
     @abstractmethod
     def onStartup(self,initor:RunnerInitor):

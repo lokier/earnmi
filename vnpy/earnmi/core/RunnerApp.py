@@ -1,41 +1,151 @@
-
+from dataclasses import dataclass
 from datetime import datetime
-from datetime import date
+from typing import Callable
+from earnmi.core.CallableEngine import CallableEngine
+from earnmi.core.Runner import Runner, RunnerContext, RunnerInitor
 
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.schedulers.blocking import BlockingScheduler
+__all__ = [
+    # Super-special typing primitives.
+    'RunnerApp',
+]
 
-from earnmi.core.Runner import Runner
+
+def parse_hour_minute_second(text:str):
+    digit_list = text.split(":")
+    assert len(digit_list) == 3
+    hour = int(digit_list[0])
+    minute = int(digit_list[1])
+    sencond = int(digit_list[2])
+    assert  0<= hour and hour < 24
+    assert  0<= minute and minute < 60
+    assert  0<= sencond and sencond < 60
+    return hour,minute,sencond
 
 
-class run_monly:
-    pass
+@dataclass
+class Run_Daily_Job:
+    hour_minute_second:str
+    function:Callable
+    args:{}
+    run_if_miss_time:bool
 
-class RunnerWrapper:
+    def secheduleToayJob(self,engine:CallableEngine):
+        """
+        hour_minute_second:
+        """
+        hour,minute,second = parse_hour_minute_second(self.hour_minute_second)
+        now = engine.now()
+        job_time = datetime(year=now.year, month=now.month, day=now.day, hour=hour, minute=minute, second=second)
+        delay_second = int((job_time.timestamp() - now.timestamp() + 0.45))
+        if delay_second > 0:
+            engine.postDelay(delay_second,self.function,self.args)
+        elif not self.run_if_miss_time and delay_second < 0:
+            ##错过今天的运行时间
+            return
+        else:
+            engine.post(self.function,self.args)
 
-    def __init__(self):
-        runner:Runner = None
-        run_monly = [] ##每月执行
-        run_weekly= [] ##每周执行
-        run_dayly= [] ##每天执行
 
+class _RunnerWrapper(RunnerContext,RunnerInitor):
+
+    def __init__(self,runner:Runner,engine:CallableEngine):
+        super().__init__()
+        assert runner.context is None
+        self.engine = engine
+        self.runner:Runner = runner
+        self.runner.context = self
+        self.run_daily_job_list:['Run_Daily_Job'] = []
+
+    def now(self)->datetime:
+        return self.engine.now()
+
+    def is_backtest(self)->bool:
+        return self.engine.is_backtest
+
+    def run_delay(self,second:int, function:Callable,args = {}):
+        self.engine.postDelay(second,function,args)
+
+    def run_daily(self,hour_minute_seconde:str,function:Callable, args = {}, run_if_miss_time = True):
+        job = Run_Daily_Job(hour_minute_second=hour_minute_seconde,function=function,args=args,run_if_miss_time=run_if_miss_time)
+        self.run_daily_job_list.append(job)
+
+    def secheduleToayJob(self,engine:CallableEngine):
+        [ job.secheduleToayJob(engine) for job in self.run_daily_job_list]
 
 class RunnerApp:
 
+    def __init__(self):
+        self.engine:CallableEngine = CallableEngine()
+        self.engine.addDayChangedListener(self._onDayChanged)
+        self.runner_list:['_RunnerWrapper'] = []
+        self.running = False
+
+    def _onDayChanged(self,theEngine:CallableEngine):
+        """
+        天数变化：新的一天开始安排工作。
+        """
+        self._secheduleToayJob()
+
+
+    def _onStartup(self):
+        """
+        启动,开始安排工作
+        """
+        [ runner_wrapper.runner.onStartup(runner_wrapper) for runner_wrapper in self.runner_list ]
+        self._secheduleToayJob()
+
+    def _secheduleToayJob(self):
+        """
+         分配今天的任务
+        """
+        [ runner_wrapper.secheduleToayJob(self.engine) for runner_wrapper in self.runner_list ]
+
+
     def add(self,runner:Runner):
-        pass
+        if self.running:
+            raise RuntimeError("can't add while is runing!")
+        for runner_wrapper in self.runner_list:
+            if runner_wrapper.runner == runner:
+                return;
+        self.runner_list.append(_RunnerWrapper(runner,self.engine))
 
     def run(self):
-        """
-        实盘运行。
-        pip install apscheduler
-        使用APScheduler实现定时任务
-        单一调度线程，各个Runner都有各自的后台线程运行环境，并且同一个时间不会有相同Runner执行。
-        """
-        scheduler = BackgroundScheduler()
+        assert not self.running
+        self.running = True
+        self.engine.run()
+        self.engine.post(self._onStartup)
 
-        scheduler.start()
+    def run_backtest(self,start:datetime):
+        assert not self.running
+        self.running = True
+        self.engine.run_backtest(start)
+        self.engine.post(self._onStartup)
 
-        pass
 
 
+if __name__ == "__main__":
+
+    hour,minute,second = parse_hour_minute_second("15:23:34")
+    print(f"{hour}:{minute}:{second}")
+
+    class MyRunner(Runner):
+
+        def getName(self):
+            return "MyRunner"
+
+        def onStartup(self, initor: RunnerInitor):
+            print(f"[{self.context.now()}-{self.getName()}]:onStartUp")
+
+            initor.run_daily("15:23:34",self.onRunAt_15_23_34,args={},run_if_miss_time=False)
+
+        def onRunAt_15_23_34(self):
+            now = self.context.now();
+            print(f"[{now}-{self.getName()}]:onRunAt_15_23_34")
+
+    app = RunnerApp()
+    app.add(MyRunner())
+
+    start = datetime(year=2019, month=7, day=2, hour=14)
+    app.run_backtest(start)
+
+    app.engine.go(3600*24*10)
