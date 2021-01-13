@@ -39,8 +39,3 @@ class RunnerApp:
         pass
 
 
-    def run_backtest(self,start:datetime,end:datetime):
-        """
-          执行回撤。
-        """
-        pass

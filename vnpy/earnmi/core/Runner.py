@@ -54,7 +54,7 @@ class RunnerContext:
 
     def now(self)->datetime:
         """
-        获取当前时间。(实盘环境的对应当前时间）。
+        获取当前时间。(实盘环境的对应的是当前时间，回撤环境对应的回撤时间）。
         """
         pass
 
