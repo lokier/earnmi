@@ -1,14 +1,14 @@
 from datetime import datetime, timedelta
 from time import sleep
 
-from earnmi.core.RunnerEngine import RunnerEngine
+from earnmi.core.CallableEngine import CallableEngine
 
 
 class Asserter:
 
     def __init__(self):
         self.last_log_time: datetime = None
-        self.engine: RunnerEngine = RunnerEngine()
+        self.engine: CallableEngine = CallableEngine()
 
     def log(self, time: datetime, msg):
         """
@@ -49,7 +49,7 @@ class Asserter:
 
 
 def case1(asserter: Asserter):
-    engine: RunnerEngine = asserter.engine
+    engine: CallableEngine = asserter.engine
     timePoint = engine.now()
     asserter.log(timePoint, "设置时间基础点")
     engine.postDelay(2, asserter.eventOccurAt, {"time": timePoint + timedelta(seconds=2), "msg": "2s后发生"})  ##时间在一秒后发生。

@@ -7,7 +7,7 @@ import queue as Q
 
 __all__ = [
     # Super-special typing primitives.
-    'RunnerEngine',
+    'CallableEngine',
 ]
 
 class _callback_item:
@@ -34,7 +34,7 @@ class _callback_item:
     2、postDeley：延迟操作
     3、可以监听天数变化操作。
 """
-class RunnerEngine:
+class CallableEngine:
 
     def __init__(self):
         self._active: bool = False
