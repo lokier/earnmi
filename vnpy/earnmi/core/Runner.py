@@ -91,7 +91,7 @@ class Runner:
     @abstractmethod
     def onStartup(self,initor:RunnerInitor):
         """
-        程序启动。
+        程序启动。 在单一线程里执行。
         """
         pass
 

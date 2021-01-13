@@ -44,6 +44,7 @@ class CallableEngine:
         self.task_queue = Q.PriorityQueue()
         self.dayChangedListeners_list = []
         self.__condition = Condition()
+        self.intercept_callbale_handler:Callable = None
         self._token = 0
 
     def addDayChangedListener(self,callback:Callable):
@@ -213,7 +214,10 @@ class CallableEngine:
         if old_time.day != self._current_run_time.day:
             self._onDayChanged()
         if not task is None:
-            task.callback(**task.callback_args)
+            if self.intercept_callbale_handler is None:
+                task.callback(**task.callback_args)
+            else:
+                self.intercept_callbale_handler(task.callback,task.callback_args)
         #print(f"__run_at_time:[{time}]\n")
 
 

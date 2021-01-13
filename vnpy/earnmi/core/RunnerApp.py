@@ -80,6 +80,10 @@ class RunnerApp:
         self.runner_list:['_RunnerWrapper'] = []
         self.running = False
 
+    def onInerceptCallable(self,callbale:Callable,args:{}):
+        #TODO 分配到线程池里开多线程执行。
+        callbale(**args)
+
     def _onDayChanged(self,theEngine:CallableEngine):
         """
         天数变化：新的一天开始安排工作。
@@ -92,6 +96,9 @@ class RunnerApp:
         启动,开始安排工作
         """
         [ runner_wrapper.runner.onStartup(runner_wrapper) for runner_wrapper in self.runner_list ]
+        ##拦截引擎的callable方法调用
+        self.engine.intercept_callbale_handler = self.onInerceptCallable
+
         self._secheduleToayJob()
 
     def _secheduleToayJob(self):
@@ -105,8 +112,8 @@ class RunnerApp:
         if self.running:
             raise RuntimeError("can't add while is runing!")
         for runner_wrapper in self.runner_list:
-            if runner_wrapper.runner == runner:
-                return;
+            if runner_wrapper.runner.getName() == runner.getName():
+                raise RuntimeError(f"runner.name [{runner.getName()}] 已经存在！")
         self.runner_list.append(_RunnerWrapper(runner,self.engine))
 
     def run(self):
