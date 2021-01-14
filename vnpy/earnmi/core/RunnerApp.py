@@ -76,13 +76,12 @@ def __secheduleToayJob__(engine:CallableEngine,hour_minute_second:str,now:dateti
     hour, minute, second = parse_hour_minute_second(hour_minute_second)
     job_time = datetime(year=now.year, month=now.month, day=now.day, hour=hour, minute=minute, second=second)
     delay_second = int((job_time.timestamp() - now.timestamp() + 0.45))
-    if delay_second > 0:
-        engine.postDelay(delay_second, function, args)
-    elif not run_if_miss_time and delay_second < 0:
-        ##错过今天的运行时间
+
+    ##错过今天的运行时间
+    if delay_second < 0 and not run_if_miss_time :
         return
-    else:
-        engine.post(function, args)
+    engine.postDelay(delay_second, function, args)
+
 
 @dataclass
 class Run_Monthly_Job:
@@ -150,6 +149,13 @@ class _RunnerWrapper(RunnerContext, RunnerScheduler):
 
     def is_backtest(self)->bool:
         return self.engine.is_backtest
+
+    def is_inCallbalThread(self) -> bool:
+        return self.engine.inCallableThread()
+
+    def log(self, msg: str):
+        print(f"[{self.engine.now()}|{self.is_inCallbalThread()}|{self.runner.getName()}]: {msg}")
+        pass
 
     def run_delay(self,second:int, function:Callable,args = {}):
         self.engine.postDelay(second,function,args)
@@ -250,28 +256,29 @@ if __name__ == "__main__":
             return "MyRunner"
 
         def onStartup(self, scheduler: RunnerScheduler):
-            print(f"[{self.context.now()}-{self.getName()}]:onStartUp")
+            self.log("onStartUp")
 
-            scheduler.run_weekly("3,6","5:4:6",self.on_RunAt_Weekly_5_4_6,args={},run_if_miss_time=False)
+            scheduler.run_weekly("3,4,6","5:4:6",self.on_RunAt_Weekly_5_4_6,args={},run_if_miss_time=True)
             scheduler.run_daily("15:23:34",self.onRunAt_15_23_34,args={},run_if_miss_time=False)
-            scheduler.run_monthly("7,4,10,9","11:11:11",self.on_RunAt_Monthly_11_11_11,args={},run_if_miss_time=False)
+            scheduler.run_monthly("7,4,10,9,14","1:11:11",self.on_RunAt_Monthly_1_11_11,args={},run_if_miss_time=False)
 
         def onRunAt_15_23_34(self):
-            now = self.context.now();
-            print(f"[{now}-{self.getName()}]:onRunAt_15_23_34")
+            self.log("onRunAt_15_23_34")
 
         def on_RunAt_Weekly_5_4_6(self):
             now = self.context.now();
-            print(f"[{now}-星期{now.weekday()+1}-{self.getName()}]:on_RunAt_Weekly_5_4_6")
+            self.log(f"on_RunAt_Weekly_5_4_6, 星期{now.weekday()+1}")
+            self.context.run_delay(40,self.on_RunAt_Weekly_5_4_6_delay_at_40s)
 
-        def on_RunAt_Monthly_11_11_11(self):
-            now = self.context.now();
-            print(f"[{now}-{self.getName()}]:on_RunAt_Monthly_11_11_11")
+        def on_RunAt_Weekly_5_4_6_delay_at_40s(self):
+            self.log("on_RunAt_Weekly_5_4_6_delay_at_40s")
+
+        def on_RunAt_Monthly_1_11_11(self):
+            self.log("on_RunAt_Monthly_1_11_11")
 
     app = RunnerApp()
     app.add(MyRunner())
 
     start = datetime(year=2021, month=1, day=2, hour=14)
     app.run_backtest(start)
-
     app.engine.go(3600*24*10)

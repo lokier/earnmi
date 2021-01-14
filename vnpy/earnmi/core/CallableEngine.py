@@ -87,12 +87,12 @@ class CallableEngine:
         if isinstance(task,_callback_item):
             self.__condition.acquire()
             task.is_delete = True
-            task.time = self.now()
+            task.time = self.now() - timedelta(seconds=1)
             self.__condition.release()
 
     def now(self) -> datetime:
         """
-        当前时间。实盘环境是真实环境，回撤环境是对应回撤时间。
+        当前时间。实盘环境是真实时间，回撤环境是对应回撤时间。
         """
         if self.is_backtest:
             return self._current_run_time
@@ -125,6 +125,12 @@ class CallableEngine:
         self._active = False
         self._thread.join()
 
+    def inCallableThread(self)->bool:
+        """
+        是否在callbal线程里面。
+        """
+        return threading.current_thread() == self._thread
+
     def go(self, second: int):
         if self._active == False:
             raise RuntimeError("not activie yet!");
@@ -139,7 +145,7 @@ class CallableEngine:
         self.__condition.release()
 
         ###判断当前是否在单一线程内，不在的化，要挂起线程等待到执行的时间点。
-        if threading.current_thread() != self._thread:
+        if not self.inCallableThread():
             while expect_go_time > self._current_run_time:
                 ##线程等待执行到指定的时间点。
                 sleep(1)

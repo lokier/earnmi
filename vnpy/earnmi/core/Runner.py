@@ -17,7 +17,6 @@ class RunnerScheduler:
     """
     计划任务
     """
-
     @abstractmethod
     def run_monthly(self,day_desc:str,hour_minute_second:str,function:Callable, args = {}, run_if_miss_time = False):
         """
@@ -72,9 +71,16 @@ class RunnerContext:
     @abstractmethod
     def is_backtest(self)->bool:
         """
-        是否回测环境。
+        是否在回测环境下运行。
         """
-        return False
+        pass
+
+    @abstractmethod
+    def is_inCallbalThread(self)->bool:
+        """
+        是否在callbalThread里执行。
+        """
+        pass
 
     @abstractmethod
     def log(self,msg:str):
@@ -88,6 +94,12 @@ class Runner:
 
     def __init__(self):
         self.context:RunnerContext = None
+
+    def log(self,msg:str):
+        """
+        打印日志。
+        """
+        self.context.log(msg)
 
     @abstractmethod
     def getName(self):
