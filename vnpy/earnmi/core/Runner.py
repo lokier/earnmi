@@ -5,47 +5,55 @@
 from abc import abstractmethod
 from datetime import datetime
 from typing import Callable
+__all__ = [
+    # Super-special typing primitives.
+    'RunnerScheduler',
+    'RunnerContext',
+    'Runner',
 
+]
 
-class RunnerInitor:
+class RunnerScheduler:
     """
-    参考:https://www.joinquant.com/help/api/help#api:%E8%BF%90%E8%A1%8C%E6%97%B6%E9%97%B4
-     # 定时运行函数（reference_security为运行时间的参考标的；传入的标的只做种类区分，因此传入'000300.XSHG'或'510300.XSHG'是一样的）
-    # 开盘前运行，按月运行
-    run_monthly(before_market_open, monthday = 1, time = 'before_open', reference_security='000906.XSHG')
-    # 开盘时运行
-    run_monthly(market_open, monthday = 1, time = 'open', reference_security='000906.XSHG')
-    # 收盘后运行
-    run_daily(after_market_close, time='after_close', reference_security='000906.XSHG')
-
+    计划任务
     """
+
     @abstractmethod
-    def run_monthly(self,function):
+    def run_monthly(self,day_desc:str,hour_minute_second:str,function:Callable, args = {}, run_if_miss_time = False):
         """
         每月执行。
+        day_desc:  范围1-31, 格式支持三种： "1", "2-5", "1,3,6"
+        hour_minute_second : 格式： "10:15:23"
+        run_if_miss_time 如果今天启动时，错过时间点时的处理方式。  为True时，表示依旧处理。 为False是，表示不处理。
         """
         pass
 
     @abstractmethod
-    def run_weekly(self,function):
+    def run_weekly(self,week_desc:str,hour_minute_second:str,function:Callable, args = {}, run_if_miss_time = False):
         """
         每周执行。
+        week_desc:  1-7表示：星期一到星期日, 格式支持三种： "1", "2-5", "1,3,6"
+        hour_minute_second : 格式： "10:15:23"
+        run_if_miss_time 如果今天启动时，错过时间点时的处理方式。  为True时，表示依旧处理。 为False是，表示不处理。
         """
         pass
 
     @abstractmethod
-    def run_daily(self,hour_minute_seconde:str,function:Callable, args = {}, run_if_miss_time = True):
+    def run_daily(self,hour_minute_second:str,function:Callable, args = {}, run_if_miss_time = False):
         """
         每天执行。
-        run_if_miss_time 如果今天启动时，错过时间点时的处理方式。
-        为True时，表示依旧处理。
-        为False是，表示不处理。
+        hour_minute_second : 格式： "10:15:23"
+        run_if_miss_time 如果今天启动时，错过时间点时的处理方式。  为True时，表示依旧处理。 为False是，表示不处理。
         """
         pass
 
 
 
 class RunnerContext:
+
+    """
+    Runner运行环境。
+    """
 
     @abstractmethod
     def run_delay(self,second:int, function:Callable,args = {}):
@@ -89,9 +97,10 @@ class Runner:
         pass
 
     @abstractmethod
-    def onStartup(self,initor:RunnerInitor):
+    def onStartup(self, scheduler:RunnerScheduler):
         """
         程序启动。 在单一线程里执行。
+        启动后使用scheuler去规划后续的日常任务。
         """
         pass
 
