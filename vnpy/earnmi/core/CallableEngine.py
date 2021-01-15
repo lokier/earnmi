@@ -33,6 +33,7 @@ class _callback_item:
     1、post：按照时间顺序、执行。
     2、postDeley：延迟操作
     3、可以监听天数变化操作。
+    4、postEvent
 """
 class CallableEngine:
 
@@ -224,8 +225,10 @@ class CallableEngine:
             self._onDayChanged()
         if not task is None:
             if self.intercept_callbale_handler is None:
+                ##主线程执行。
                 task.callback(**task.callback_args)
             else:
+                ##被拦截处理。
                 self.intercept_callbale_handler(task.callback,task.callback_args)
         #print(f"__run_at_time:[{time}]\n")
 

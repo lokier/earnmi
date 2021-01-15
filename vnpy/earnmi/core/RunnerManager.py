@@ -1,12 +1,15 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable
+
+from earnmi.core.App import App
 from earnmi.core.CallableEngine import CallableEngine
+from earnmi.core.Context import Context
 from earnmi.core.Runner import Runner, RunnerContext, RunnerScheduler
 
 __all__ = [
     # Super-special typing primitives.
-    'RunnerApp',
+    'RunnerManager',
 ]
 
 
@@ -135,7 +138,7 @@ class Run_Daily_Job:
 class _RunnerWrapper(RunnerContext, RunnerScheduler):
 
     def __init__(self,runner:Runner,engine:CallableEngine):
-        super().__init__()
+        Context.__init__(self,engine)
         assert runner.context is None
         self.engine = engine
         self.runner:Runner = runner
@@ -150,12 +153,18 @@ class _RunnerWrapper(RunnerContext, RunnerScheduler):
     def is_backtest(self)->bool:
         return self.engine.is_backtest
 
-    def is_mainThread(self) -> bool:
-        return self.engine.inCallableThread()
 
-    def log(self, msg: str):
+    def log_i(self, msg: str):
         print(f"[{self.engine.now()}|{self.is_mainThread()}|{self.runner.getName()}]: {msg}")
-        pass
+
+    def log_d(self, msg: str):
+        self.log_i(msg)
+
+    def log_w(self, msg: str):
+        self.log_i(msg)
+
+    def log_e(self, msg: str):
+        self.log_i(msg)
 
     def run_delay(self,second:int, function:Callable,args = {}):
         self.engine.postDelay(second,function,args)
@@ -181,10 +190,11 @@ class _RunnerWrapper(RunnerContext, RunnerScheduler):
         [ job.secheduleToayJob(engine) for job in self.run_weekly_job_list] ##规划weekly任务
         [ job.secheduleToayJob(engine) for job in self.run_montly_job_list] ##规划Monthly任务
 
-class RunnerApp:
+class RunnerManager:
 
-    def __init__(self):
-        self.engine:CallableEngine = CallableEngine()
+    def __init__(self,app:App):
+        self._app = app
+        self.engine:CallableEngine = app.engine
         self.engine.addDayChangedListener(self._onDayChanged)
         self.runner_list:['_RunnerWrapper'] = []
         self.running = False
@@ -268,7 +278,7 @@ if __name__ == "__main__":
         def on_RunAt_Weekly_5_4_6(self):
             now = self.context.now();
             self.log(f"on_RunAt_Weekly_5_4_6, 星期{now.weekday()+1}")
-            self.context.run_delay(40,self.on_RunAt_Weekly_5_4_6_delay_at_40s)
+            self.context.post_delay(40,self.on_RunAt_Weekly_5_4_6_delay_at_40s)
 
         def on_RunAt_Weekly_5_4_6_delay_at_40s(self):
             self.log("on_RunAt_Weekly_5_4_6_delay_at_40s")
@@ -276,9 +286,11 @@ if __name__ == "__main__":
         def on_RunAt_Monthly_1_11_11(self):
             self.log("on_RunAt_Monthly_1_11_11")
 
-    app = RunnerApp()
-    app.add(MyRunner())
+
+    app = App(".")
+    runnerManager = RunnerManager(app)
+    runnerManager.add(MyRunner())
 
     start = datetime(year=2021, month=1, day=2, hour=14)
-    app.run_backtest(start)
-    app.engine.go(3600*24*10)
+    runnerManager.run_backtest(start)
+    runnerManager.engine.go(3600*24*10)

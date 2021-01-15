@@ -13,6 +13,9 @@ __all__ = [
 
 ]
 
+from earnmi.core.Context import Context
+
+
 class RunnerScheduler:
     """
     计划任务
@@ -48,46 +51,9 @@ class RunnerScheduler:
 
 
 
-class RunnerContext:
+class RunnerContext(Context):
 
-    """
-    Runner运行环境。
-    """
-
-    @abstractmethod
-    def run_delay(self,second:int, function:Callable,args = {}):
-        """
-        延迟second秒之后执行。
-        """
-        pass
-
-    @abstractmethod
-    def now(self)->datetime:
-        """
-        获取当前时间。(实盘环境的对应的是当前时间，回撤环境对应的回撤时间）。
-        """
-        pass
-
-    @abstractmethod
-    def is_backtest(self)->bool:
-        """
-        是否在回测环境下运行。
-        """
-        pass
-
-    @abstractmethod
-    def is_mainThread(self)->bool:
-        """
-        是否在主线程里执行。
-        """
-        pass
-
-    @abstractmethod
-    def log(self,msg:str):
-        """
-        打印日志。
-        """
-        pass
+   pass
 
 
 class Runner:
@@ -99,7 +65,7 @@ class Runner:
         self.context.now()
 
     def log(self,msg:str):
-        self.context.log(msg)
+        self.context.log_i(msg)
 
     @abstractmethod
     def getName(self):

@@ -2,64 +2,67 @@ import datetime
 from abc import abstractmethod
 from typing import Callable
 
+from earnmi.core.CallableEngine import CallableEngine
+
 
 class Context:
 
-    @abstractmethod
+    def __init__(self,engine:CallableEngine):
+        ##主线程环境
+        self.engine: CallableEngine = engine
+
     def post(self, function: Callable, args={}):
         """
-        延迟second秒之后执行。
+        提交到主线程执行。
         """
-        pass
+        self.post_delay(0, function, args)
 
-    @abstractmethod
     def post_delay(self, second: int, function: Callable, args={}):
         """
         提交到主线程，并延迟second秒执行。
         """
-        pass
+        if not self.engine.is_running():
+            raise RuntimeError("App main thread is not running")
+        self.engine.postDelay(second, function, args)
 
-    @abstractmethod
+
     def now(self) -> datetime:
         """
         获取当前时间。(实盘环境的对应的是当前时间，回撤环境对应的回撤时间）。
         """
-        pass
+        return self.engine.now();
 
-    @abstractmethod
     def is_backtest(self) -> bool:
         """
         是否在回测环境下运行。
         """
-        pass
+        return self.is_backtest()
 
-    @abstractmethod
+    def is_mainThread(self) -> bool:
+        """
+        是否在主线程环境
+        """
+        return self.engine.inCallableThread()
+
     def log_i(self, msg: str):
-        """
-        打印信息日志
-        """
-        pass
+        print(f"[{self.engine.now()}|{self.is_mainThread()}]: {msg}")
 
-    @abstractmethod
     def log_d(self, msg: str):
-        """
-         打印调试日志
-        """
-        pass
+        print(f"[{self.engine.now()}|{self.is_mainThread()}]: {msg}")
 
-    @abstractmethod
     def log_w(self, msg: str):
-        """
-        打印警告日志
-        """
-        pass
+        print(f"[{self.engine.now()}|{self.is_mainThread()}]: {msg}")
+
+    def log_e(self, msg: str):
+        print(f"[{self.engine.now()}|{self.is_mainThread()}]: {msg}")
 
     @abstractmethod
-    def log_e(self, msg: str):
+    def getDir(self, dirName,create_if_no_exist =True):
         """
-        打印错误日志
+        获取文件目录
         """
-        pass
+        raise RuntimeError("未实现")
+
 
 
 
