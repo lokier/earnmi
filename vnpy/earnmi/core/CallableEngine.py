@@ -1,4 +1,5 @@
 import threading
+from collections import defaultdict
 from datetime import timedelta,datetime
 from threading import Thread,Condition
 from time import sleep
@@ -8,13 +9,18 @@ import queue as Q
 __all__ = [
     # Super-special typing primitives.
     'CallableEngine',
+    'HandlerType',
 ]
 
-class _callback_item:
-    def __init__(self, time: datetime, callback: Callable,args:dict):
+HandlerType = Callable[[str], None]
+
+
+class _callback_task:
+    def __init__(self, time: datetime, callback: Callable,args:dict,event:str = None):
         self.time = time
         self.callback:Callable = callback
         self.is_delete = False
+        self.event:str = event
         self.callback_args = args
         self.post_token = 0  ##相同时间提交的话，跟post_token来保证提交顺序。
 
@@ -47,6 +53,8 @@ class CallableEngine:
         self.__condition = Condition()
         self.intercept_callbale_handler:Callable = None
         self._token = 0
+        self._handlers: defaultdict = defaultdict(list)
+
 
     def addDayChangedListener(self,callback:Callable):
         """
@@ -62,6 +70,30 @@ class CallableEngine:
         """
         self.dayChangedListeners_list.remove(callback)
 
+    def register(self, type: str, handler: HandlerType) -> None:
+        """
+        """
+        handler_list = self._handlers[type]
+        if handler not in handler_list:
+            handler_list.append(handler)
+
+    def unregister(self, type: str, handler: HandlerType) -> None:
+        """
+        """
+        handler_list = self._handlers[type]
+        if handler in handler_list:
+            handler_list.remove(handler)
+        if not handler_list:
+            self._handlers.pop(type)
+
+    def post_event(self,event:str):
+        """
+        发送事件。
+        """
+        time = self.now()
+        task = _callback_task(time=time, callback=None, args=None,event=event)
+        return self._post_task(task)
+
     def postDelay(self,delay_second,callback:Callable,args:dict = {}):
         """
         发送deleay时间。
@@ -69,14 +101,9 @@ class CallableEngine:
         args:该方法的参数参数
         """
         time = self.now() + timedelta(seconds=delay_second)
-        task = _callback_item(time=time, callback=callback,args = args)
-        self.__condition.acquire()
-        task.post_token = self._token + 1
-        self._token =  task.post_token
-        self.task_queue.put(task, block=False)
-        self.__condition.notify() ##唤醒其它线程
-        self.__condition.release()
-        return task
+        task = _callback_task(time=time, callback=callback, args = args)
+        return self._post_task(task)
+
 
     def post(self,callback:Callable,args:dict = {}):
         """
@@ -85,7 +112,7 @@ class CallableEngine:
         return self.postDelay(0,callback,args)
 
     def cancel(self,task:Any):
-        if isinstance(task,_callback_item):
+        if isinstance(task, _callback_task):
             self.__condition.acquire()
             task.is_delete = True
             task.time = self.now() - timedelta(seconds=1)
@@ -170,7 +197,7 @@ class CallableEngine:
             now = self.now()
             try:
                 ##获取下一个未取消的Task
-                next_task:_callback_item = self.task_queue.get_nowait()
+                next_task:_callback_task = self.task_queue.get_nowait()
                 while next_task.is_delete:
                     next_task = self.task_queue.get_nowait()
                 wait_time_second = int(next_task.time.timestamp() - now.timestamp() + 0.49)
@@ -216,20 +243,35 @@ class CallableEngine:
             ##时间继续往下走
             self.__run_at_time(now, None)
 
+    def _post_task(self,task:_callback_task):
+        self.__condition.acquire()
+        task.post_token = self._token + 1
+        self._token = task.post_token
+        self.task_queue.put(task, block=False)
+        self.__condition.notify()  ##唤醒其它线程
+        self.__condition.release()
+        return task
 
-    def __run_at_time(self,time:datetime,task:_callback_item):
+    def __run_at_time(self, time:datetime, task:_callback_task):
         assert self._current_run_time <= time
         old_time = self._current_run_time
         self._current_run_time = time
         if old_time.day != self._current_run_time.day:
             self._onDayChanged()
         if not task is None:
-            if self.intercept_callbale_handler is None:
-                ##主线程执行。
-                task.callback(**task.callback_args)
-            else:
-                ##被拦截处理。
-                self.intercept_callbale_handler(task.callback,task.callback_args)
+            is_callbale_tsk = not task.callback_args is None
+            if is_callbale_tsk:
+                if self.intercept_callbale_handler is None:
+                    ##主线程执行。
+                    task.callback(**task.callback_args)
+                else:
+                    ##被拦截处理。
+                    self.intercept_callbale_handler(task.callback,task.callback_args)
+            elif not task.event is None:
+                ##
+                if task.event in self._handlers:
+                    [handler(task.event) for handler in self._handlers[task.event]]
+
         #print(f"__run_at_time:[{time}]\n")
 
 
@@ -266,11 +308,11 @@ if __name__ == "__main__":
     def callback5():
         pass
 
-    task1= _callback_item(time=time1,callback=callback1)
-    task2= _callback_item(time=time2,callback=callback2)
-    task3= _callback_item(time=time3,callback=callback3)
-    task4= _callback_item(time=time4,callback=callback4)
-    task5= _callback_item(time=time5,callback=callback5)
+    task1= _callback_task(time=time1, callback=callback1)
+    task2= _callback_task(time=time2, callback=callback2)
+    task3= _callback_task(time=time3, callback=callback3)
+    task4= _callback_task(time=time4, callback=callback4)
+    task5= _callback_task(time=time5, callback=callback5)
 
 
 
@@ -297,11 +339,11 @@ if __name__ == "__main__":
     assert task5 == que.get_nowait()
 
     ##级别一样，按顺序。
-    task6 = _callback_item(time=time5, callback=callback5)
-    task7 = _callback_item(time=time5, callback=callback5)
-    task8 = _callback_item(time=time5, callback=callback5)
-    task9 = _callback_item(time=time5, callback=callback5)
-    task10 = _callback_item(time=time5, callback=callback5)
+    task6 = _callback_task(time=time5, callback=callback5)
+    task7 = _callback_task(time=time5, callback=callback5)
+    task8 = _callback_task(time=time5, callback=callback5)
+    task9 = _callback_task(time=time5, callback=callback5)
+    task10 = _callback_task(time=time5, callback=callback5)
 
     task8.post_token = 1
     que.put(task8, block=False)

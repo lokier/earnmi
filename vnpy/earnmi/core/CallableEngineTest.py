@@ -56,10 +56,37 @@ def case1(asserter: Asserter):
     asserter.sleep(1) ##等待1s
     engine.post(asserter.eventOccurAt, {"time": timePoint + timedelta(seconds=1), "msg": "1s后发生"})  ##时间在10秒后发生。
 
+handler_event_count = 1
+
+def casePostEvent(asserter: Asserter):
+    asserter.sleep(3) ##等待3s
+    engine: CallableEngine = asserter.engine
+    timePoint = engine.now()
+    asserter.log(timePoint, "设置postEvent时间基础点")
+    event_name = "event1"
+    global handler_event_count
+    handler_event_count = 1
+    def handlerEvent(event:str):
+        global handler_event_count
+        assert  event == event_name
+        assert  handler_event_count == 1
+        handler_event_count += 1
+        print(f"[{engine.now()}]: handlerEvent,count:{handler_event_count}")
+
+    engine.register(event_name,handlerEvent)
+    engine.post_event(event_name)
+    engine.post_event("other_event1")
+    engine.post_event("other_event2")
+    asserter.sleep(1) ##等待1s
+
+    engine.unregister(event_name,handlerEvent)
+    engine.post_event(event_name)
+    assert handler_event_count == 2
 
 
 def testAllCase(asserter: Asserter):
     case1(asserter)
+    casePostEvent(asserter)
     pass
 
 
