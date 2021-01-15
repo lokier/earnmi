@@ -95,10 +95,10 @@ class Runner:
     def __init__(self):
         self.context:RunnerContext = None
 
+    def now(self):
+        self.context.now()
+
     def log(self,msg:str):
-        """
-        打印日志。
-        """
         self.context.log(msg)
 
     @abstractmethod
@@ -118,3 +118,7 @@ class Runner:
 
 
 
+class StockRunner(Runner):
+    """
+    股票运行程序。
+    """

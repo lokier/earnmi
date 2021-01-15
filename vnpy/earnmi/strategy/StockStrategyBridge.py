@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Dict
 
-from earnmi.data.Market import Market
+from earnmi.data.Market2 import Market
 from earnmi.data.import_tradeday_from_jqdata import TRAY_DAY_VT_SIMBOL, TRAY_DAY_SIMBOL, save_tradeday_from_jqdata
 from earnmi.strategy.StockStrategy import StockStrategy, BackTestContext, Portfolio, Position
 from earnmi.uitl.utils import utils

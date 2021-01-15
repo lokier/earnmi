@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from earnmi.chart.Chart import Chart
-from earnmi.data.Market import Market
+from earnmi.data.Market2 import Market
 from earnmi.data.MarketImpl import MarketImpl
 from vnpy.trader.constant import Interval, Exchange
 from vnpy.trader.database import database_manager

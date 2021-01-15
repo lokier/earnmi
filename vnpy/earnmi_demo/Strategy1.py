@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from earnmi.chart.Indicator import Indicator
-from earnmi.data.Market import Market
+from earnmi.data.Market2 import Market
 from earnmi.data.MarketImpl import MarketImpl
 from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
 

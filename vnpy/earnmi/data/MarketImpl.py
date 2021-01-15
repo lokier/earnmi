@@ -3,7 +3,7 @@ from typing import Sequence
 
 from earnmi.data.KBarMintuePool import KBarMintuePool
 from earnmi.data.KBarPool import KBarPool
-from earnmi.data.Market import Market
+from earnmi.data.Market2 import Market
 from vnpy.trader.object import BarData, TickData
 
 

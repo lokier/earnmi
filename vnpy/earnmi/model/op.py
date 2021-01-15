@@ -522,6 +522,9 @@ class OpDataBase:
         datas = [db_bar.to_data() for db_bar in s]
         return datas
 
+    def close(self):
+        self.db.close()
+
 
 if __name__ == "__main__":
 

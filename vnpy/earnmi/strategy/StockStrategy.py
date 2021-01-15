@@ -2,7 +2,7 @@ from abc import abstractmethod, ABC
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Sequence
-from earnmi.data.Market import Market
+from earnmi.data.Market2 import Market
 from vnpy.app.cta_strategy import StopOrder
 from vnpy.trader.object import TradeData, OrderData
 
