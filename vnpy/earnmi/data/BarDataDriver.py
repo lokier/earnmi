@@ -44,3 +44,4 @@ class BarDataDriver:
         获取今天的行情数据。如果今天没有开盘的话，换回None。
         """
         pass
+

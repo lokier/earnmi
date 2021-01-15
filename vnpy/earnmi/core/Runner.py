@@ -76,9 +76,9 @@ class RunnerContext:
         pass
 
     @abstractmethod
-    def is_inCallbalThread(self)->bool:
+    def is_mainThread(self)->bool:
         """
-        是否在callbalThread里执行。
+        是否在主线程里执行。
         """
         pass
 

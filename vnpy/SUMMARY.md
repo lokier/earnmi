@@ -8,6 +8,7 @@
         * [数据更新、缓存:BarDataHandler]()
     * [分析框架]()
         * [IndicatorMeasure:指标测量](earnmi_docs/book/指标测量.md)
+        * [行情图查看:Chart]()
         * [CollectData:数据收集]()
         * [PredictModeL:预测模型]()
         * [自建指标](earnmi_docs/book/自建指标.md)

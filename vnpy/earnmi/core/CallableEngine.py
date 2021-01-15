@@ -121,6 +121,9 @@ class CallableEngine:
         self._backtest_go_end_time = start
         self._thread.start()
 
+    def is_running(self)->bool:
+        return self._active
+
     def stop(self) -> None:
         self._active = False
         self._thread.join()

@@ -150,11 +150,11 @@ class _RunnerWrapper(RunnerContext, RunnerScheduler):
     def is_backtest(self)->bool:
         return self.engine.is_backtest
 
-    def is_inCallbalThread(self) -> bool:
+    def is_mainThread(self) -> bool:
         return self.engine.inCallableThread()
 
     def log(self, msg: str):
-        print(f"[{self.engine.now()}|{self.is_inCallbalThread()}|{self.runner.getName()}]: {msg}")
+        print(f"[{self.engine.now()}|{self.is_mainThread()}|{self.runner.getName()}]: {msg}")
         pass
 
     def run_delay(self,second:int, function:Callable,args = {}):
