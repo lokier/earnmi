@@ -3,7 +3,7 @@ import json
 from playhouse.shortcuts import dict_to_model, model_to_dict
 
 from earnmi.chart.Indicator import Indicator
-from earnmi.data.MarketImpl import MarketImpl
+from earnmi.data.MarketImpl import Market2Impl
 from datetime import datetime, timedelta
 import talib
 

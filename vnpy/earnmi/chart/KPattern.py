@@ -247,7 +247,7 @@ def computeAll():
 if __name__ == "__main__":
     computeAll()
 
-    from earnmi.data.MarketImpl import MarketImpl
+    from earnmi.data.MarketImpl import Market2Impl
     # from earnmi.data.SWImpl import SWImpl
     # from earnmi.chart.Chart import Chart, IndicatorItem, Signal
     #

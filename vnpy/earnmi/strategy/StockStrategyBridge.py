@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Dict
 
-from earnmi.data.Market2 import Market
+from earnmi.data.Market2 import Market2
 from earnmi.data.import_tradeday_from_jqdata import TRAY_DAY_VT_SIMBOL, TRAY_DAY_SIMBOL, save_tradeday_from_jqdata
 from earnmi.strategy.StockStrategy import StockStrategy, BackTestContext, Portfolio, Position
 from earnmi.uitl.utils import utils
@@ -44,7 +44,7 @@ class PortfolioImpl(Portfolio):
     """
     engine:StrategyEngine
     strategy: StrategyTemplate
-    market:Market
+    market:Market2
 
     valid_captical = 0.0 #可用资金
     commit_total = 0.0  #交易总费用
@@ -64,7 +64,7 @@ class PortfolioImpl(Portfolio):
             self,
             engine: StrategyEngine,
             strategy:StrategyTemplate,
-            market: Market
+            market: Market2
     ):
         self.engine = engine
         self.valid_captical = self.engine.capital

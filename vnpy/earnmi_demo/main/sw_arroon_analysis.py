@@ -280,8 +280,8 @@ if __name__ == "__main__":
             swBars.append(bar)
         bars = swBars
         code = "000300"
-        from earnmi.data.MarketImpl import MarketImpl
-        market = MarketImpl()
+        from earnmi.data.MarketImpl import Market2Impl
+        market = Market2Impl()
         market.addNotice(code)
         today: datetime = bars[-1].datetime
         market.setToday(today + timedelta(days=1))

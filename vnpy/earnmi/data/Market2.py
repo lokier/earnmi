@@ -5,7 +5,7 @@ from typing import Sequence, Any
 from vnpy.trader.object import TickData,BarData
 
 
-class Market:
+class Market2:
     """
         实时相关的数据
     """

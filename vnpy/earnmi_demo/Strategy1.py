@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 
 from earnmi.chart.Indicator import Indicator
-from earnmi.data.Market2 import Market
-from earnmi.data.MarketImpl import MarketImpl
+from earnmi.data.Market2 import Market2
+from earnmi.data.MarketImpl import Market2Impl
 from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
 
 """
@@ -25,7 +25,7 @@ class Strategy1(StockStrategy):
         """
         self.write_log("on_create")
 
-        self.market = MarketImpl()
+        self.market = Market2Impl()
         self.market.addNotice(self.code)
 
         pass

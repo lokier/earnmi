@@ -1,7 +1,7 @@
 import random
 from typing import Sequence
 
-from earnmi.data.MarketImpl import MarketImpl
+from earnmi.data.MarketImpl import Market2Impl
 from earnmi.data.import_tradeday_from_jqdata import TRAY_DAY_VT_SIMBOL
 from earnmi.strategy.StockStrategyBridge import StockStrategyBridge
 from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
@@ -43,7 +43,7 @@ class StrategyTest(StockStrategy):
         决策初始化.
         """
         self.market_open_count = 0
-        self.market = MarketImpl()
+        self.market = Market2Impl()
 
 
         self.market.addNotice("601318") ##工商银行

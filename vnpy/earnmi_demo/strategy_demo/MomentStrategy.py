@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Sequence, Dict
 
 from earnmi.chart.Indicator import Indicator
-from earnmi.data.MarketImpl import MarketImpl
+from earnmi.data.MarketImpl import Market2Impl
 from earnmi.strategy.StockStrategy import StockStrategy, Portfolio
 from vnpy.trader.constant import Direction, Offset
 from vnpy.trader.object import TradeData
@@ -50,7 +50,7 @@ class MomentStrategy(StockStrategy):
         """
         self.write_log("on_create")
 
-        self.market = MarketImpl()
+        self.market = Market2Impl()
         for code in self.codes:
             self.market.addNotice(code)
 

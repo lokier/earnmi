@@ -8,7 +8,7 @@ from earnmi.model.Dimension import Dimension
 from earnmi.model.bar import LatestBarDB
 from earnmi_demo.main.skdj_zz500_main import SKDJ_EngineModelV2
 
-from earnmi.data.MarketImpl import MarketImpl
+from earnmi.data.MarketImpl import Market2Impl
 from earnmi.data.SWImpl import SWImpl
 
 ### 判断当前是什么时候，然后一直执行。

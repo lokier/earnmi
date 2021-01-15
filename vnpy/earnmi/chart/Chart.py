@@ -301,8 +301,8 @@ class Chart:
     code: 指数代码
     """
     def showCompare(self,bars:[],code:str):
-        from earnmi.data.MarketImpl import MarketImpl
-        market = MarketImpl()
+        from earnmi.data.MarketImpl import Market2Impl
+        market = Market2Impl()
         market.addNotice(code)
         today:datetime = bars[-1].datetime
         market.setToday(today + timedelta(days=1))
@@ -489,11 +489,11 @@ class AroonItem(IndicatorItem):
 
 
 if __name__ == "__main__":
-    from earnmi.data.MarketImpl import MarketImpl
+    from earnmi.data.MarketImpl import Market2Impl
 
     code = "600155"
     # 801161.XSHG
-    market = MarketImpl()
+    market = Market2Impl()
     market.addNotice(code)
     market.setToday(datetime.now())
 

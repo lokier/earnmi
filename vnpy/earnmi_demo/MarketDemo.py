@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from earnmi.chart.Chart import Chart
-from earnmi.data.Market2 import Market
-from earnmi.data.MarketImpl import MarketImpl
+from earnmi.data.Market2 import Market2
+from earnmi.data.MarketImpl import Market2Impl
 from vnpy.trader.constant import Interval, Exchange
 from vnpy.trader.database import database_manager
 from earnmi.data import import_data_from_jqdata
@@ -20,7 +20,7 @@ endDate = datetime(2020,5,1)
 today = datetime(2020,3,24)
 keepN = 88
 
-market = MarketImpl()
+market = Market2Impl()
 
 market.addNotice(code)
 market.setToday(today)

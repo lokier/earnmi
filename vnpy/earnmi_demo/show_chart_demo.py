@@ -8,7 +8,7 @@ from werkzeug.routing import Map
 from earnmi.chart.Chart import Chart, BollItem, IndicatorItem, Signal, HoldBarMaker
 from earnmi.chart.Factory import Factory
 from earnmi.chart.Indicator import Indicator
-from earnmi.data.MarketImpl import MarketImpl
+from earnmi.data.MarketImpl import Market2Impl
 from earnmi.data.SWImpl import SWImpl
 from earnmi.model.BarDataSource import ZZ500DataSource
 from earnmi.uitl.BarUtils import BarUtils
@@ -97,7 +97,7 @@ end =datetime(2018, 10, 1)
 #end = datetime(2020, 8, 17)
 
 code = '603377'
-market = MarketImpl()
+market = Market2Impl()
 market.addNotice(code)
 market.setToday(end)
 bars = market.getHistory().getKbarFrom(code,start)

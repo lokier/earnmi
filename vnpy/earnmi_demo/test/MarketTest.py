@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from earnmi.data.MarketImpl import MarketImpl
+from earnmi.data.MarketImpl import Market2Impl
 from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 
@@ -12,7 +12,7 @@ def isPostMinitueBar(b1:BarData,b2:BarData)-> bool:
 
 
 def basicTest():
-    market2 = MarketImpl()
+    market2 = Market2Impl()
     code = "300004"
     assert market2.isNotice(code) == False
 
@@ -35,7 +35,7 @@ def basicTest():
 
 
 def realTimeTest():
-    market2 = MarketImpl()
+    market2 = Market2Impl()
     code = "300004"
     market2.addNotice(code)
 
@@ -101,7 +101,7 @@ def realTimeTest():
 
 
 def historyTest():
-    market2 = MarketImpl()
+    market2 = Market2Impl()
     market2.setToday(datetime.now())
 
     #获取沪市数据

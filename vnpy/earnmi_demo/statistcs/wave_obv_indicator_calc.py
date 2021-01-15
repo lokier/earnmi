@@ -11,7 +11,7 @@ from earnmi.chart.Chart import Chart
 from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange
 from earnmi.chart.Indicator import Indicator
 from earnmi.chart.Factory import Factory
-from earnmi.data.MarketImpl import MarketImpl
+from earnmi.data.MarketImpl import Market2Impl
 from datetime import datetime, timedelta
 import talib
 import numpy as np

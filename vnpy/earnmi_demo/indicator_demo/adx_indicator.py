@@ -5,7 +5,7 @@ from werkzeug.routing import Map
 
 from earnmi.chart.Chart import Chart, BollItem, IndicatorItem, Signal
 from earnmi.chart.Indicator import Indicator
-from earnmi.data.MarketImpl import MarketImpl
+from earnmi.data.MarketImpl import Market2Impl
 from vnpy.trader.object import BarData
 
 
@@ -46,7 +46,7 @@ class Item(IndicatorItem):
 code = "600155"
 #code = '000300'
 #801161.XSHG
-market = MarketImpl()
+market = Market2Impl()
 market.addNotice(code)
 market.setToday(datetime.now())
 
