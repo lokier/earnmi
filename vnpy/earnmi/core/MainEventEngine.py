@@ -8,7 +8,7 @@ import queue as Q
 
 __all__ = [
     # Super-special typing primitives.
-    'CallableEngine',
+    'MainEventEngine',
     'HandlerType',
 ]
 
@@ -34,14 +34,18 @@ class _callback_task:
 
 
 """
-    单一线程执行Callback。 
-    任务执行引擎。支持实盘操作和回测环境。
+    主线程线程引擎、任务执行引擎。支持实盘操作和回测环境。
     1、post：按照时间顺序、执行。
     2、postDeley：延迟操作
+    3、postEvent
+
+目前产生的引擎事件：
+
     3、可以监听天数变化操作。
-    4、postEvent
 """
-class CallableEngine:
+class MainEventEngine:
+
+    EVNET_DAY_CHANED:str= "__"
 
     def __init__(self):
         self._active: bool = False
@@ -204,7 +208,7 @@ class CallableEngine:
                 if wait_time_second <= 0:
                     ##先释放锁，马上执行。
                     self.__condition.release()
-                    self.__run_at_time(now,next_task)
+                    self.__process_at_time(now, next_task)
                     continue
                 max_wait_time = self._next_day_delay_second(now)
                 wait_time_second = min(max_wait_time,wait_time_second)
@@ -241,7 +245,7 @@ class CallableEngine:
             self.__condition.release()
 
             ##时间继续往下走
-            self.__run_at_time(now, None)
+            self.__process_at_time(now, None)
 
     def _post_task(self,task:_callback_task):
         self.__condition.acquire()
@@ -252,7 +256,7 @@ class CallableEngine:
         self.__condition.release()
         return task
 
-    def __run_at_time(self, time:datetime, task:_callback_task):
+    def __process_at_time(self, time:datetime, task:_callback_task):
         assert self._current_run_time <= time
         old_time = self._current_run_time
         self._current_run_time = time

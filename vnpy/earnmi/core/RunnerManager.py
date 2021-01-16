@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Callable
 
 from earnmi.core.App import App
-from earnmi.core.CallableEngine import CallableEngine
+from earnmi.core.MainEventEngine import MainEventEngine
 from earnmi.core.Context import Context
 from earnmi.core.Runner import Runner, RunnerContext, RunnerScheduler
 
@@ -75,7 +75,7 @@ def parse_day_desc(text:str):
 
     return number_list
 
-def __secheduleToayJob__(engine:CallableEngine,hour_minute_second:str,now:datetime,function:Callable,args:{},run_if_miss_time:bool):
+def __secheduleToayJob__(engine:MainEventEngine, hour_minute_second:str, now:datetime, function:Callable, args:{}, run_if_miss_time:bool):
     hour, minute, second = parse_hour_minute_second(hour_minute_second)
     job_time = datetime(year=now.year, month=now.month, day=now.day, hour=hour, minute=minute, second=second)
     delay_second = int((job_time.timestamp() - now.timestamp() + 0.45))
@@ -94,7 +94,7 @@ class Run_Monthly_Job:
     args:{}
     run_if_miss_time:bool
 
-    def secheduleToayJob(self,engine:CallableEngine):
+    def secheduleToayJob(self, engine:MainEventEngine):
         day_list = parse_day_desc(self.day_desc)
         now = engine.now()
         the_day = now.day
@@ -110,7 +110,7 @@ class Run_Weekly_Job:
     args:{}
     run_if_miss_time:bool
 
-    def secheduleToayJob(self,engine:CallableEngine):
+    def secheduleToayJob(self, engine:MainEventEngine):
         week_list = parse_week_desc(self.week_desc)
         now = engine.now()
         the_week = now.weekday()  ##  0-6
@@ -127,7 +127,7 @@ class Run_Daily_Job:
     args:{}
     run_if_miss_time:bool
 
-    def secheduleToayJob(self,engine:CallableEngine):
+    def secheduleToayJob(self, engine:MainEventEngine):
         """
         hour_minute_second:
         """
@@ -137,7 +137,7 @@ class Run_Daily_Job:
 
 class _RunnerWrapper(RunnerContext, RunnerScheduler):
 
-    def __init__(self,runner:Runner,engine:CallableEngine):
+    def __init__(self, runner:Runner, engine:MainEventEngine):
         Context.__init__(self,engine)
         assert runner.context is None
         self.engine = engine
@@ -185,7 +185,7 @@ class _RunnerWrapper(RunnerContext, RunnerScheduler):
                              function=function, args=args, run_if_miss_time=run_if_miss_time)
         self.run_montly_job_list.append(job)
 
-    def secheduleToayJob(self,engine:CallableEngine):
+    def secheduleToayJob(self, engine:MainEventEngine):
         [ job.secheduleToayJob(engine) for job in self.run_daily_job_list]  ##规划daily任务
         [ job.secheduleToayJob(engine) for job in self.run_weekly_job_list] ##规划weekly任务
         [ job.secheduleToayJob(engine) for job in self.run_montly_job_list] ##规划Monthly任务
@@ -194,7 +194,7 @@ class RunnerManager:
 
     def __init__(self,app:App):
         self._app = app
-        self.engine:CallableEngine = app.engine
+        self.engine:MainEventEngine = app.engine
         self.engine.addDayChangedListener(self._onDayChanged)
         self.runner_list:['_RunnerWrapper'] = []
         self.running = False
@@ -203,7 +203,7 @@ class RunnerManager:
         #TODO 分配到线程池里开多线程执行。
         callbale(**args)
 
-    def _onDayChanged(self,theEngine:CallableEngine):
+    def _onDayChanged(self, theEngine:MainEventEngine):
         """
         天数变化：新的一天开始安排工作。
         """

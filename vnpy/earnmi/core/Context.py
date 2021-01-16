@@ -2,14 +2,14 @@ import datetime
 from abc import abstractmethod
 from typing import Callable
 
-from earnmi.core.CallableEngine import CallableEngine
+from earnmi.core.MainEventEngine import MainEventEngine
 
 
 class Context:
 
-    def __init__(self,engine:CallableEngine):
+    def __init__(self, engine:MainEventEngine):
         ##主线程环境
-        self.engine: CallableEngine = engine
+        self.engine: MainEventEngine = engine
 
     def post(self, function: Callable, args={}):
         """

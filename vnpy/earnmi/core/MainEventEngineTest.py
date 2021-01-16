@@ -1,14 +1,14 @@
 from datetime import datetime, timedelta
 from time import sleep
 
-from earnmi.core.CallableEngine import CallableEngine
+from earnmi.core.MainEventEngine import MainEventEngine
 
 
 class Asserter:
 
     def __init__(self):
         self.last_log_time: datetime = None
-        self.engine: CallableEngine = CallableEngine()
+        self.engine: MainEventEngine = MainEventEngine()
 
     def log(self, time: datetime, msg):
         """
@@ -49,7 +49,7 @@ class Asserter:
 
 
 def case1(asserter: Asserter):
-    engine: CallableEngine = asserter.engine
+    engine: MainEventEngine = asserter.engine
     timePoint = engine.now()
     asserter.log(timePoint, "设置时间基础点")
     engine.postDelay(2, asserter.eventOccurAt, {"time": timePoint + timedelta(seconds=2), "msg": "2s后发生"})  ##时间在一秒后发生。
@@ -60,7 +60,7 @@ handler_event_count = 1
 
 def casePostEvent(asserter: Asserter):
     asserter.sleep(3) ##等待3s
-    engine: CallableEngine = asserter.engine
+    engine: MainEventEngine = asserter.engine
     timePoint = engine.now()
     asserter.log(timePoint, "设置postEvent时间基础点")
     event_name = "event1"
@@ -90,7 +90,7 @@ def testAllCase(asserter: Asserter):
     pass
 
 
-def onDayChanged(engine:CallableEngine):
+def onDayChanged(engine:MainEventEngine):
     print(f"[{engine.now()}]: onDayChanged")
 
 ###测试实盘环境
