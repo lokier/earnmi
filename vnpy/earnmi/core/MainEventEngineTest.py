@@ -66,7 +66,7 @@ def casePostEvent(asserter: Asserter):
     event_name = "event1"
     global handler_event_count
     handler_event_count = 1
-    def handlerEvent(event:str):
+    def handlerEvent(event:str,data):
         global handler_event_count
         assert  event == event_name
         assert  handler_event_count == 1
@@ -80,6 +80,8 @@ def casePostEvent(asserter: Asserter):
     asserter.sleep(1) ##等待1s
 
     engine.unregister(event_name,handlerEvent)
+    engine.unregister(event_name,handlerEvent)
+
     engine.post_event(event_name)
     assert handler_event_count == 2
 

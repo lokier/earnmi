@@ -12,15 +12,16 @@ __all__ = [
     'HandlerType',
 ]
 
-HandlerType = Callable[[str], None]
+HandlerType = Callable[[str,Any], None]
 
 
 class _callback_task:
-    def __init__(self, time: datetime, callback: Callable,args:dict,event:str = None):
+    def __init__(self, time: datetime, callback: Callable,args:dict,event:str = None,event_data:Any =None):
         self.time = time
         self.callback:Callable = callback
         self.is_delete = False
         self.event:str = event
+        self.event_data:Any = event_data
         self.callback_args = args
         self.post_token = 0  ##相同时间提交的话，跟post_token来保证提交顺序。
 
@@ -40,12 +41,16 @@ class _callback_task:
     3、postEvent
 
 目前产生的引擎事件：
-
-    3、可以监听天数变化操作。
+    EVNET_DAY_CHANED  天数变化
+    EVNET_START   主引擎开始执行
+    EVNET_END  主引擎执行完毕
 """
 class MainEventEngine:
 
-    EVNET_DAY_CHANED:str= "__"
+    EVNET_DAY_CHANED:str= "__main_event_engine_day_changed"
+    EVNET_START:str= "__main_event_engine_day_start"
+    EVNET_END:str= "__main_event_engine_day_end"
+
 
     def __init__(self):
         self._active: bool = False
@@ -90,12 +95,12 @@ class MainEventEngine:
         if not handler_list:
             self._handlers.pop(type)
 
-    def post_event(self,event:str):
+    def post_event(self,event:str,data:Any=None):
         """
         发送事件。
         """
         time = self.now()
-        task = _callback_task(time=time, callback=None, args=None,event=event)
+        task = _callback_task(time=time, callback=None, args=None,event=event,event_data=data)
         return self._post_task(task)
 
     def postDelay(self,delay_second,callback:Callable,args:dict = {}):
@@ -274,7 +279,7 @@ class MainEventEngine:
             elif not task.event is None:
                 ##
                 if task.event in self._handlers:
-                    [handler(task.event) for handler in self._handlers[task.event]]
+                    [handler(task.event,task.event_data) for handler in self._handlers[task.event]]
 
         #print(f"__run_at_time:[{time}]\n")
 
