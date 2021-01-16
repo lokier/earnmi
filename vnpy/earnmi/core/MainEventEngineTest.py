@@ -95,6 +95,9 @@ def testAllCase(asserter: Asserter):
 def onDayChanged(engine:MainEventEngine):
     print(f"[{engine.now()}]: onDayChanged")
 
+def onDayChangedEvent(event:str,engine:MainEventEngine):
+    print(f"[{engine.now()}]: onDayChanged =>{event}")
+
 ###测试实盘环境
 start = datetime(year=2019, month=6, day=30, hour=23)
 end = datetime(year=2019, month=9, day=30, hour=23)
@@ -106,6 +109,7 @@ asserter = Asserter()
 
 asserter_backtest = Asserter()  ###回测环境。
 asserter_backtest.engine.addDayChangedListener(onDayChanged)
+asserter_backtest.engine.register(MainEventEngine.EVNET_DAY_CHANED,onDayChangedEvent)
 asserter_backtest.engine.run_backtest(start)
 testAllCase(asserter_backtest)
 

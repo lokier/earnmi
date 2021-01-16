@@ -140,6 +140,8 @@ class MainEventEngine:
         """
               执行实盘操作。
          """
+        if self._active:
+            raise RuntimeError("main engine is already running!")
         self._active = True
         self.is_backtest = False
         self._current_run_time = datetime.now()
@@ -150,8 +152,9 @@ class MainEventEngine:
         执行回撤。
         调用该方法之后，使用
         go方法模拟执行时间的走势。
-
         """
+        if self._active:
+            raise RuntimeError("main engine is already running!")
         self._active = True
         self.is_backtest = True
         self._current_run_time = start
@@ -175,7 +178,7 @@ class MainEventEngine:
         if self._active == False:
             raise RuntimeError("not activie yet!");
         if not self.is_backtest:
-            raise RuntimeError("go() method must call in backtest content!")
+            raise RuntimeError("go() method must call in backtest context!")
 
         # print(f"go time : +{second}s ")
         self.__condition.acquire()
@@ -201,6 +204,7 @@ class MainEventEngine:
         """
         Get event from queue and then process it.
         """
+        self.post_event(MainEventEngine.EVNET_START,self)  ##启动
         while self._active:
             self.__condition.acquire()
             now = self.now()
@@ -223,14 +227,11 @@ class MainEventEngine:
                 wait_time_second = self._next_day_delay_second(now)
             assert  wait_time_second > 0
             ##需要延迟处理。
-
             if self.is_backtest:
                 ##马上跳转到下一个时间点执行。
                 next_time = now + timedelta(seconds=wait_time_second)
-
                 ##回测的时间是一步一步往前的，不可能倒流的
                 assert  now <= self._backtest_go_end_time
-
                 if now == self._backtest_go_end_time:
                     ##已经只在goTime的时间末尾，挂起线程且等待go的调用。
                     #print(f"线程被挂起: {now}\n")
@@ -241,16 +242,18 @@ class MainEventEngine:
                         now = self._backtest_go_end_time #指定时间超过回测的go的指定范围内, 执行到
                     else:
                         now = next_time
-
             else:
                 ##等待执行
                 self.__condition.notify()
                 self.__condition.wait(wait_time_second)
                 now = self.now()
             self.__condition.release()
-
             ##时间继续往下走
             self.__process_at_time(now, None)
+
+        self._active = False
+        self.post_event(MainEventEngine.EVNET_START,self)  ##主线程结束执行。
+
 
     def _post_task(self,task:_callback_task):
         self.__condition.acquire()
@@ -266,6 +269,7 @@ class MainEventEngine:
         old_time = self._current_run_time
         self._current_run_time = time
         if old_time.day != self._current_run_time.day:
+            self.post_event(MainEventEngine.EVNET_DAY_CHANED,self)
             self._onDayChanged()
         if not task is None:
             is_callbale_tsk = not task.callback_args is None

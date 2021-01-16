@@ -1,6 +1,19 @@
 # Earnmi工程.
 
 * [Earnmi分析](earnmi_docs/README.md)
+    * [运行框架]()
+        * [Context运行环境](earnmi_docs/book/context.md)
+            * [App与Context](earnmi_docs/book/context.md#app)
+            * [主线程MainEventEvent](earnmi_docs/book/context.md#MainEventEvent)
+                *   [post event](earnmi_docs/book/context.md#post_event)
+                *   [post callable](earnmi_docs/book/context.md#post_callable)
+            * [系统Event事件汇总](earnmi_docs/book/context.md#event)
+        * [Runner运行框架](earnmi_docs/book/Runner运行框架.md)
+            * 基于操作单生成方式的操作策略（适用日k线)
+            * 基于因子分数的操作策略（使用日，分钟k线)
+        * [Op框架](earnmi_docs/book/op_project.md)
+        * [行情数据更新]()
+        * [数据定期清理]()
     * [行情数据](earnmi_docs/book/数据源.md)
         * [原始数据BarData](earnmi_docs/book/数据源.md#BarData)
         * [数据驱动BarDataDriver](earnmi_docs/book/数据源.md#BarDataDriver)
@@ -12,13 +25,6 @@
         * [CollectData:数据收集]()
         * [PredictModeL:预测模型]()
         * [自建指标](earnmi_docs/book/自建指标.md)
-    * [运行框架]()
-        * [Runner运行框架](earnmi_docs/book/实盘运行框架.md)
-            * 基于操作单生成方式的操作策略（适用日k线)
-            * 基于因子分数的操作策略（使用日，分钟k线)
-        * [Op框架](earnmi_docs/book/op_project.md)
-        * [行情数据更新]()
-        * [数据定期清理]()
     * [网站系统]()
         
      
