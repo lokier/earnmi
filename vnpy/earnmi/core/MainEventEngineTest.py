@@ -66,24 +66,44 @@ def casePostEvent(asserter: Asserter):
     event_name = "event1"
     global handler_event_count
     handler_event_count = 1
-    def handlerEvent(event:str,data):
+    def handlerEventOnlyOne(event:str,data):
         global handler_event_count
         assert  event == event_name
         assert  handler_event_count == 1
         handler_event_count += 1
-        print(f"[{engine.now()}]: handlerEvent,count:{handler_event_count}")
+        print(f"[{engine.now()}]: handlerEventOnlyOne,count:{handler_event_count}")
+        return False
 
-    engine.register(event_name,handlerEvent)
-    engine.post_event(event_name)
+    event_data = {}
+    event_data['T'] = 1
+    def handlerEventManyTime(event: str, event_data):
+        event_data['T'] += 1
+        assert  event == event_name
+        print(f"[{engine.now()}]: handlerEventManyTime, handlerEventManyTime count:{event_data['T']}")
+
+    engine.register(event_name,handlerEventOnlyOne)
+    engine.register(event_name,handlerEventManyTime)
+
+    engine.post_event(event_name,event_data)
+    engine.post_event(event_name,event_data)
+    engine.post_event(event_name,event_data)
+    engine.post_event(event_name,event_data)
     engine.post_event("other_event1")
     engine.post_event("other_event2")
     asserter.sleep(1) ##等待1s
-
-    engine.unregister(event_name,handlerEvent)
-    engine.unregister(event_name,handlerEvent)
-
-    engine.post_event(event_name)
+    engine.unregister(event_name,handlerEventOnlyOne)
+    engine.unregister(event_name,handlerEventOnlyOne)
+    engine.unregister(event_name,handlerEventManyTime)
+    engine.post_event(event_name,event_data)
+    engine.post_event(event_name,event_data)
+    engine.post_event(event_name,event_data)
+    asserter.sleep(1) ##等待1s
     assert handler_event_count == 2
+    assert event_data['T'] == 5
+
+
+
+
 
 
 def testAllCase(asserter: Asserter):

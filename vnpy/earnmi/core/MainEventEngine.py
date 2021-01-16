@@ -82,18 +82,24 @@ class MainEventEngine:
     def register(self, type: str, handler: HandlerType) -> None:
         """
         """
+        self.__condition.acquire()
         handler_list = self._handlers[type]
         if handler not in handler_list:
             handler_list.append(handler)
+        self.__condition.release()
 
-    def unregister(self, type: str, handler: HandlerType) -> None:
+
+    def unregister(self, event: str, handler: HandlerType) -> None:
         """
         """
-        handler_list = self._handlers[type]
+        self.__condition.acquire()
+        handler_list = self._handlers[event]
         if handler in handler_list:
             handler_list.remove(handler)
         if not handler_list:
-            self._handlers.pop(type)
+            self._handlers.pop(event)
+        self.__condition.release()
+
 
     def post_event(self,event:str,data:Any=None):
         """
@@ -283,9 +289,19 @@ class MainEventEngine:
             elif not task.event is None:
                 ##
                 if task.event in self._handlers:
-                    [handler(task.event,task.event_data) for handler in self._handlers[task.event]]
+                    self.__process_post_event_task(task)
 
-        #print(f"__run_at_time:[{time}]\n")
+    def __process_post_event_task(self,task:_callback_task):
+        handler_list = self._handlers[task.event]
+        if len(handler_list) == 0:
+            return
+        tmp_handler_list = handler_list[:]  ##拷贝一份
+        for handler in tmp_handler_list:
+            eat_event = handler(task.event, task.event_data)
+            if eat_event is None or eat_event:
+                continue
+            ##handler不再处理事件，注销
+            self.unregister(task.event,handler)
 
 
     def _next_day_delay_second(self,d:datetime):
