@@ -58,26 +58,11 @@ class MainEventEngine:
         self._current_run_time:datetime = None
         self._thread: Thread = Thread(target=self._run)  ##实盘运行线程。
         self.task_queue = Q.PriorityQueue()
-        self.dayChangedListeners_list = []
         self.__condition = Condition()
         self.intercept_callbale_handler:Callable = None
         self._token = 0
         self._handlers: defaultdict = defaultdict(list)
-
-
-    def addDayChangedListener(self,callback:Callable):
-        """
-        监听天数变化
-        callback :
-        def callback(engine:CallableEinge):
-        """
-        self.dayChangedListeners_list.append(callback)
-
-    def removeDayChangedListener(self,callback:Callable):
-        """
-        监听天数变化
-        """
-        self.dayChangedListeners_list.remove(callback)
+        self._handlers: defaultdict = defaultdict(list)
 
     def register(self, type: str, handler: HandlerType) -> None:
         """
@@ -199,13 +184,6 @@ class MainEventEngine:
                 ##线程等待执行到指定的时间点。
                 sleep(1)
 
-
-    def _onDayChanged(self):
-        """
-        天数变化时间。
-        """
-        [callback(self) for callback in self.dayChangedListeners_list]
-
     def _run(self) -> None:
         """
         Get event from queue and then process it.
@@ -276,7 +254,6 @@ class MainEventEngine:
         self._current_run_time = time
         if old_time.day != self._current_run_time.day:
             self.post_event(MainEventEngine.EVNET_DAY_CHANED,self)
-            self._onDayChanged()
         if not task is None:
             is_callbale_tsk = not task.callback_args is None
             if is_callbale_tsk:

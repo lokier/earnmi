@@ -75,13 +75,19 @@ class Runner:
         pass
 
     @abstractmethod
-    def onStartup(self, scheduler:RunnerScheduler):
+    def onStart(self, scheduler:RunnerScheduler):
         """
         程序启动。 在单一线程里执行。
         启动后使用scheuler去规划后续的日常任务。
         """
         pass
 
+    def onStop(self):
+        """
+        程序停车。 在单一线程里执行。
+        启动后使用scheuler去规划后续的日常任务。
+        """
+        pass
 
 
 class StockRunner(Runner):

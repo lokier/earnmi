@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable
-
-from earnmi.core.App import App
 from earnmi.core.MainEventEngine import MainEventEngine
 from earnmi.core.Context import Context
 from earnmi.core.Runner import Runner, RunnerContext, RunnerScheduler
@@ -135,7 +133,7 @@ class Run_Daily_Job:
         __secheduleToayJob__(engine,self.hour_minute_second,now,self.function,self.args,self.run_if_miss_time)
 
 
-class _RunnerWrapper(RunnerContext, RunnerScheduler):
+class _RunnerSession(RunnerContext, RunnerScheduler):
 
     def __init__(self, runner:Runner, engine:MainEventEngine):
         Context.__init__(self,engine)
@@ -143,9 +141,12 @@ class _RunnerWrapper(RunnerContext, RunnerScheduler):
         self.engine = engine
         self.runner:Runner = runner
         self.runner.context = self
-        self.run_daily_job_list:['Run_Daily_Job'] = []
-        self.run_weekly_job_list:['Run_Weekly_Job'] = []
-        self.run_montly_job_list:['Run_Monthly_Job'] = []
+        self.reset()
+
+    def reset(self):
+        self.run_daily_job_list: ['Run_Daily_Job'] = []
+        self.run_weekly_job_list: ['Run_Weekly_Job'] = []
+        self.run_montly_job_list: ['Run_Monthly_Job'] = []
 
     def now(self)->datetime:
         return self.engine.now()
@@ -192,32 +193,41 @@ class _RunnerWrapper(RunnerContext, RunnerScheduler):
 
 class RunnerManager:
 
-    def __init__(self,app:App):
-        self._app = app
-        self.engine:MainEventEngine = app.engine
-        self.engine.addDayChangedListener(self._onDayChanged)
-        self.runner_list:['_RunnerWrapper'] = []
-        self.running = False
+    def __init__(self,context:Context):
+        self.engine:MainEventEngine = context.engine
+        self.runner_list:['_RunnerSession'] = []
+        self.engine.register(MainEventEngine.EVNET_START,self._onStart)
+        self.engine.register(MainEventEngine.EVNET_END,self._onStop)
+
 
     def onInerceptCallable(self,callbale:Callable,args:{}):
         #TODO 分配到线程池里开多线程执行。
         callbale(**args)
 
-    def _onDayChanged(self, theEngine:MainEventEngine):
-        """
-        天数变化：新的一天开始安排工作。
-        """
-        self._secheduleToayJob()
 
-
-    def _onStartup(self):
+    def _onStart(self,event:str,engine:MainEventEngine):
         """
         启动,开始安排工作
         """
-        [ runner_wrapper.runner.onStartup(runner_wrapper) for runner_wrapper in self.runner_list ]
+        self.engine.register(MainEventEngine.EVNET_DAY_CHANED,self._onDayChanged)
+        for runner_session in self.runner_list:
+            runner_session.reset()
+            runner_session.runner.onStart(runner_session)
         ##拦截引擎的callable方法调用
         self.engine.intercept_callbale_handler = self.onInerceptCallable
+        self._secheduleToayJob()
 
+    def _onStop(self,event:str,engine:MainEventEngine):
+        self.engine.unregister(MainEventEngine.EVNET_DAY_CHANED,self._onDayChanged)
+        for runner_session in self.runner_list:
+            runner_session.runner.onStop()
+            runner_session.reset()
+        self.engine.intercept_callbale_handler = None
+
+    def _onDayChanged(self, event: str, theEngine: MainEventEngine):
+        """
+        天数变化：新的一天开始安排工作。
+        """
         self._secheduleToayJob()
 
     def _secheduleToayJob(self):
@@ -228,24 +238,14 @@ class RunnerManager:
 
 
     def add(self,runner:Runner):
-        if self.running:
-            raise RuntimeError("can't add while is runing!")
+        if self.engine.is_running():
+            raise RuntimeError("can't add while is main engine runing!")
         for runner_wrapper in self.runner_list:
             if runner_wrapper.runner.getName() == runner.getName():
                 raise RuntimeError(f"runner.name [{runner.getName()}] 已经存在！")
-        self.runner_list.append(_RunnerWrapper(runner,self.engine))
+        self.runner_list.append(_RunnerSession(runner, self.engine))
 
-    def run(self):
-        assert not self.running
-        self.running = True
-        self.engine.run()
-        self.engine.post(self._onStartup)
 
-    def run_backtest(self,start:datetime):
-        assert not self.running
-        self.running = True
-        self.engine.run_backtest(start)
-        self.engine.post(self._onStartup)
 
 
 
@@ -265,7 +265,7 @@ if __name__ == "__main__":
         def getName(self):
             return "MyRunner"
 
-        def onStartup(self, scheduler: RunnerScheduler):
+        def onStart(self, scheduler: RunnerScheduler):
             self.log("onStartUp")
 
             scheduler.run_weekly("3,4,6","5:4:6",self.on_RunAt_Weekly_5_4_6,args={},run_if_miss_time=True)
@@ -287,10 +287,11 @@ if __name__ == "__main__":
             self.log("on_RunAt_Monthly_1_11_11")
 
 
+    from earnmi.core.App import App
     app = App(".")
     runnerManager = RunnerManager(app)
     runnerManager.add(MyRunner())
 
     start = datetime(year=2021, month=1, day=2, hour=14)
-    runnerManager.run_backtest(start)
-    runnerManager.engine.go(3600*24*10)
+    app.run_backtest(start)
+    app.engine.go(3600*24*10)
