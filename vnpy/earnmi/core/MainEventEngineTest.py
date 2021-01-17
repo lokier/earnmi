@@ -56,6 +56,10 @@ def case1(asserter: Asserter):
     asserter.sleep(1) ##等待1s
     engine.post(asserter.eventOccurAt, {"time": timePoint + timedelta(seconds=1), "msg": "1s后发生"})  ##时间在10秒后发生。
 
+    engine.post((lambda: print(f'lambda timePoint:{timePoint}')))
+
+
+
 handler_event_count = 1
 
 def casePostEvent(asserter: Asserter):
@@ -128,7 +132,6 @@ asserter = Asserter()
 # testAllCase(asserter)
 
 asserter_backtest = Asserter()  ###回测环境。
-asserter_backtest.engine.addDayChangedListener(onDayChanged)
 asserter_backtest.engine.register(MainEventEngine.EVNET_DAY_CHANED,onDayChangedEvent)
 asserter_backtest.engine.run_backtest(start)
 testAllCase(asserter_backtest)

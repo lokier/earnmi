@@ -29,7 +29,7 @@ class ZZ500_ProjectRunner(Runner):
     def getName(self):
         return self.name
 
-    def onStartup(self, scheduler: RunnerScheduler):
+    def onStart(self, scheduler: RunnerScheduler):
         scheduler.run_weekly("1-5","9:01:30",self._on_prepare_open_at_9_01,{},run_if_miss_time=True)
 
 

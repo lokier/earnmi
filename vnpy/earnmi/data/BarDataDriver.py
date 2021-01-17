@@ -15,8 +15,15 @@ from vnpy.trader.object import BarData
 class BarDataDriver:
 
     """
-    某个股票池的行情数据库。
+    股票池行情驱动器
     """
+
+    @abstractmethod
+    def getName(self):
+        """
+        股票池驱动器的名称。
+        """
+        pass
 
     @abstractmethod
     def getCodes(self):
@@ -44,4 +51,8 @@ class BarDataDriver:
         获取今天的行情数据。如果今天没有开盘的话，换回None。
         """
         pass
+
+
+
+
 
