@@ -7,6 +7,7 @@ import datetime
 from abc import abstractmethod
 from typing import Sequence
 
+from earnmi.data.BarStorage import BarStorage
 from earnmi.model.bar import LatestBar
 from vnpy.trader.constant import Interval
 from vnpy.trader.object import BarData
@@ -15,7 +16,7 @@ from vnpy.trader.object import BarData
 class BarDriver:
 
     """
-    股票池行情驱动器。
+    股票驱动名称。
     """
     @abstractmethod
     def getName(self):
@@ -24,14 +25,14 @@ class BarDriver:
         """
         pass
 
-    def getDescription(self):
-        pass
-
     @abstractmethod
     def getSymbolLists(self):
         """
-        支持的股票代码池
+        支持的股票代码列表
         """
+        pass
+
+    def getDescription(self):
         pass
 
     def getSymbolName(self,symbol:str):
@@ -40,17 +41,23 @@ class BarDriver:
         """
         pass
 
+    def support_interval(self,interval:Interval)->bool:
+        """
+        是否支持的行情粒度。分为分钟、小时、天、周
+        """
+        return False
+
 
 
     @abstractmethod
-    def fetchBarData(self,code:str, start_date:datetime, end_date:datetime,interval:Interval)-> Sequence["BarData"]:
+    def download_bars_from_net(self, start_date: datetime, end_date: datetime, storage: BarStorage):
         """
-        获取历史行情数据。
+        下载历史行情数据到数据库。
         """
         pass
 
     @abstractmethod
-    def fetchLatestBar(self,code:str)->LatestBar:
+    def fetch_latest_bar(self,code:str)->LatestBar:
         """
         获取今天的行情数据。如果今天没有开盘的话，换回None。
         """
