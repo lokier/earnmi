@@ -4,6 +4,7 @@ from datetime import datetime
 from earnmi.core.MainEventEngine import MainEventEngine
 from earnmi.core.Context import Context
 from earnmi.core.RunnerManager import RunnerManager
+from earnmi.data.BarDriver import BarDriver, BarDriverManager
 
 
 class App(Context):
@@ -12,6 +13,9 @@ class App(Context):
         super().__init__(MainEventEngine())
         self._dirPath = dirPath
         self.runnerManager:RunnerManager = RunnerManager(self)
+        self.bar_driver_manager = BarDriverManager()
+
+
 
 
     def run(self):

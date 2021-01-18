@@ -2,7 +2,8 @@ import datetime
 from typing import Sequence
 
 from earnmi.core.Context import Context
-from earnmi.data.BarDataDriver import BarDataDriver
+from earnmi.data.BarDriver import BarDriver
+from earnmi.data.BarStorage import BarStorage
 from earnmi.model.bar import LatestBar
 from vnpy.trader.constant import Interval
 from vnpy.trader.object import BarData
@@ -14,23 +15,10 @@ class Market:
     行情数据市场。
     为了加快访问，数据库存储的行情数据。
     """
-    def __init__(self,context:Context):
-        self.context:Context = context
-
-    def registerDriver(self,driver:BarDataDriver):
-        """
-        注册股票池行情驱动器
-        """
+    def __init__(self, storage: BarStorage, driver: ['BarDriver']):
         pass
 
-    def ueregisterDriver(self,driver:BarDataDriver):
-        pass
 
-    def updateFromNet(self,start:datetime,end:datetime,force_update = False):
-        """
-        更新数据库。
-        """
-        pass
 
     def getLatestBar(self, code: str) -> LatestBar:
         """
@@ -55,11 +43,7 @@ class Market:
         """
         return self.context.now();
 
-    def nextMarketDay(self):
-        """
-        跳转下一个交易日
-        """
-        pass
+
 
 
 class MarketDataBarStorage:

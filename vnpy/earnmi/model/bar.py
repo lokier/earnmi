@@ -12,6 +12,26 @@ import requests
 
 import numpy as np
 import re
+
+@dataclass
+class BarData:
+    """
+    Candlestick bar data of a certain trading period.
+    """
+    symbol: str
+    datetime: datetime
+    interval: Interval = None
+    volume: float = 0
+    open_interest: float = 0
+    open_price: float = 0
+    high_price: float = 0
+    low_price: float = 0
+    close_price: float = 0
+    _driver: str = ""  ##Bar驱动器名称，具体查看BarDriver.getName()
+
+
+
+
 """
 最新的bar
 """
