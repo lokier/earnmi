@@ -1,21 +1,23 @@
-import datetime
+from datetime import datetime,timedelta
 from abc import abstractmethod
 from typing import Callable
 
-from earnmi.data.BarDriver import BarDriver
+from earnmi.core.Context import Context
+from earnmi.data.BarDriver import BarDriver, JoinQuantBarDriver
+from earnmi.data.BarStorage import BarStorage
 from earnmi.model.bar import LatestBar
 from vnpy.trader.constant import Interval
 
 
-class StockIndexDriver(BarDriver):
+class StockIndexDriver(JoinQuantBarDriver):
+    INDEX_SYMBOL = '000001.XSHG'
 
     NAME:str = 'A股指数'
     DESCRIPTION:str = 'A股指数:上证指数、深证指数、创业指数'
     SYMBOAL_MAP = {
-        '1A001':'上证指数',
-        '399001': '上证指数',
-        '399006': '创业板',
+        INDEX_SYMBOL:'上证指数',
     }
+
 
     @abstractmethod
     def get_name(self):
@@ -37,12 +39,11 @@ class StockIndexDriver(BarDriver):
         return interval == Interval.DAILY
 
     @abstractmethod
-    def download_bars_from_net(self, start_date: datetime, end_date: datetime, save_bars: Callable):
+    def download_bars_from_net(self,context:Context, start_date: datetime, end_date: datetime,storage: BarStorage)->int:
         """
-        下载历史行情数据到数据库。
+        只下载日行情。
         """
-        save_bars()
-        pass
+        return super().download_bars_daily(context,start_date,end_date,storage)
 
     @abstractmethod
     def fetch_latest_bar(self,code:str)->LatestBar:

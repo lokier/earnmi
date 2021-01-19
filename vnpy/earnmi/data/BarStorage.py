@@ -185,5 +185,17 @@ class BarStorage:
         return count
 
 
-    def clean(self, symbol: str):
-        self.class_bar.delete().where(self.class_bar.symbol == symbol).execute()
+    def clean(self, driver:str = None,symbol: str = None):
+        if not symbol is None and not driver is None:
+            self.class_bar.delete().where(
+                (self.class_bar.symbol == symbol)
+                & (self.class_bar.driver == driver)
+            ).execute()
+        elif not driver is None:
+            self.class_bar.delete().where(
+                 (self.class_bar.driver == driver)
+            ).execute()
+        elif not symbol is None:
+            self.class_bar.delete().where(
+                (self.class_bar.symbol == symbol)
+            ).execute()
