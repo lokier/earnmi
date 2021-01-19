@@ -4,28 +4,35 @@
 """
 from datetime import datetime, timedelta
 
+from earnmi.data.BarMarket import BarMarket
 from earnmi.uitl.utils import utils
-from vnpy.trader.constant import Interval
 
 from earnmi.core.Context import Context
 from earnmi.data.BarDriver import BarDriver
 from earnmi.data.BarStorage import BarStorage
+from vnpy.trader.constant import Interval
 
 
 class BarUpdator:
     """
     行情更新器，将最新的行情数据下载到数据。
     """
-    def __init__(self,context:Context,storage:BarStorage,drivers:['BarDriver']):
+    def __init__(self,context:Context,storage:BarStorage):
+       """
+       参数：
+            context:
+            storage:
+            indexDriver: 指数行情驱动器
+            drivers:
+       """
        self.context = context
        self._storage = storage
-       self._drivers = drivers
-       assert len(self._drivers) > 0
 
 
-    def update(self,start:datetime,end:datetime = None,clear = False):
+    def update(self,market:BarMarket,start:datetime,end:datetime = None, clear = False):
         """
         参数:
+            market: 行情市场
             start:开始时间
             end：结束时间，None表示当前时间
             clear: 更新之前是否清空行情数据。
@@ -37,22 +44,42 @@ class BarUpdator:
         elif (end.__gt__(today)):
             end = limit_end_day
 
-        for driver in self._drivers:
-            driver_name = driver.get_name()
-            if clear:
-                self._storage.clean(driver=driver_name)
-            update_count = driver.download_bars_from_net(self.context,start,end,self._storage);
-            self.context.log_i(f'BarUpdator update : driver = {driver_name},update_count = {update_count}')
+        storage = self._storage
 
+        ###先更新市场指数行情
+        index_driver:BarDriver = market._driver_index
+        update_count = self._update_driver(index_driver, start, end, clear)
+        self.context.log_i(f'BarUpdator update market index({index_driver.get_name()}): update_count = {update_count}')
 
+        ##根据指数日行情，修正更新时间节点（过滤那些不在的交易日的时间）
+        index_symbol = index_driver.get_symbol_lists()[0]
+        oldest_bar = storage.get_oldest_bar_data(index_symbol, index_driver.get_name(), Interval.DAILY)
+        if oldest_bar is None:
+            ##更新市场行情指数失败
+            self.context.log_w(f'BarUpdator update market index drivers error')
+            return
+        newest_bar = storage.get_newest_bar_data(index_symbol, index_driver.get_name(), Interval.DAILY)
+        assert not newest_bar is None
 
+        newest_time = utils.to_end_date(newest_bar.datetime)
+        oldest_time = utils.to_start_date(oldest_bar.datetime)
 
-    # def _updateSymbol(self,symbol,driver:BarDriver,start:datetime,end:datetime,clear,interval:Interval):
-    #
-    #     ###增量更新
-    #     _newest_bar = self._storage.get_newest_bar_data(symbol,driver_name,interval)
-    #     _oldest_bar = self._storage.get_oldest_bar_data(symbol,driver_name,interval)
+        ##更新的时间范围(start,end)不能超过市场指数的时间范围
+        if start < oldest_time:
+            start = oldest_time
+        if end > newest_time:
+            end = newest_time
 
+        update_count = 0
+        for driver in market._drivers:
+            update_count+=self._update_driver(driver,start,end,clear)
+        self.context.log_i(f'BarUpdator update market drivers: update_count = {update_count}')
+
+    def _update_driver(self,driver:BarDriver,start,end,clear)->int:
+        driver_name = driver.get_name()
+        if clear:
+            self._storage.clean(driver=driver_name)
+        return driver.download_bars_from_net(self.context, start, end, self._storage)
 
 
 if __name__ == "__main__":

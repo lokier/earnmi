@@ -24,7 +24,7 @@ class ZZ500StockDriver(JoinQuantBarDriver):
 
     @abstractmethod
     def get_symbol_lists(self):
-        return ZZ500StockDriver.SYMBOAL_MAP.keys()
+        return list(ZZ500StockDriver.SYMBOAL_MAP.keys())
 
     @abstractmethod
     def get_symbol_name(self,symbol:str)->str:

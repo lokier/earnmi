@@ -27,7 +27,7 @@ class StockIndexDriver(JoinQuantBarDriver):
 
     @abstractmethod
     def get_symbol_lists(self):
-        return StockIndexDriver.SYMBOAL_MAP.keys()
+        return list(StockIndexDriver.SYMBOAL_MAP.keys())
 
     @abstractmethod
     def get_symbol_name(self,symbol:str)->str:
