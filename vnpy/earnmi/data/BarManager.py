@@ -1,7 +1,10 @@
 from peewee import SqliteDatabase
 
 from earnmi.core.Context import Context
+from earnmi.data.BarDriver import BarDriver
+from earnmi.data.BarMarket import BarMarket
 from earnmi.data.BarStorage import BarStorage
+from earnmi.data.BarUpdator import BarUpdator
 
 
 class BarManager:
@@ -16,6 +19,21 @@ class BarManager:
         返回行情存储器
         """
         return self._storage
+
+    def createMarket(self,index_driver:BarDriver,drivers:['BarDriver'])->BarMarket:
+        """
+        创建行情市场对象
+        参数:
+            index_driver： 行情指数驱动器
+            drivers: 各种股票池行情数据驱动器
+        """
+        market = BarMarket(self.context, self._storage)
+        market.init(index_driver, drivers)
+        return market
+
+    def createUpdator(self)->BarUpdator:
+        updator = BarUpdator(self.context,self._storage);
+        return updator
 
     """
      行情管理器

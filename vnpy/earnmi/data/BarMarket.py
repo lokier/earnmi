@@ -69,39 +69,28 @@ if __name__ == "__main__":
     from earnmi.data.BarUpdator import BarUpdator
 
     app = App()
-    app.run()
+    index_driver = StockIndexDriver() ##A股指数驱动
+    drvier2 = ZZ500StockDriver()    ##中证500股票池驱动
+    market = app.bar_manager.createMarket(index_driver, [drvier2])
+
+    ##更新市场最新行情数据
+    bar_updator = app.bar_manager.createUpdator()
+    start_time = datetime(year=2020, month=12, day=20)
+    bar_updator.update(market, start_time)
+
+    bar_list = market.get_bars("000021", Interval.DAILY, start_time)
+
+    app.log_i(f"market.getBarDataList(): size = [{len(bar_list)}]")
 
     ##app.bar_manager.registerDriver()  ##注册股票行情驱动器
 
-    def run_in_ui_thread(context:Context):
-        app.log_i("run_in_ui_thread() start!")
-
-        storage = app.bar_manager.getStorage()
-        assert not storage is None
-        index_driver = StockIndexDriver()
-        drvier2 = ZZ500StockDriver()
-
-        start_time = datetime(year=2020,month=12,day=20)
-
-        ##创建一个市场行情对象
-        market = BarMarket(context,storage)
-        market.init(index_driver,[drvier2])
-
-        ##更新市场最新行情数据
-        bar_updator = BarUpdator(context,storage)
-        bar_updator.update(market,start_time)
-
-        bar_list = market.get_bars("000021",Interval.DAILY,start_time)
-
-        # bar_updator = BarUpdator(app,storage,[drvier1,drvier2])
-        #
-        # bar_updator.update(datetime(year=2020,month=12,day=21),clear=False)
-        app.log_i(f"market.getBarDataList(): size = [{len(bar_list)}]")
-
-        app.log_i("run_in_ui_thread() finished!")
-
-
-    app.post(lambda : run_in_ui_thread(app))
+    # def run_in_ui_thread(app:app):
+    #     app.log_i("run_in_ui_thread() start!")
+    #     app.log_i("run_in_ui_thread() finished!")
+    #
+    #
+    # app.run()
+    # app.post(lambda : run_in_ui_thread(app))
 
 
 

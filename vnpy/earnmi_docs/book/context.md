@@ -41,7 +41,16 @@ engine.unregister(MainEventEngine.EVNET_DAY_CHANED,onDayChangedEvent)
 
 <span id="post_callable"/>
 #####post callable
-待补充
+```python
+app = App()
+app.run()
+def run_in_ui_thread(context:Context):
+    app.log_i("run_in_ui_thread() start!") 
+app.post(lambda : run_in_ui_thread(app))
+或者:
+app.post(run_in_ui_thread,{context:app})
+
+```
 
 
 
