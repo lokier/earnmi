@@ -1,9 +1,8 @@
-from datetime import datetime,timedelta
+from datetime import datetime
 from abc import abstractmethod
-from typing import Callable
 
 from earnmi.core.Context import Context
-from earnmi.data.BarDriver import BarDriver, JoinQuantBarDriver
+from earnmi.data.BarDriver import JoinQuantBarDriver
 from earnmi.data.BarStorage import BarStorage
 from earnmi.model.bar import LatestBar
 from vnpy.trader.constant import Interval

@@ -58,6 +58,7 @@ class BarUpdator:
 if __name__ == "__main__":
     from earnmi.core.App import App
     from earnmi.data.driver.StockIndexDriver import StockIndexDriver
+    from earnmi.data.driver.ZZ500StockDriver import ZZ500StockDriver
 
     app = App()
     app.run()
@@ -70,8 +71,9 @@ if __name__ == "__main__":
         storage = app.bar_manager.getStorage()
         assert not storage is None
         drvier1 = StockIndexDriver()
+        drvier2 = ZZ500StockDriver()
 
-        bar_updator = BarUpdator(app,storage,[drvier1])
+        bar_updator = BarUpdator(app,storage,[drvier1,drvier2])
 
         bar_updator.update(datetime(year=2020,month=12,day=21),clear=False)
         app.log_i("run_bar_updator() finished!")

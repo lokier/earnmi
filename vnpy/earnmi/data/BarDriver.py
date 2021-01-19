@@ -76,8 +76,11 @@ class BarDriver:
 
 class JoinQuantBarDriver(BarDriver):
 
+    def to_jq_code(self,symbol:str)->str:
+        return symbol
+
     @abstractmethod
-    def download_bars_daily(self, context: Context, start_date: datetime, end_date: datetime,
+    def download_bars_daily(self, context: Context,start_date: datetime, end_date: datetime,
                                storage: BarStorage) -> int:
         """
         只下载日行情。
@@ -85,28 +88,28 @@ class JoinQuantBarDriver(BarDriver):
         download_cnt = 0
         start_date = utils.to_start_date(start_date)
         end_date = utils.to_end_date(end_date)
-        for jq_code in self.get_symbol_lists():
-            newest_bar = storage.get_newest_bar_data(jq_code, self.get_name(), Interval.DAILY)
+        for symbol in self.get_symbol_lists():
+            newest_bar = storage.get_newest_bar_data(symbol, self.get_name(), Interval.DAILY)
             if newest_bar is None:
                 # 不含数据，全量更新
-                download_cnt += self._download_bars_from_jq(context, jq_code, start_date, end_date, Interval.DAILY,
+                download_cnt += self._download_bars_from_jq(context, symbol, start_date, end_date, Interval.DAILY,
                                                               storage)
             else:
                 # 已经含有数据，增量更新
-                oldest_bar = storage.get_oldest_bar_data(jq_code, self.get_name(), Interval.DAILY)
+                oldest_bar = storage.get_oldest_bar_data(symbol, self.get_name(), Interval.DAILY)
                 assert not oldest_bar is None
                 oldest_datetime = utils.to_end_date(oldest_bar.datetime - timedelta(days=1))
                 if start_date < oldest_datetime:
-                    download_cnt += self._download_bars_from_jq(context, jq_code, start_date, oldest_datetime,
+                    download_cnt += self._download_bars_from_jq(context, symbol, start_date, oldest_datetime,
                                                                   Interval.DAILY, storage)
                 newest_datetime = utils.to_start_date(newest_bar.datetime + timedelta(days=1))  ##第二天一开始
                 if newest_datetime < end_date:
-                    download_cnt += self._download_bars_from_jq(context, jq_code, newest_datetime, end_date,
+                    download_cnt += self._download_bars_from_jq(context, symbol, newest_datetime, end_date,
                                                                   Interval.DAILY, storage)
 
         return download_cnt
 
-    def _download_bars_from_jq(self, context:Context,jq_code:str, start_date: datetime, end_date: datetime,interval:Interval,storage: BarStorage)->int:
+    def _download_bars_from_jq(self, context:Context,symbol:str, start_date: datetime, end_date: datetime,interval:Interval,storage: BarStorage)->int:
         from earnmi.uitl.jqSdk import jqSdk
         jq = jqSdk.get()
         frequency = "1d"
@@ -126,6 +129,7 @@ class JoinQuantBarDriver(BarDriver):
         interval = Interval.DAILY
         batch_start = start_date
         saveCount = 0
+        jq_code = self.to_jq_code(symbol)
         while (batch_start.__lt__(end_date)):
             batch_end = batch_start + timedelta(days=batch_day)
             batch_end = utils.to_end_date(batch_end)
@@ -139,32 +143,35 @@ class JoinQuantBarDriver(BarDriver):
             bars = []
             lists = np.array(prices)
             for rowIndex in range(0, lists.shape[0]):
-                open_interest = 0
-                row = prices.iloc[rowIndex]
-                wd = prices.index[rowIndex]
-                date = datetime(year=wd.year, month=wd.month, day=wd.day, hour=wd.hour, minute=wd.minute,second=wd.second);
-                volume = row['volume']
-                if np.math.isnan(volume):
-                    ##该天没有值
-                    continue
-                bar = BarData(
-                    symbol=jq_code,
-                    _driver= self.get_name(),
-                    datetime=date,
-                    interval=interval,
-                    volume=row['volume'],
-                    open_price=row['open'],
-                    high_price=row['high'],
-                    low_price=row['low'],
-                    close_price=row['close'],
-                    open_interest=open_interest,
-                )
-                bars.append(bar)
+                bar = self.toBarData(symbol,prices,rowIndex,interval)
+                if not bar is None:
+                    bars.append(bar)
             saveCount += bars.__len__()
-            print("save size:%d" % bars.__len__())
             storage.save_bar_data(bars)
             batch_start = batch_end  # + timedelta(days = 1)
-        context.log_i(f"driver:{self.get_name()},download : start={start_date},end={end_date},count={saveCount}")
+        context.log_i(f"_download_bars_from_jq() :driver:{self.get_name()} jq_code={jq_code} start={start_date},end={end_date},count={saveCount}")
         return saveCount
+
+    def toBarData(self,jq_code,prices,rowIndex:int,interval)->BarData:
+        open_interest = 0
+        row = prices.iloc[rowIndex]
+        wd = prices.index[rowIndex]
+        date = datetime(year=wd.year, month=wd.month, day=wd.day, hour=wd.hour, minute=wd.minute, second=wd.second);
+        volume = row['volume']
+        if np.math.isnan(volume):
+            ##该天没有值
+            return None
+        return BarData(
+            symbol=jq_code,
+            _driver=self.get_name(),
+            datetime=date,
+            interval=interval,
+            volume=row['volume'],
+            open_price=row['open'],
+            high_price=row['high'],
+            low_price=row['low'],
+            close_price=row['close'],
+            open_interest=open_interest,
+        )
 
 
