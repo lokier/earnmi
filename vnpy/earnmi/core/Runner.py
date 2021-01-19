@@ -13,7 +13,7 @@ __all__ = [
 
 ]
 
-from earnmi.core.Context import Context
+from earnmi.core.Context import Context, ContextWrapper
 
 
 class RunnerScheduler:
@@ -51,7 +51,7 @@ class RunnerScheduler:
 
 
 
-class RunnerContext(Context):
+class RunnerContext(ContextWrapper):
 
    pass
 

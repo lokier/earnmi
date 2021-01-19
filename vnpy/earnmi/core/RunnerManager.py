@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable
 from earnmi.core.MainEventEngine import MainEventEngine
-from earnmi.core.Context import Context
+from earnmi.core.Context import Context, ContextWrapper
 from earnmi.core.Runner import Runner, RunnerContext, RunnerScheduler
 
 __all__ = [
@@ -135,10 +135,10 @@ class Run_Daily_Job:
 
 class _RunnerSession(RunnerContext, RunnerScheduler):
 
-    def __init__(self, runner:Runner, engine:MainEventEngine):
-        Context.__init__(self,engine)
+    def __init__(self, runner:Runner, ower_context:Context):
+        ContextWrapper.__init__(self,ower_context)
         assert runner.context is None
-        self.engine = engine
+        self.engine = ower_context.engine
         self.runner:Runner = runner
         self.runner.context = self
         self.reset()
@@ -194,6 +194,7 @@ class _RunnerSession(RunnerContext, RunnerScheduler):
 class RunnerManager:
 
     def __init__(self,context:Context):
+        self.context = context
         self.engine:MainEventEngine = context.engine
         self.runner_list:['_RunnerSession'] = []
         self.engine.register(MainEventEngine.EVNET_START,self._onStart)
@@ -243,7 +244,7 @@ class RunnerManager:
         for runner_wrapper in self.runner_list:
             if runner_wrapper.runner.getName() == runner.getName():
                 raise RuntimeError(f"runner.name [{runner.getName()}] 已经存在！")
-        self.runner_list.append(_RunnerSession(runner, self.engine))
+        self.runner_list.append(_RunnerSession(runner, self.context))
 
 
 
@@ -288,7 +289,7 @@ if __name__ == "__main__":
 
 
     from earnmi.core.App import App
-    app = App(".")
+    app = App()
     runnerManager = RunnerManager(app)
     runnerManager.add(MyRunner())
 
