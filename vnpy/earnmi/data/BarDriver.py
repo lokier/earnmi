@@ -4,14 +4,15 @@
 """
 from datetime import timedelta,datetime
 from abc import abstractmethod
+from enum import Enum
 from typing import Sequence
-
 from earnmi.core.Context import Context
 from earnmi.data.BarStorage import BarStorage
 from earnmi.model.bar import LatestBar, BarData
 from earnmi.uitl.utils import utils
 from vnpy.trader.constant import Interval
 import numpy as np
+
 
 class BarDriver:
 
@@ -47,14 +48,23 @@ class BarDriver:
         pass
 
     @abstractmethod
-    def support_interval(self,interval:Interval)->bool:
+    def support_interval(self, interval: Interval) -> bool:
         """
         是否支持的行情粒度。分为分钟、小时、天、周
         """
         return False
 
     def load_bars(self, symbol: str,interval:Interval, start: datetime,end:datetime, storage: BarStorage) -> Sequence["BarData"]:
+        """
+        从数据库加载行情。
+        """
         return storage.load_bar_data(symbol,self.get_name(),interval,start,end)
+
+    def load_newest_bar(self,symbol: str,interval:Interval,storage: BarStorage) -> BarData:
+        return storage.get_newest_bar_data(symbol,self.get_name(),interval)
+
+    def load_oldest_bar(self,symbol: str,interval:Interval,storage: BarStorage) -> BarData:
+        return storage.get_oldest_bar_data(symbol,self.get_name(),interval)
 
 
     @abstractmethod

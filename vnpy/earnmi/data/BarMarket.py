@@ -3,7 +3,9 @@
 行情数据驱动器。
 """
 from datetime import datetime, timedelta
-from typing import Sequence
+from typing import Sequence, Tuple
+
+from earnmi.data.BarSoruce import BarSource
 from earnmi.model.bar import BarData
 from earnmi.core.Context import Context
 from earnmi.data.BarDriver import BarDriver
@@ -29,6 +31,28 @@ class BarMarket:
        self._inited = False
        self._symbol_to_driver_map = {}
 
+    def createBarSoruce(self, interval=Interval.DAILY, start: datetime = None, end: datetime = None) -> BarSource:
+        """
+        创建行情市场对象
+        参数:
+        """
+        if not self._inited:
+            raise RuntimeError("BarMarket has not inited yet!")
+
+        if start is None or end is None:
+            index_symbol = self._driver_index.get_symbol_lists()[0]
+            if start is None:
+                oldest_bar = self._driver_index.load_oldest_bar(index_symbol,Interval.DAILY,self._storage)
+                start = None if oldest_bar is None else oldest_bar.datetime
+            if end is None:
+                newest_bar  = self._driver_index.load_newest_bar(index_symbol, Interval.DAILY, self._storage)
+                end = None if newest_bar is None else newest_bar.datetime
+        if start is None or end is None:
+            return None
+        assert start < end
+        source = BarSource(self.context, self._storage,self._drivers,interval,start,end)
+        return source
+
     def init(self,indexDriver:BarDriver,drivers:['BarDriver']):
         """
         初始化市场行情的时间跨度。
@@ -39,6 +63,9 @@ class BarMarket:
             self._symbol_to_driver_map[code] = self._driver_index
         for driver in self._drivers:
             for code in driver.get_symbol_lists():
+                old_driver = self._symbol_to_driver_map.get(code)
+                if not old_driver is None:
+                    raise RuntimeError(f"init market fail, same symobl:{code} conflict in driver {old_driver.get_name()} between {driver.get_name()}")
                 self._symbol_to_driver_map[code] = driver
 
         self._inited = True
@@ -61,7 +88,7 @@ class BarMarket:
 
     def clear(self,driver_name:str):
         """
-        情况某个行情驱动的数据。
+        清空某个行情驱动的数据。
         """
         driver = self._find_bar_driver(driver_name)
         self._storage.clean(driver.get_name())
@@ -84,7 +111,7 @@ if __name__ == "__main__":
     app = App()
     index_driver = StockIndexDriver() ##A股指数驱动
     drvier2 = ZZ500StockDriver()    ##中证500股票池驱动
-    market = app.bar_manager.createMarket(index_driver, [drvier2])
+    market = app.bar_manager.createBarMarket(index_driver, [drvier2])
 
     ##更新市场最新行情数据
     #market.clear(index_driver.get_name())
@@ -95,6 +122,18 @@ if __name__ == "__main__":
     bar_list = market.get_bars("000021", Interval.DAILY, start_time)
 
     app.log_i(f"market.getBarDataList(): size = [{len(bar_list)}]")
+
+    bar_source = market.createBarSoruce()
+    bar_count = 0
+    bar_000021_count = 0
+
+    bars,code = bar_source.nextBars()
+    while not bars is None:
+        bar_count+= len(bars)
+        if code == '000021':
+            bar_000021_count += len(bars)
+        bars, code = bar_source.nextBars()
+    app.log_i(f"bar_count = {bar_count}, bar_000021_count = {bar_000021_count}")
 
     ##app.bar_manager.registerDriver()  ##注册股票行情驱动器
 

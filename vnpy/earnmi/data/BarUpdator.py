@@ -53,12 +53,12 @@ class BarUpdator:
 
         ##根据指数日行情，修正更新时间节点（过滤那些不在的交易日的时间）
         index_symbol = index_driver.get_symbol_lists()[0]
-        oldest_bar = storage.get_oldest_bar_data(index_symbol, index_driver.get_name(), Interval.DAILY)
+        oldest_bar = index_driver.load_oldest_bar(index_symbol,Interval.DAILY,storage)
         if oldest_bar is None:
             ##更新市场行情指数失败
             self.context.log_w(f'BarUpdator update market index drivers error')
             return
-        newest_bar = storage.get_newest_bar_data(index_symbol, index_driver.get_name(), Interval.DAILY)
+        newest_bar = index_driver.load_newest_bar(index_symbol, Interval.DAILY,storage)
         assert not newest_bar is None
 
         newest_time = utils.to_end_date(newest_bar.datetime)
