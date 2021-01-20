@@ -4,6 +4,7 @@
 """
 from datetime import timedelta,datetime
 from abc import abstractmethod
+from typing import Sequence
 
 from earnmi.core.Context import Context
 from earnmi.data.BarStorage import BarStorage
@@ -52,6 +53,8 @@ class BarDriver:
         """
         return False
 
+    def load_bars(self, symbol: str,interval:Interval, start: datetime,end:datetime, storage: BarStorage) -> Sequence["BarData"]:
+        return storage.load_bar_data(symbol,self.get_name(),interval,start,end)
 
 
     @abstractmethod

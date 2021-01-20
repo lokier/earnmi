@@ -14,6 +14,7 @@ class BarManager:
         storageFilePath = context.getFilePath("BarManager","bar_storage.db")
         self._storage:BarStorage = BarStorage(SqliteDatabase(storageFilePath))
 
+
     def getStorage(self)->BarStorage:
         """
         返回行情存储器

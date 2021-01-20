@@ -56,11 +56,24 @@ class BarMarket:
             raise RuntimeError(f"bar driver({driver.get_name()}) can't support interval : {interval}")
         if end is None:
             end = utils.to_end_date(datetime.now())
-        return self._storage.load_bar_data(symbol,driver.get_name(),interval,start,end)
+        return driver.load_bars(symbol,interval,start,end,self._storage)
 
 
+    def clear(self,driver_name:str):
+        """
+        情况某个行情驱动的数据。
+        """
+        driver = self._find_bar_driver(driver_name)
+        self._storage.clean(driver.get_name())
 
-
+    def _find_bar_driver(self,driver_name:str)->BarDriver:
+        if self._driver_index.get_name() == driver_name:
+            return self._driver_index
+        else:
+            for driver in self._drivers:
+                if driver.get_name == driver_name:
+                    return driver
+        raise RuntimeError(f"clear() error, cant't find drvier {driver_name}")
 
 if __name__ == "__main__":
     from earnmi.core.App import App
@@ -74,6 +87,7 @@ if __name__ == "__main__":
     market = app.bar_manager.createMarket(index_driver, [drvier2])
 
     ##更新市场最新行情数据
+    #market.clear(index_driver.get_name())
     bar_updator = app.bar_manager.createUpdator()
     start_time = datetime(year=2020, month=12, day=20)
     bar_updator.update(market, start_time)
