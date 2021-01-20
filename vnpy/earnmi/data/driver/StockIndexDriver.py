@@ -1,9 +1,11 @@
 from datetime import datetime
 from abc import abstractmethod
+from typing import Sequence
 
 from earnmi.core.Context import Context
 from earnmi.data.BarDriver import JoinQuantBarDriver
 from earnmi.data.BarStorage import BarStorage
+from earnmi.data.driver.SinaUtil import SinaUtil
 from earnmi.model.bar import LatestBar
 from vnpy.trader.constant import Interval
 
@@ -45,8 +47,10 @@ class StockIndexDriver(JoinQuantBarDriver):
         return super().download_bars_daily(context,start_date,end_date,storage)
 
     @abstractmethod
-    def fetch_latest_bar(self,code:str)->LatestBar:
+    def fetch_latest_bar(self,symbol_list:['str'])->Sequence["LatestBar"]:
+        assert len(symbol_list) == 1
+        assert symbol_list[0] == StockIndexDriver.INDEX_SYMBOL
         """
         获取今天的行情数据。如果今天没有开盘的话，换回None。
         """
-        pass
+        return SinaUtil.fetch_latest_bar(['sh000001'])

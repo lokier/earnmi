@@ -79,7 +79,7 @@ class BarDriver:
         pass
 
     @abstractmethod
-    def fetch_latest_bar(self,code:str)->LatestBar:
+    def fetch_latest_bar(self,symbol_list:['str'])->Sequence["LatestBar"]:
         """
         获取今天的行情数据。如果今天没有开盘的话，换回None。
         """

@@ -1,9 +1,11 @@
 import datetime
 from abc import abstractmethod
+from typing import Sequence
 
 from earnmi.core.Context import Context
 from earnmi.data.BarDriver import BarDriver, JoinQuantBarDriver
 from earnmi.data.BarStorage import BarStorage
+from earnmi.data.driver.SinaUtil import SinaUtil
 from earnmi.model.bar import LatestBar, BarData
 from vnpy.trader.constant import Interval
 
@@ -48,11 +50,11 @@ class ZZ500StockDriver(JoinQuantBarDriver):
         return super().download_bars_daily(context, start_date, end_date, storage)
 
     @abstractmethod
-    def fetch_latest_bar(self,code:str)->LatestBar:
+    def fetch_latest_bar(self,symbol_list:['str'])->Sequence["LatestBar"]:
         """
         获取今天的行情数据。如果今天没有开盘的话，换回None。
         """
-        pass
+        return SinaUtil.fetch_latest_bar(symbol_list)
 
 
 if __name__ == "__main__":

@@ -2,11 +2,12 @@
 """
 行情数据驱动器。
 """
+from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Sequence, Tuple
 
 from earnmi.data.BarSoruce import BarSource
-from earnmi.model.bar import BarData
+from earnmi.model.bar import BarData, LatestBar
 from earnmi.core.Context import Context
 from earnmi.data.BarDriver import BarDriver
 from earnmi.data.BarStorage import BarStorage
@@ -86,6 +87,35 @@ class BarMarket:
         return driver.load_bars(symbol,interval,start,end,self._storage)
 
 
+    def get_latest_bar(self,symbol_list:['str'] = None)->{}:
+        """
+        返回最新的行情。
+        """
+        if symbol_list is None:
+            symbol_list = []
+            symbol_list.extend(self._driver_index.get_symbol_lists())
+            for driver in self._drivers:
+                symbol_list.extend(driver.get_symbol_lists())
+
+        driver_symbols_map = defaultdict(list);
+        for symbol in symbol_list:
+            driver: BarDriver = self._symbol_to_driver_map.get(symbol)
+            if driver is None:
+                raise RuntimeError(f"can't find bar driver to support symbol: {symbol}")
+            driver_symbols_map[driver].append(symbol)
+        restult = {}
+        for driver,code_list in driver_symbols_map.items():
+            for code in code_list:
+                restult[code] = None
+            latest_bars =  driver.fetch_latest_bar(code_list)
+            if latest_bars is None:
+                continue
+            for bar in latest_bars:
+                if not bar is None:
+                    restult[bar.code] = bar
+        return restult
+
+
     def clear(self,driver_name:str):
         """
         清空某个行情驱动的数据。
@@ -107,6 +137,7 @@ if __name__ == "__main__":
     from earnmi.data.driver.StockIndexDriver import StockIndexDriver
     from earnmi.data.driver.ZZ500StockDriver import ZZ500StockDriver
     from earnmi.data.BarUpdator import BarUpdator
+    from earnmi.data.driver.SinaUtil import SinaUtil
 
     app = App()
     index_driver = StockIndexDriver() ##A股指数驱动
@@ -114,26 +145,31 @@ if __name__ == "__main__":
     market = app.bar_manager.createBarMarket(index_driver, [drvier2])
 
     ##更新市场最新行情数据
-    #market.clear(index_driver.get_name())
-    bar_updator = app.bar_manager.createUpdator()
-    start_time = datetime(year=2020, month=12, day=20)
-    bar_updator.update(market, start_time)
+    # bar_updator = app.bar_manager.createUpdator()
+    # start_time = datetime(year=2020, month=12, day=20)
+    # bar_updator.update(market, start_time)
+    #
+    # bar_list = market.get_bars("000021", Interval.DAILY, start_time)
+    #
+    # app.log_i(f"market.getBarDataList(): size = [{len(bar_list)}]")
+    #
+    # bar_source = market.createBarSoruce()
+    # bar_count = 0
+    # bar_000021_count = 0
+    #
+    # bars,code = bar_source.nextBars()
+    # while not bars is None:
+    #     bar_count+= len(bars)
+    #     if code == '000021':
+    #         bar_000021_count += len(bars)
+    #     bars, code = bar_source.nextBars()
+    # app.log_i(f"bar_count = {bar_count}, bar_000021_count = {bar_000021_count}")
 
-    bar_list = market.get_bars("000021", Interval.DAILY, start_time)
 
-    app.log_i(f"market.getBarDataList(): size = [{len(bar_list)}]")
+    print(f"sll:{SinaUtil.toSinCode('000012')}")
+    latest_bar = market.get_latest_bar(['000012'])
 
-    bar_source = market.createBarSoruce()
-    bar_count = 0
-    bar_000021_count = 0
-
-    bars,code = bar_source.nextBars()
-    while not bars is None:
-        bar_count+= len(bars)
-        if code == '000021':
-            bar_000021_count += len(bars)
-        bars, code = bar_source.nextBars()
-    app.log_i(f"bar_count = {bar_count}, bar_000021_count = {bar_000021_count}")
+    print(f"latest_bar:{latest_bar}")
 
     ##app.bar_manager.registerDriver()  ##注册股票行情驱动器
 
