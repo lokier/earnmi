@@ -1,6 +1,10 @@
 from collections import Sequence
-from datetime import timedelta
+from datetime import datetime,timedelta
 from earnmi.core.Runner import Runner, RunnerScheduler
+from earnmi.data.BarManager import BarManager
+from earnmi.data.BarMarket import BarMarket
+from earnmi.data.driver.StockIndexDriver import StockIndexDriver
+from earnmi.data.driver.ZZ500StockDriver import ZZ500StockDriver
 from earnmi.model.BarDataSource import BarDataSource, ZZ500DataSource
 from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.DataSource import DatabaseSource
@@ -30,8 +34,19 @@ class ZZ500_ProjectRunner(Runner):
         return self.name
 
     def onStart(self, scheduler: RunnerScheduler):
-        scheduler.run_weekly("1-5","9:01:30",self._on_prepare_open_at_9_01,{},run_if_miss_time=True)
+        ##创建一个行情市场
+        index_driver = StockIndexDriver()  ##A股指数驱动
+        drvier2 = ZZ500StockDriver()  ##中证500股票池驱动
+        barManager:BarManager = BarManager.get(self.context)
+        self.market:BarMarket = barManager.createBarMarket(index_driver,[drvier2])
 
+        ##下载行情数据。
+
+
+        scheduler.run_weekly("1-5","9:01:30",self._on_prepare_open_at_9_01,{},run_if_miss_time=True)
+        is_backtest = self.context.is_backtest()
+        if is_backtest:
+            scheduler.run_weekly("1-5", "14:55:30", self._onUpdateOrdersWhileOpern, {}, run_if_miss_time=False)
 
     def _on_prepare_open_at_9_01(self):
         """
@@ -46,9 +61,16 @@ class ZZ500_ProjectRunner(Runner):
         """
         ###更新当前股票价格。
         runner_size = len(self.unfinished_runners)
-        latestDB = self.latestDB
         ##获取今天的实时信息。
-        todayBarsMap = latestDB.load(ZZ500DataSource.SZ500_JQ_CODE_LIST)
+
+        code_list = []
+        for runner in self.unfinished_runners:
+            code = runner.getOrder().code
+            index = code.find(".")
+            symbol = code[:index]
+            code_list.append(symbol)
+
+        todayBarsMap = self.market.get_latest_bar(code_list)
 
         to_delete_runners = []
         ####更新实时价格
@@ -56,7 +78,7 @@ class ZZ500_ProjectRunner(Runner):
             code = runner.getOrder().code
             bar: LatestBar = todayBarsMap.get(code)
             if bar is None:
-                project_runner.log(info="获取{code}的bar信息失败！！", level=OpLogLevel.WARN)
+                self.context.log_w("获取{code}的bar信息失败！！")
                 continue
             is_updated = runner.update(bar.toBarData(), None)
             if is_updated:
@@ -64,7 +86,7 @@ class ZZ500_ProjectRunner(Runner):
             if (runner.isFinished() or not runner.canMarketToday()):
                 to_delete_runners.append(runner)
                 break
-        project_runner.log(f" [onTrick]: update_size = {runner_size},finished_size = {len(to_delete_runners)}")
+        self.context.log_i(f" [onTrick]: update_size = {runner_size},finished_size = {len(to_delete_runners)}")
         for to_delete in to_delete_runners:
             self.unfinished_runners.remove(to_delete)
 

@@ -3,7 +3,7 @@ from datetime import datetime
 from peewee import SqliteDatabase
 from vnpy.trader.constant import Interval
 
-from earnmi.core.Context import Context
+from earnmi.core.Context import Context, ContextWrapper
 from earnmi.data.BarDriver import BarDriver
 from earnmi.data.BarMarket import BarMarket
 from earnmi.data.BarSoruce import BarSource
@@ -12,6 +12,12 @@ from earnmi.data.BarUpdator import BarUpdator
 
 
 class BarManager:
+
+    @staticmethod
+    def get(context:Context):
+        if isinstance(context, ContextWrapper):
+            return context._context.bar_manager
+        return context.bar_manager
 
     def __init__(self,context:Context):
         self.context = context

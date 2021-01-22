@@ -62,7 +62,7 @@ class Runner:
         self.context:RunnerContext = None
 
     def now(self):
-        self.context.now()
+        return self.context.now()
 
     def log(self,msg:str):
         self.context.log_i(msg)

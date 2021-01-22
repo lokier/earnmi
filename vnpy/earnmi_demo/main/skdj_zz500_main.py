@@ -1,17 +1,24 @@
 from datetime import datetime
 
 import numpy as np
+from peewee import Database
 
 from earnmi.chart.Factory import Factory
 from earnmi.chart.FloatEncoder import FloatEncoder
+from earnmi.core.App import App
+from earnmi.data.BarManager import BarManager
+from earnmi.data.driver.StockIndexDriver import StockIndexDriver
+from earnmi.data.driver.ZZ500StockDriver import ZZ500StockDriver
 from earnmi.model.BarDataSource import ZZ500DataSource
 from earnmi.model.CollectData import CollectData
 from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.CoreEngineModel import CoreEngineModel
 from earnmi.model.CoreEngineRunner import CoreEngineRunner
 from earnmi.model.CoreEngineStrategy import CommonStrategy
+from earnmi.model.DataSource import DatabaseSource
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
 from earnmi.model.ProjectRunner import OpStrategy
+from earnmi.model.ZZ500_ProjectRunner import ZZ500_ProjectRunner
 from earnmi.uitl.BarUtils import BarUtils
 from vnpy.trader.object import BarData
 
@@ -273,6 +280,8 @@ def __getBackTestRunner(engine):
     db = OpDataBase(db_file);
     return ProjectRunner(project, db, engine)
 
+
+
 def runBackTest():
     _dirName = "models/skdj_zz500_runbacktest"
     start = datetime(2015, 10, 1)
@@ -328,45 +337,36 @@ def runBackTest():
         def isSupport(self, dimen: Dimension) -> bool:
             return not self.paramMap.get(dimen.value) is None
 
+    run_old_runner = False
+    if run_old_runner:
+        p_runnner = __getBackTestRunner(engine)
+        futureSouce = ZZ500DataSource(middle, end)
+        p_runnner.opDB.clearAll()
+        p_runnner.runBackTest(futureSouce,MyStrategy2())
+    else:
+        ##
+        app = App()
+        index_driver = StockIndexDriver()  ##A股指数驱动
+        drvier2 = ZZ500StockDriver()  ##中证500股票池驱动
+        #barManager:BarManager = BarManager.getBarManager(app)
+        market = app.getBarManager().createBarMarket(index_driver, [drvier2])
+        updator = app.getBarManager().createUpdator();
+        ##updator.update(market,start)
+        from earnmi.model.op import OpProject
+        project = OpProject(id=1, status="new", name="skdj_500", create_time=datetime(year=2020, month=11, day=26))
+        from earnmi.model.ProjectRunner import ProjectRunner
+        from peewee import SqliteDatabase
+        from earnmi.model.op import OpDataBase
+        class MyDatabaseSource(DatabaseSource):
+            def createDatabase(self) -> Database:
+                return SqliteDatabase("models/skdj_zz500_runbacktest/project_v2.db")
+        runner = ZZ500_ProjectRunner(name="skdj_500", project=project, source=MyDatabaseSource(), strategy=MyStrategy2(), engine=engine)
+        app.getRunnerManager().add(runner)
+        app.run_backtest(middle)
+        seconds = int(end.timestamp() - middle.timestamp())
+        app.engine.go(seconds)
+        print(f"finished1！！！！！！！")
 
-    strategy = MyStrategy()
-    #runner.backtest(futureSouce, strategy)
-
-
-    p_runnner = __getBackTestRunner(engine)
-    futureSouce = ZZ500DataSource(middle, end)
-
-    p_runnner.opDB.clearAll()
-    p_runnner.runBackTest(futureSouce,MyStrategy2())
-    p_runnner.printDetail()
-
-    futureSouce.reset()
-    saveCount = p_runnner.runBackTest(futureSouce,MyStrategy2())
-    assert  saveCount == 0
-    p_runnner.printDetail()
-    ##第二次运行saveCount应该0
-
-    # strategy = CommonStrategy()
-    # params = {
-    #     'buy_offset_pct': [None, -2, -1,1],
-    #     'sell_offset_pct': [None, -1, 1],
-    #     #'sell_leve_pct_top': [None, -2,-1,0, 1, 2, 3],
-    #     'sell_leve_pct_bottom': [None,  1,2,3],
-    # }
-    # #
-    # def data_cmp(o1, o2):
-    #     deal_rate1 = o1.longData.deal_rate(o1.count)
-    #     deal_rate2 = o2.longData.deal_rate(o2.count)
-    #     if deal_rate1 < 0.1 and deal_rate2 < 0.1:
-    #         return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
-    #     if deal_rate1 < 0.1:
-    #         return -1
-    #     if deal_rate2 < 0.1:
-    #         return 1
-    #     return o1.longData.total_pct_avg() - o2.longData.total_pct_avg()
-    # runner.debugBestParam(futureSouce, strategy,params,backtest_data_cmp=data_cmp)
-
-    pass
 
 def printBackTest():
     p_runnner = __getBackTestRunner(None)
@@ -427,9 +427,9 @@ def printLaststTops():
 
 if __name__ == "__main__":
     #analysicQuantDataOnly()
-    #runBackTest()
+    runBackTest()
     #printLaststTops()
-    printBackTest()
+    #printBackTest()
     """
 [99]=>count:15(sScore:93.333,bScore:53.333),做多:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]
 [100]=>count:39(sScore:76.923,bScore:66.666),做多:[交易率:38.46%(盈利欺骗占6.67%),成功率:13.33%,盈利率:33.33%,单均pct:-0.40,盈pct:2.93(6.00),亏pct:-2.07(-7.21)],做空:[交易率:0.00%(盈利欺骗占0.00%),成功率:0.00%,盈利率:0.00%,单均pct:0.00,盈pct:0.00(0.00),亏pct:0.00(0.00)]

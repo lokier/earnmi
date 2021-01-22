@@ -24,20 +24,20 @@ class BarDriver:
         """
         股票池驱动的名称。
         """
-        pass
+        raise RuntimeError("未实现")
 
     def get_description(self):
         """
         该驱动器的描述
         """
-        pass
+        raise RuntimeError("未实现")
 
     @abstractmethod
     def get_symbol_lists(self):
         """
         支持的股票代码列表
         """
-        pass
+        raise RuntimeError("未实现")
 
 
     @abstractmethod
@@ -45,14 +45,14 @@ class BarDriver:
         """
           对应股票代码的名称。
         """
-        pass
+        raise RuntimeError("未实现")
 
     @abstractmethod
     def support_interval(self, interval: Interval) -> bool:
         """
         是否支持的行情粒度。分为分钟、小时、天、周
         """
-        return False
+        raise RuntimeError("未实现")
 
     def load_bars(self, symbol: str,interval:Interval, start: datetime,end:datetime, storage: BarStorage) -> Sequence["BarData"]:
         """
@@ -76,16 +76,45 @@ class BarDriver:
             end_date:  结束日期
             save_bars: 回调函数
         """
-        pass
+        raise RuntimeError("未实现")
 
     @abstractmethod
     def fetch_latest_bar(self,symbol_list:['str'])->Sequence["LatestBar"]:
         """
         获取今天的行情数据。如果今天没有开盘的话，换回None。
         """
-        pass
+        raise RuntimeError("未实现")
 
+    @abstractmethod
+    def fetch_latest_bar_for_backtest(self, symbol_list: ['str'],now_time:datetime,storage:BarStorage) -> Sequence["LatestBar"]:
+        """
+        获取回测环境的今天的行情数据。如果今天没有开盘的话，换回None。
+        """
+        if self.support_interval(Interval.MINUTE):
+            raise RuntimeError("分钟行情方式，待实现")
+        elif not self.support_interval(Interval.DAILY):
+            raise RuntimeError("该driver 无法在回测环境使用")
 
+        if now_time.hour ==14 and now_time.minute < 49 or now_time.hour < 14:
+            raise RuntimeError("由于只含有日行情，在回测环境必须在14:49以上时间回调")
+        start = utils.to_start_date(now_time)
+        end = utils.to_end_date(now_time)
+        laterst_bars = []
+        for symbol in symbol_list:
+            bars = self.load_bars(symbol,Interval.DAILY,start,end,storage)
+            if len(bars) > 0:
+                bar:BarData = bars[0]
+                latestBar = LatestBar(code=bar.symbol,datetime=now_time)
+                latestBar.name = self.get_symbol_name(symbol)
+                latestBar.volume = bar.volume
+                latestBar.open_price = bar.open_price
+                latestBar.high_price = bar.high_price
+                latestBar.low_price = bar.low_price
+                latestBar.close_price = bar.close_price
+                laterst_bars.append(latestBar)
+            else:
+                laterst_bars.append(None)
+        return laterst_bars
 
 class JoinQuantBarDriver(BarDriver):
 
@@ -143,13 +172,15 @@ class JoinQuantBarDriver(BarDriver):
         batch_start = start_date
         saveCount = 0
         jq_code = self.to_jq_code(symbol)
+        requcent_cnt = 0
         while (batch_start.__lt__(end_date)):
             batch_end = batch_start + timedelta(days=batch_day)
             batch_end = utils.to_end_date(batch_end)
             if (batch_end.__gt__(end_date)):
                 batch_end = end_date
 
-            prices = jq.get_price(jq_code, start_date=start_date, end_date=end_date,
+            requcent_cnt+=1
+            prices = jq.get_price(jq_code, start_date=batch_start, end_date=batch_end,
                                   fields=['open', 'close', 'high', 'low', 'volume'], frequency=frequency)
             if (prices is None):
                 break
@@ -162,7 +193,7 @@ class JoinQuantBarDriver(BarDriver):
             saveCount += bars.__len__()
             storage.save_bar_data(bars)
             batch_start = batch_end  # + timedelta(days = 1)
-        context.log_i(f"_download_bars_from_jq() :driver:{self.get_name()} jq_code={jq_code} start={start_date},end={end_date},count={saveCount}")
+        context.log_i(f"_download_bars_from_jq() :driver:{self.get_name()} jq_code={jq_code} start={start_date},end={end_date},requcent_cnt={requcent_cnt},count={saveCount}")
         return saveCount
 
     def toBarData(self,jq_code,prices,rowIndex:int,interval)->BarData:
@@ -170,21 +201,22 @@ class JoinQuantBarDriver(BarDriver):
         row = prices.iloc[rowIndex]
         wd = prices.index[rowIndex]
         date = datetime(year=wd.year, month=wd.month, day=wd.day, hour=wd.hour, minute=wd.minute, second=wd.second);
-        volume = row['volume']
-        if np.math.isnan(volume):
-            ##该天没有值
-            return None
         return BarData(
             symbol=jq_code,
             _driver=self.get_name(),
             datetime=date,
             interval=interval,
-            volume=row['volume'],
-            open_price=row['open'],
-            high_price=row['high'],
-            low_price=row['low'],
-            close_price=row['close'],
-            open_interest=open_interest,
+            volume=self._defualt_value(row['volume'],0.0),
+            open_price=self._defualt_value(row['open'],0.0),
+            high_price=self._defualt_value(row['high'],0.0),
+            low_price=self._defualt_value(row['low'],0.0),
+            close_price=self._defualt_value(row['close'],0.0),
+            open_interest=self._defualt_value(open_interest,0.0),
         )
+
+    def _defualt_value(self,value,deufault_value):
+        if np.math.isnan(value):
+            return deufault_value
+        return value
 
 

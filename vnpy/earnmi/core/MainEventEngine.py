@@ -123,6 +123,8 @@ class MainEventEngine:
         当前时间。实盘环境是真实时间，回撤环境是对应回撤时间。
         """
         if self.is_backtest:
+            if not self._active:
+                raise RuntimeError("main thread not run yet!")
             return self._current_run_time
         else:
             return datetime.now()
@@ -146,6 +148,7 @@ class MainEventEngine:
         """
         if self._active:
             raise RuntimeError("main engine is already running!")
+        assert not start is None
         self._active = True
         self.is_backtest = True
         self._current_run_time = start

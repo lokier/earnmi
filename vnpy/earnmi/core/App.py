@@ -23,6 +23,11 @@ class App(Context):
         self.bar_manager = BarManager(self)
         print(f"app dir: {self._appDirPath}")
 
+    def getBarManager(self)->BarManager:
+        return self.bar_manager
+
+    def getRunnerManager(self)->RunnerManager:
+        return self.runner_manager
 
     def getDirPath(self, dirName,create_if_no_exist =True):
         dirPath = self._appDirPath.joinpath(dirName)

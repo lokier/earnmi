@@ -15,6 +15,7 @@ from earnmi.uitl.utils import utils
 from vnpy.trader.constant import Interval
 
 
+
 class BarMarket:
     """
     行情市场。
@@ -82,8 +83,13 @@ class BarMarket:
             raise RuntimeError(f"can't find bar driver to support symbol: {symbol}")
         if not driver.support_interval(interval):
             raise RuntimeError(f"bar driver({driver.get_name()}) can't support interval : {interval}")
+        limit_end = utils.to_end_date(self.context.now() - timedelta(days=1))
+
+        ## end不能超过今天。
         if end is None:
-            end = utils.to_end_date(datetime.now())
+            end = limit_end
+        elif end > limit_end:
+            raise RuntimeError("end time must be < today")
         return driver.load_bars(symbol,interval,start,end,self._storage)
 
 
@@ -104,10 +110,14 @@ class BarMarket:
                 raise RuntimeError(f"can't find bar driver to support symbol: {symbol}")
             driver_symbols_map[driver].append(symbol)
         restult = {}
+        latest_bars = None
         for driver,code_list in driver_symbols_map.items():
             for code in code_list:
                 restult[code] = None
-            latest_bars =  driver.fetch_latest_bar(code_list)
+            if self.context.is_backtest():
+                latest_bars = driver.fetch_latest_bar_for_backtest(code_list,self.context.now(),self._storage)
+            else:
+                latest_bars = driver.fetch_latest_bar(code_list)
             if latest_bars is None:
                 continue
             for bar in latest_bars:
@@ -136,13 +146,13 @@ if __name__ == "__main__":
     from earnmi.core.App import App
     from earnmi.data.driver.StockIndexDriver import StockIndexDriver
     from earnmi.data.driver.ZZ500StockDriver import ZZ500StockDriver
-    from earnmi.data.BarUpdator import BarUpdator
-    from earnmi.data.driver.SinaUtil import SinaUtil
 
     app = App()
     index_driver = StockIndexDriver() ##A股指数驱动
     drvier2 = ZZ500StockDriver()    ##中证500股票池驱动
-    market = app.bar_manager.createBarMarket(index_driver, [drvier2])
+    market = app.bar_manager.createBarMarket(index_driver, [])
+    bar_updator = app.bar_manager.createUpdator()
+    bar_updator.update(market,datetime(2015, 10, 1))
 
     ##更新市场最新行情数据
     # bar_updator = app.bar_manager.createUpdator()
@@ -166,10 +176,10 @@ if __name__ == "__main__":
     # app.log_i(f"bar_count = {bar_count}, bar_000021_count = {bar_000021_count}")
 
 
-    print(f"sll:{SinaUtil.toSinCode('000012')}")
-    latest_bar = market.get_latest_bar(['000012'])
-
-    print(f"latest_bar:{latest_bar}")
+    # print(f"sll:{SinaUtil.toSinCode('000012')}")
+    # latest_bar = market.get_latest_bar(['000012'])
+    #
+    # print(f"latest_bar:{latest_bar}")
 
     ##app.bar_manager.registerDriver()  ##注册股票行情驱动器
 

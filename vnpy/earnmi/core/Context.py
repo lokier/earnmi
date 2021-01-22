@@ -71,7 +71,8 @@ class Context:
         """
         raise RuntimeError("未实现")
 
-
+    # def getRunnerManager(self)->RunnerManager:
+    #     raise RuntimeError("未实现")
 
 class ContextWrapper(Context):
 
@@ -130,9 +131,11 @@ class ContextWrapper(Context):
 
     @abstractmethod
     def getFilePath(self, dirName:str,fileName:str):
-        return self._context.getFilePath(dirName,fileName,create_if_no_exist)
+        return self._context.getFilePath(dirName,fileName)
 
 
 
+    # def getRunnerManager(self)->RunnerManager:
+    #     return self._context.getRunnerManager()
 
 
