@@ -3,11 +3,9 @@ from datetime import datetime,timedelta
 from typing import List, Sequence
 
 from peewee import Model, AutoField, CharField, DateTimeField, FloatField, Database, SqliteDatabase, chunked
-
 from earnmi.model.BarDataSource import ZZ500DataSource
 from earnmi.uitl.utils import utils
 from vnpy.trader.constant import Exchange, Interval
-from vnpy.trader.object import BarData
 import requests
 
 import numpy as np
@@ -54,7 +52,7 @@ class LatestBar(object):
     def toBarData(self)->BarData:
         return BarData(
                 symbol=self.code,
-                exchange=Exchange.SSE,
+                _driver="SSE",
                 datetime=self.datetime,
                 interval=Interval.WEEKLY,
                 volume=self.volume,
@@ -62,7 +60,6 @@ class LatestBar(object):
                 high_price=self.high_price,
                 low_price=self.low_price,
                 close_price=self.close_price,
-                gateway_name='arrangePrice'
             )
 
 class LatestBarModel(Model):

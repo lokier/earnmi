@@ -64,13 +64,19 @@ class ZZ500_ProjectRunner(Runner):
         ##获取今天的实时信息。
 
         code_list = []
+        __code_map = {}
         for runner in self.unfinished_runners:
             code = runner.getOrder().code
             index = code.find(".")
             symbol = code[:index]
             code_list.append(symbol)
+            __code_map[symbol] = code
 
-        todayBarsMap = self.market.get_latest_bar(code_list)
+        _latest_bar_map = self.market.get_latest_bar(code_list)
+
+        todayBarsMap = {}
+        for symbol,l_bar in _latest_bar_map.items():
+            todayBarsMap[__code_map[symbol]] = l_bar
 
         to_delete_runners = []
         ####更新实时价格
@@ -78,7 +84,7 @@ class ZZ500_ProjectRunner(Runner):
             code = runner.getOrder().code
             bar: LatestBar = todayBarsMap.get(code)
             if bar is None:
-                self.context.log_w("获取{code}的bar信息失败！！")
+                self.context.log_w(f"获取{code}的bar信息失败！！")
                 continue
             is_updated = runner.update(bar.toBarData(), None)
             if is_updated:
