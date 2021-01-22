@@ -37,7 +37,7 @@ class Context:
         """
         是否在回测环境下运行。
         """
-        return self.engine.is_backtest()
+        return self.engine.is_backtest
 
     def is_mainThread(self) -> bool:
         """
