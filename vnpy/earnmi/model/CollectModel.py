@@ -9,12 +9,7 @@
 """
 from abc import abstractmethod
 from typing import Tuple, Sequence
-
-from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.model.CollectData import CollectData
-from earnmi.model.PredictData import PredictData
-from earnmi.model.PredictOrder import PredictOrder
-from earnmi.uitl.BarUtils import BarUtils
 from vnpy.trader.object import BarData
 
 
