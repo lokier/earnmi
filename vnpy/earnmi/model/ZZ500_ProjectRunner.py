@@ -199,7 +199,7 @@ class ZZ500_ProjectRunner(Runner):
             finished, stop = model.collectBars(bars, code)
             _finished_size = len(finished)
             _unfinished_size = len(stop)
-            self.log(f"    collect code:{code}, finished:{_finished_size},unfinished:{_unfinished_size}, last date: {bars[-1].datetime},volume={bars[-1].volume}")
+            ##self.log(f"    collect code:{code}, finished:{_finished_size},unfinished:{_unfinished_size}, last date: {bars[-1].datetime},volume={bars[-1].volume}")
             finishedTotalCount += _finished_size
             unfinishedTotalCount += _unfinished_size
             for data in finished:
@@ -268,3 +268,43 @@ class ZZ500_ProjectRunner(Runner):
                     statistic.maxLossPct = min(statistic.maxLossPct, rate)
 
         return statistic
+
+
+    def printDetail(self):
+        db = self.source.createDatabase()
+        opDB = OpDataBase(db)
+        op_order_list = opDB.load_order_all(self.project.id)
+        print(f"orderList : size = {len(op_order_list)}")
+        op_orde_map_list = {}
+        for order in op_order_list:
+            dimenText = order.dimen
+            order_list = op_orde_map_list.get(dimenText)
+            if order_list is None:
+                order_list = []
+                op_orde_map_list[dimenText] = order_list
+            order_list.append(order)
+
+        for dimenText,order_list in op_orde_map_list.items():
+            order_count = len(order_list)
+            print(f"维度值:{dimenText} : size = {order_count}")
+            statistic = self.makeStatistic(order_list)
+            print(f"[交易率:{self.toRateText(statistic.dealCount, statistic.count)}"
+                  f"(盈利欺骗占XX.XX%),"
+                  f"成功率:{self.toRateText(statistic.predict_suc_deal_count, statistic.dealCount)},"
+                  f"盈利率:{self.toRateText(statistic.earnCount, statistic.dealCount)},"
+                  f"单均pct:{self.keep2Foat(self.divide(100 * statistic.totalPct, statistic.dealCount))},"
+                  f"盈pct:{self.keep2Foat(self.divide(100 * statistic.totalEarnPct, statistic.earnCount))}({self.keep2Foat(100 * statistic.maxEarnPct)}),"
+                  f"亏pct:{self.keep2Foat(self.divide(100 * (statistic.totalPct - statistic.totalEarnPct), statistic.dealCount - statistic.earnCount))}({self.keep2Foat(100 * statistic.maxLossPct)})]")
+
+    def keep2Foat(self, v: float):
+        return f"%.2f" % (v)
+
+    def divide(self, f1: float, f2: float):
+        if f2 < 0.0001:
+            return 0.0
+        return f1 / f2
+
+    def toRateText(self, f1: float, f2: float) -> str:
+        if f2 < 0.00001:
+            return "0%"
+        return f"%.2f%%" % (100 * f1 / f2)

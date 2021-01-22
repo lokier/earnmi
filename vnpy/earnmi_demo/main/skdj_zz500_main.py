@@ -286,7 +286,8 @@ def runBackTest():
     _dirName = "models/skdj_zz500_runbacktest"
     start = datetime(2015, 10, 1)
     middle = datetime(2019, 9, 30)
-    end = datetime(2020, 9, 30)
+    end = datetime(2019, 12, 30)
+    #end = datetime(2020, 9, 30)
     #end = datetime(2019,12,30)
     historySource = ZZ500DataSource(start, middle)
     futureSouce = ZZ500DataSource(middle, end)
@@ -327,9 +328,9 @@ def runBackTest():
             super().__init__()
             self.paramMap = {}
             self.paramMap[99] = {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_bottom': 2}
-            # self.paramMap[100] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
-            # self.paramMap[94] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
-            # self.paramMap[58] = {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_bottom': 1}
+            self.paramMap[100] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
+            self.paramMap[94] = {'buy_offset_pct': None, 'sell_offset_pct': 1, 'sell_leve_pct_bottom': 1}
+            self.paramMap[58] = {'buy_offset_pct': None, 'sell_offset_pct': None, 'sell_leve_pct_bottom': 1}
 
         def getParams(self, dimen_value: int):
             return self.paramMap.get(dimen_value)
@@ -337,20 +338,23 @@ def runBackTest():
         def isSupport(self, dimen: Dimension) -> bool:
             return not self.paramMap.get(dimen.value) is None
 
-    run_old_runner = False
+    run_old_runner = True
     if run_old_runner:
         p_runnner = __getBackTestRunner(engine)
         futureSouce = ZZ500DataSource(middle, end)
         p_runnner.opDB.clearAll()
         p_runnner.runBackTest(futureSouce,MyStrategy2())
+        p_runnner.printDetail()
     else:
         ##
+        ##middle = datetime(2019, 11, 22)
+
         app = App()
         index_driver = StockIndexDriver()  ##A股指数驱动
         drvier2 = ZZ500StockDriver()  ##中证500股票池驱动
         #barManager:BarManager = BarManager.getBarManager(app)
-        market = app.getBarManager().createBarMarket(index_driver, [drvier2])
-        updator = app.getBarManager().createUpdator();
+        ##market = app.getBarManager().createBarMarket(index_driver, [drvier2])
+        ##updator = app.getBarManager().createUpdator();
         ##updator.update(market,start)
         from earnmi.model.op import OpProject
         project = OpProject(id=1, status="new", name="skdj_500", create_time=datetime(year=2020, month=11, day=26))
@@ -360,11 +364,19 @@ def runBackTest():
         class MyDatabaseSource(DatabaseSource):
             def createDatabase(self) -> Database:
                 return SqliteDatabase("models/skdj_zz500_runbacktest/project_v2.db")
-        runner = ZZ500_ProjectRunner(name="skdj_500", project=project, source=MyDatabaseSource(), strategy=MyStrategy2(), engine=engine)
+        dataSource = MyDatabaseSource()
+
+        db = dataSource.createDatabase()
+        opDB = OpDataBase(db)
+        opDB.clearAll()
+        db.close()
+
+        runner = ZZ500_ProjectRunner(name="skdj_500", project=project, source=dataSource, strategy=MyStrategy2(), engine=engine)
         app.getRunnerManager().add(runner)
         app.run_backtest(middle)
         seconds = int(end.timestamp() - middle.timestamp())
         app.engine.go(seconds)
+        runner.printDetail()
         print(f"finished1！！！！！！！")
 
 
