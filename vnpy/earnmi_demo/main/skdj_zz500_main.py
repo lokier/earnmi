@@ -1,12 +1,11 @@
 from datetime import datetime
 
 import numpy as np
+from earnmi.model.CollectModel import CollectModel
 from peewee import Database
-
 from earnmi.chart.Factory import Factory
 from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.core.App import App
-from earnmi.data.BarManager import BarManager
 from earnmi.data.driver.StockIndexDriver import StockIndexDriver
 from earnmi.data.driver.ZZ500StockDriver import ZZ500StockDriver
 from earnmi.model.BarDataSource import ZZ500DataSource
@@ -22,23 +21,7 @@ from earnmi.model.ZZ500_ProjectRunner import ZZ500_ProjectRunner
 from earnmi.uitl.BarUtils import BarUtils
 from vnpy.trader.object import BarData
 
-
-class SKDJ_EngineModel(CoreEngineModel):
-
-    PREDICT_LENGT = 3
-    PCT_MAX_LIMIT = 99999999
-
-    def __init__(self):
-        self.kdjEncoder = FloatEncoder([15,30,45,60,75,90])
-
-    def getEngineName(self):
-        return "skdj_zz500"
-
-    def getPctEncoder1(self)->FloatEncoder:
-        return FloatEncoder(list(np.arange(-25,25.5, 50/30)), minValue=-26, maxValue=26)
-
-    def getPctEncoder2(self)->FloatEncoder:
-        return FloatEncoder(list(np.arange(-24.5, 27, 50 /30)), minValue=-25, maxValue=27)
+class SKDJ_CollectModel(CollectModel):
 
     def onCollectStart(self, code: str) -> bool:
         from earnmi.chart.Indicator import Indicator
@@ -49,7 +32,6 @@ class SKDJ_EngineModel(CoreEngineModel):
         self.lasted3BarArron = np.full(3, None)
         self.code = code
         return True
-
 
     def onCollectTrace(self, bar: BarData) -> CollectData:
         self.indicator.update_bar(bar)
@@ -108,24 +90,48 @@ class SKDJ_EngineModel(CoreEngineModel):
         collectData.setValid(True)
         return collectData
 
-    ENCODE1 = FloatEncoder([1,8,20,45,80]);
-    ENCODE2 = FloatEncoder([-1,0,1,2.2,4.7]);
-
-    def makePatthernValue(self,verbute, dif,dea):
-        #mask1 = KDJMovementEngineModel.ENCODE1.mask()
+    def makePatthernValue(self, verbute, dif, dea):
+        # mask1 = KDJMovementEngineModel.ENCODE1.mask()
         mask2 = SKDJ_EngineModel.ENCODE2.mask()
         v1 = SKDJ_EngineModel.ENCODE1.encode(verbute)
         v2 = SKDJ_EngineModel.ENCODE2.encode(dif)
         v3 = SKDJ_EngineModel.ENCODE2.encode(dea)
-        return v1 * mask2 * mask2 + v2 * mask2 +v3;
+        return v1 * mask2 * mask2 + v2 * mask2 + v3;
 
-    def onCollect(self, data: CollectData, newBar: BarData) :
-        #不含停牌数据
+    def onCollect(self, data: CollectData, newBar: BarData):
+        # 不含停牌数据
         data.predictBars.append(newBar)
         size = len(data.predictBars)
         if size >= SKDJ_EngineModel.PREDICT_LENGT:
             data.setValid(BarUtils.isAllOpen(data.predictBars))
             data.setFinished()
+
+class SKDJ_EngineModel(CoreEngineModel):
+
+    PREDICT_LENGT = 3
+    PCT_MAX_LIMIT = 99999999
+
+    def __init__(self):
+        self.kdjEncoder = FloatEncoder([15,30,45,60,75,90])
+        self._collect_model  = SKDJ_CollectModel()
+
+
+    def getCollectModel(self)->CollectModel:
+        return self._collect_model
+
+    def getEngineName(self):
+        return "skdj_zz500"
+
+    def getPctEncoder1(self)->FloatEncoder:
+        return FloatEncoder(list(np.arange(-25,25.5, 50/30)), minValue=-26, maxValue=26)
+
+    def getPctEncoder2(self)->FloatEncoder:
+        return FloatEncoder(list(np.arange(-24.5, 27, 50 /30)), minValue=-25, maxValue=27)
+
+
+    ENCODE1 = FloatEncoder([1,8,20,45,80]);
+    ENCODE2 = FloatEncoder([-1,0,1,2.2,4.7]);
+
 
     def getYBasePrice(self, cData: CollectData) -> float:
         ## 金叉形成后的前一天

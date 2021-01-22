@@ -20,12 +20,15 @@ from earnmi.uitl.BarUtils import BarUtils
 from vnpy.trader.object import BarData
 import numpy as np
 
-class CoreEngineModel(CollectModel):
+class CoreEngineModel():
 
 
     @abstractmethod
     def getEngineName(self):
         return "unkonw"
+
+    def getCollectModel(self)->CollectModel:
+        pass
 
     def getPctEncoder1(self)->FloatEncoder:
         return FloatEncoder([-7, -5, -3, -2, -1, 0, 1, 2, 3, 5, 7], minValue=-10, maxValue=10)
@@ -72,14 +75,14 @@ class CoreEngineModel(CollectModel):
     """
     收集完成,isFinished表示是否正常结束
     """
-    def onCollectFinished(self,data:CollectData,isFinished:bool):
-        if isFinished is True:
-            _s,_b = self.getYLabelPct(data)
-            assert not _s is None
-            assert not _b is None
-        else:
-            xFeature = self.generateXFeature(data)
-            assert not xFeature is None
+    # def onCollectFinished(self,data:CollectData,isFinished:bool):
+    #     if isFinished is True:
+    #         _s,_b = self.getYLabelPct(data)
+    #         assert not _s is None
+    #         assert not _b is None
+    #     else:
+    #         xFeature = self.generateXFeature(data)
+    #         assert not xFeature is None
 
     def collectBars(self,barList: ['BarData'],symbol:str,dimensValue:[] = None) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
-        return CollectModel.collect(self,barList,symbol,dimensValue)
+        return CollectModel.collect(self.getCollectModel(),barList,symbol,dimensValue)

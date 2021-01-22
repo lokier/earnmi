@@ -5,10 +5,6 @@ from enum import Enum
 from earnmi.model.Dimension import Dimension
 from vnpy.trader.object import BarData
 
-class DataStatus(Enum):
-    UNKONW = "vali"  # 正在追踪交易
-    FINISHED = "finished"  # 收集完成,可作为预测和训练
-    VALID = "predict_ok"
 
 @dataclass
 class CollectData(object):
