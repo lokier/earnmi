@@ -35,6 +35,7 @@ class ZZ500_ProjectRunner(Runner):
 
     def onStart(self, scheduler: RunnerScheduler):
         ##创建一个行情市场
+        self.context.log_i("onStart")
         index_driver = StockIndexDriver()  ##A股指数驱动
         drvier2 = ZZ500StockDriver()  ##中证500股票池驱动
         barManager:BarManager = BarManager.get(self.context)

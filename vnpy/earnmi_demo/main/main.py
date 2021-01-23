@@ -1,11 +1,14 @@
 from datetime import datetime
 
+from earnmi.core.App import App
+from earnmi.core.Runner import Runner
 from earnmi.model.BarDataSource import ZZ500DataSource
 from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.CoreEngineRunner import CoreEngineRunner
 from earnmi.model.DataSource import DatabaseSource
 from earnmi.model.Dimension import Dimension
 from earnmi.model.bar import LatestBarDB
+from earnmi_demo.main.ZZ500_ProjectRunner import ZZ500_ProjectRunner
 from earnmi_demo.main.skdj_zz500_main import SKDJ_EngineModelV2
 
 from earnmi.data.MarketImpl import Market2Impl
@@ -131,8 +134,7 @@ class UpdateRealBarRunner(TradeRunner):
         print("更新数据:ZZ500DataSource实时数据")
         self.db.update(ZZ500DataSource.SZ500_JQ_CODE_LIST)
 
-
-def InitSKDJ_zz500_Project_TradRunner(dbSource:DatabaseSource,isBuild:bool)->TradeRunner:
+def InitSKDJ_zz500_Projecct_model(dbSource:DatabaseSource,isBuild:bool):
     _dirName = "models/runner_skdj_zz500"
     model = SKDJ_EngineModelV2()
     engine = None
@@ -148,6 +150,7 @@ def InitSKDJ_zz500_Project_TradRunner(dbSource:DatabaseSource,isBuild:bool)->Tra
 
     class MyStrategy(OpStrategy):
         DIMEN = [107, 93, 92, 100, 64, 57, 99]
+
         def __init__(self):
             super().__init__()
             self.paramMap = {}
@@ -161,17 +164,29 @@ def InitSKDJ_zz500_Project_TradRunner(dbSource:DatabaseSource,isBuild:bool)->Tra
 
         def isSupport(self, dimen: Dimension) -> bool:
             return not self.paramMap.get(dimen.value) is None
+    return engine,MyStrategy()
 
+def InitSKDJ_zz500_Project_TradRunner(dbSource:DatabaseSource,isBuild:bool)->TradeRunner:
+
+    engine,op_strategy = InitSKDJ_zz500_Projecct_model(dbSource,isBuild)
     project = OpProject(id=1, status="new", name="skdj_500", create_time=datetime(year=2020, month=11, day=26))
     opDB = OpDataBase(dbSource.createDatabase())
-
     #isBuild = True
     if isBuild:
         opDB.clearAll()
     projectRunner =  ProjectRunner(project, opDB, engine)
-    return projectRunner.loadZZ500NowRunner(dbSource,MyStrategy())
+    return projectRunner.loadZZ500NowRunner(dbSource,op_strategy)
 
+def InitSKDJ_zz500_Project_TradRunner_V2(dbSource:DatabaseSource,isBuild:bool)->Runner:
+    engine, op_strategy = InitSKDJ_zz500_Projecct_model(dbSource, isBuild)
+    project = OpProject(id=2, status="new", name="skdj_500_v2", create_time=datetime(year=2020, month=11, day=26))
+    # isBuild = True
+    if isBuild:
+        opDB = OpDataBase(dbSource.createDatabase())
+        opDB.clearAll()
+        opDB.close()
 
+    return ZZ500_ProjectRunner(project.name, project, dbSource, op_strategy,engine)
 
 if __name__ == "__main__":
     from peewee import MySQLDatabase, Database, Database, Database
@@ -196,8 +211,14 @@ if __name__ == "__main__":
     #db1 = RetryMySQLDatabase(**dbSetting)
     #db2 = RetryMySQLDatabase(**dbSetting)
 
+    isBuild = False
+
+    app = App()
+    app.getRunnerManager().add(InitSKDJ_zz500_Project_TradRunner_V2(dataSouce,isBuild=isBuild))
+    app.run()
+
     real_bar_update_Thread = _TradeRunnerThread("实时bar更新器",UpdateRealBarRunner(dataSouce))
-    sdkj_zz500_Thread = _TradeRunnerThread("skdj_ZZ500",InitSKDJ_zz500_Project_TradRunner(dataSouce,isBuild=False))
+    sdkj_zz500_Thread = _TradeRunnerThread("skdj_ZZ500",InitSKDJ_zz500_Project_TradRunner(dataSouce,isBuild=isBuild))
 
     real_bar_update_Thread.start(backgournd=True)
     sdkj_zz500_Thread.start()

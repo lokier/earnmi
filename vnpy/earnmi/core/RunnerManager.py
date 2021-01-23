@@ -156,16 +156,16 @@ class _RunnerSession(RunnerContext, RunnerScheduler):
 
 
     def log_i(self, msg: str):
-        print(f"[{self.engine.now()}|{self.is_mainThread()}|{self.runner.getName()}]: {msg}")
+        self._context._logger.info(f"[{self.engine.now()}|{self.is_mainThread()}|{self.runner.getName()}]: {msg}")
 
     def log_d(self, msg: str):
-        self.log_i(msg)
+        self._context._logger.debug(f"[{self.engine.now()}|{self.is_mainThread()}|{self.runner.getName()}]: {msg}")
 
     def log_w(self, msg: str):
-        self.log_i(msg)
+        self._context._logger.warn(f"[{self.engine.now()}|{self.is_mainThread()}|{self.runner.getName()}]: {msg}")
 
     def log_e(self, msg: str):
-        self.log_i(msg)
+        self._context._logger.error(f"[{self.engine.now()}|{self.is_mainThread()}|{self.runner.getName()}]: {msg}")
 
     def run_delay(self,second:int, function:Callable,args = {}):
         self.engine.postDelay(second,function,args)

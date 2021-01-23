@@ -17,7 +17,6 @@ from earnmi.model.CoreEngineStrategy import CommonStrategy
 from earnmi.model.DataSource import DatabaseSource
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
 from earnmi.model.ProjectRunner import OpStrategy
-from earnmi.model.ZZ500_ProjectRunner import ZZ500_ProjectRunner
 from earnmi.uitl.BarUtils import BarUtils
 from vnpy.trader.object import BarData
 
