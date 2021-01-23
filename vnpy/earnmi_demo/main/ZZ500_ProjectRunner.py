@@ -28,7 +28,7 @@ class ZZ500_ProjectRunner(Runner):
         self.name = name
         self.coreEngine = engine ##模型引擎
         self.unfinished_runners = []
-
+        self.update_order_job = None
 
     def getName(self):
         return self.name
@@ -41,20 +41,52 @@ class ZZ500_ProjectRunner(Runner):
         barManager:BarManager = BarManager.get(self.context)
         self.market:BarMarket = barManager.createBarMarket(index_driver,[drvier2])
 
-        ##下载行情数据。
-
-
         scheduler.run_weekly("1-5","9:01:30",self._on_prepare_open_at_9_01,{},run_if_miss_time=True)
-        is_backtest = self.context.is_backtest()
-        if is_backtest:
-            scheduler.run_weekly("1-5", "14:55:30", self._onUpdateOrdersWhileOpern, {}, run_if_miss_time=False)
+        scheduler.run_weekly("1-7","8:55:30",self._on_run_at_8_55_30)
+
+    def _on_run_at_8_55_30(self):
+        runner = self
+
+        def run_timer():
+            latest_bar = None
+            if not runner.context.is_backtest():
+                latest_bar = runner.market.get_latest_bar([StockIndexDriver.INDEX_SYMBOL])
+            runner.context.log_i(f"检测开盘前指数值的状态->latest_bar: {latest_bar}")
+            now = runner.now();
+            if now.hour > 9:
+                return False
+            if now.hour == 9 and now.minute >32:
+                return False
+            return True
+        self.context.post_timer(60,run_timer)
 
     def _on_prepare_open_at_9_01(self):
         """
         开盘前做一下初始化化工作。
         """
+        is_backtest = self.context.is_backtest()
+        if is_backtest:
+            #scheduler.run_weekly("1-5", "14:55:30", self._onUpdateOrdersWhileOpern, {}, run_if_miss_time=False)
+            self.context.post_at("14:55:30",self._onUpdateOrdersWhileOpern)
+        else:
+            self.context.post_at("9:30:00", lambda: self.open_update_Orders(True))
+            self.context.post_at("11:30:00", lambda: self.open_update_Orders(False))
+            self.context.post_at("13:00:00", lambda: self.open_update_Orders(True))
+            self.context.post_at("14:57:00", lambda: self.open_update_Orders(False))
+            pass
         self.unfinished_runners = []
         self.generateTodayOpOrderLists()
+
+
+    def open_update_Orders(self,open:bool):
+        if open:
+            if self.update_order_job is None:
+                self.update_order_job = self.context.post_timer(60,self._onUpdateOrdersWhileOpern)
+        else:
+            if not self.update_order_job is None:
+                self.update_order_job.cancel()
+                self.update_order_job = None
+
 
     def _onUpdateOrdersWhileOpern(self):
         """
@@ -62,6 +94,11 @@ class ZZ500_ProjectRunner(Runner):
         """
         ###更新当前股票价格。
         runner_size = len(self.unfinished_runners)
+
+        self.log(f"_onUpdateOrdersWhileOpern: runner_size = {runner_size}")
+
+        if runner_size < 0:
+            return
         ##获取今天的实时信息。
 
         code_list = []
@@ -74,6 +111,7 @@ class ZZ500_ProjectRunner(Runner):
             __code_map[symbol] = code
 
         _latest_bar_map = self.market.get_latest_bar(code_list)
+
 
         todayBarsMap = {}
         for symbol,l_bar in _latest_bar_map.items():

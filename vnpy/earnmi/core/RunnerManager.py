@@ -203,7 +203,7 @@ class RunnerManager:
 
     def onInerceptCallable(self,callbale:Callable,args:{}):
         #TODO 分配到线程池里开多线程执行。
-        callbale(**args)
+        return callbale(**args)
 
 
     def _onStart(self,event:str,engine:MainEventEngine):

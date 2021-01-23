@@ -18,6 +18,7 @@ from earnmi.model.DataSource import DatabaseSource
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
 from earnmi.model.ProjectRunner import OpStrategy
 from earnmi.uitl.BarUtils import BarUtils
+from earnmi_demo.main.ZZ500_ProjectRunner import ZZ500_ProjectRunner
 from vnpy.trader.object import BarData
 
 class SKDJ_CollectModel(CollectModel):
@@ -343,7 +344,7 @@ def runBackTest():
         def isSupport(self, dimen: Dimension) -> bool:
             return not self.paramMap.get(dimen.value) is None
 
-    run_old_runner = True
+    run_old_runner = False
     if run_old_runner:
         p_runnner = __getBackTestRunner(engine)
         futureSouce = ZZ500DataSource(middle, end)
