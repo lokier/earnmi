@@ -13,7 +13,6 @@
             * 基于因子分数的操作策略（使用日，分钟k线)
         * [Op操作单框架](earnmi_docs/book/op_project.md)
             * [数据库设计](earnmi_docs/book/op_project_database.md)
-        * [日志输出]()
     * [行情数据](earnmi_docs/book/数据源.md)
         * [数据驱动BarDriver](earnmi_docs/book/数据源.md#BarDataDriver)
         * [行情数据BarData](earnmi_docs/book/数据源.md#BarData)
@@ -26,8 +25,9 @@
         * [行情图查看:Chart]()
         * [PredictModeL:预测模型](earnmi_docs/book/predict_model.md)
             * [!!!太乱，需要重新重构]()
-     * [指标分析]()
+    * [指标分析]()
         * [自建指标](earnmi_docs/book/自建指标.md)
+     * [日志输出](earnmi_docs/book/日志.md)
     * [线上Runner]
         * [skdj_500]()
     * [网站系统]()
