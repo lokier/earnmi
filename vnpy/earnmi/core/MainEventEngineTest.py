@@ -105,14 +105,66 @@ def casePostEvent(asserter: Asserter):
     assert handler_event_count == 2
     assert event_data['T'] == 5
 
+casePostTimer_count = 0
+
+def casePostTimer(asserter: Asserter):
+    engine: MainEventEngine = asserter.engine
+    global casePostTimer_count
+
+    casePostTimer_count = 0
+    def do_3_time():
+        asserter.log(engine.now(), "do_3_time()")
+        global casePostTimer_count
+        casePostTimer_count += 1
+        return casePostTimer_count < 3
+
+    timePoint = engine.now()
+    asserter.log(timePoint, "设置casePostTimer时间基础点")
+    engine.postTimer(2, do_3_time,delay_second=3)
+    asserter.sleep(2)
+    assert casePostTimer_count == 0
+    asserter.sleep(2)
+    assert casePostTimer_count == 1
+    asserter.sleep(2)
+    assert casePostTimer_count == 2
+    asserter.sleep(2)
+    assert casePostTimer_count == 3
+    asserter.sleep(2)
+    assert casePostTimer_count == 3
+    asserter.sleep(20)
+    assert casePostTimer_count == 3
+
+    ###使用job.cancel方式停止
+    casePostTimer_count = 0
+    def do_timer():
+        asserter.log(engine.now(), "do_timer()")
+        global casePostTimer_count
+        casePostTimer_count += 1
+    job = engine.postTimer(2, do_timer)
+    asserter.sleep(1)
+    assert casePostTimer_count == 1
+    asserter.sleep(2)
+    assert casePostTimer_count == 2
+    asserter.sleep(2)
+    assert casePostTimer_count == 3
+    job.cancel()
+    job.cancel()
+    asserter.sleep(2)
+    job.cancel()
+    assert casePostTimer_count == 3
+    asserter.sleep(2)
+    assert casePostTimer_count == 3
+    asserter.sleep(2)
+    assert casePostTimer_count == 3
 
 
-
-
+    pass
 
 def testAllCase(asserter: Asserter):
     case1(asserter)
     casePostEvent(asserter)
+    casePostTimer(asserter)
+
     pass
 
 

@@ -53,8 +53,7 @@ class RunnerScheduler:
 
 class RunnerContext(ContextWrapper):
 
-   pass
-
+    pass
 
 class Runner:
 

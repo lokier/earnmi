@@ -16,7 +16,8 @@ HandlerType = Callable[[str,Any], None]
 
 
 class _callback_task:
-    def __init__(self, time: datetime, callback: Callable,args:dict,event:str = None,event_data:Any =None):
+    def __init__(self, engine,time: datetime, callback: Callable,args:dict,event:str = None,event_data:Any =None):
+        self.engine = engine;
         self.time = time
         self.callback:Callable = callback
         self.is_delete = False
@@ -24,6 +25,8 @@ class _callback_task:
         self.event_data:Any = event_data
         self.callback_args = args
         self.post_token = 0  ##相同时间提交的话，跟post_token来保证提交顺序。
+        self.is_timer = False  ##是否定时操作
+        self.timer_second = None ##定时秒数
 
     def __lt__(self, other):
         if(self.time < other.time):
@@ -32,6 +35,14 @@ class _callback_task:
             return self.post_token < other.post_token
         return False
 
+    def cancel(self):
+        engine = self.engine
+        if not engine is None:
+            engine.cancel(self)
+
+    def dispose(self):
+        self.engine = None
+        self.is_delete = True
 
 
 """
@@ -91,17 +102,34 @@ class MainEventEngine:
         发送事件。
         """
         time = self.now()
-        task = _callback_task(time=time, callback=None, args=None,event=event,event_data=data)
+        task = _callback_task(self,time=time, callback=None, args=None,event=event,event_data=data)
         return self._post_task(task)
 
     def postDelay(self,delay_second,callback:Callable,args:dict = {}):
         """
-        发送deleay时间。
+        发送deleay操作。
         Callable：方法名
         args:该方法的参数参数
         """
         time = self.now() + timedelta(seconds=delay_second)
-        task = _callback_task(time=time, callback=callback, args = args)
+        task = _callback_task(self,time=time, callback=callback, args = args)
+        return self._post_task(task)
+
+    def postTimer(self,timer_second,callback:Callable,args:dict = {},delay_second:int =0):
+        """
+        发送定时器操作。
+        参数
+            timer_sencod: 每隔多少秒执行
+            发送deleay操作。
+            Callable：方法名
+            args:该方法的参数参数
+            delay_second:延迟多少秒执行。
+        """
+        assert timer_second > 0
+        time = self.now() + timedelta(seconds=delay_second)
+        task = _callback_task(self, time=time, callback=callback, args=args)
+        task.is_timer = True
+        task.timer_second = timer_second
         return self._post_task(task)
 
 
@@ -113,6 +141,8 @@ class MainEventEngine:
 
     def cancel(self,task:Any):
         if isinstance(task, _callback_task):
+            if task.is_delete:
+                return
             self.__condition.acquire()
             task.is_delete = True
             task.time = self.now() - timedelta(seconds=1)
@@ -260,16 +290,26 @@ class MainEventEngine:
         if not task is None:
             is_callbale_tsk = not task.callback_args is None
             if is_callbale_tsk:
+                _continue_ = True
                 if self.intercept_callbale_handler is None:
                     ##主线程执行。
-                    task.callback(**task.callback_args)
+                    _continue_ = task.callback(**task.callback_args)
                 else:
                     ##被拦截处理。
-                    self.intercept_callbale_handler(task.callback,task.callback_args)
+                    _continue_ = self.intercept_callbale_handler(task.callback,task.callback_args)
+                _continue_ = True if _continue_ is None else _continue_
+                if task.is_timer and _continue_:
+                    ###定时任务，需要继续执行
+                    task.time = self.now() + timedelta(seconds=task.timer_second)
+                    self._post_task(task)
+                else:
+                    task.dispose()
+
             elif not task.event is None:
                 ##
                 if task.event in self._handlers:
                     self.__process_post_event_task(task)
+                    task.dispose()
 
     def __process_post_event_task(self,task:_callback_task):
         handler_list = self._handlers[task.event]

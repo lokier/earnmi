@@ -1,7 +1,7 @@
 import datetime
 from abc import abstractmethod
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Any
 
 from earnmi.core.MainEventEngine import MainEventEngine
 
@@ -26,6 +26,15 @@ class Context:
             raise RuntimeError("App main thread is not running")
         self.engine.postDelay(second, function, args)
 
+    def post_event(self,event:str,data:Any=None):
+        if not self.engine.is_running():
+            raise RuntimeError("App main thread is not running")
+        return self.engine.post_event(event,data)
+
+    def post_timer(self,timer_second,callback:Callable,args:dict = {},delay_second:int =0):
+        if not self.engine.is_running():
+            raise RuntimeError("App main thread is not running")
+        return self.engine.postTimer(timer_second,callback,args,delay_second)
 
     def now(self) -> datetime:
         """
