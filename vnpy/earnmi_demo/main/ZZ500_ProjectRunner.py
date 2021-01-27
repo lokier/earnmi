@@ -11,7 +11,7 @@ from earnmi.model.DataSource import DatabaseSource
 from earnmi.model.PredictData import PredictData
 from earnmi.model.ProjectRunner import OpStrategy, OpProject, OpDataBase, OpRunner
 from earnmi.model.bar import LatestBar
-from earnmi.model.op import OpStatistic, OpOrderStatus, OpLogLevel
+from earnmi.model.op import OpStatistic, OpOrderStatus
 from earnmi.uitl.utils import utils
 from vnpy.trader.object import BarData
 
@@ -35,7 +35,7 @@ class ZZ500_ProjectRunner(Runner):
 
     def onStart(self, scheduler: RunnerScheduler):
         ##创建一个行情市场
-        self.context.log_i("onStart")
+        self.log("onStart")
         index_driver = StockIndexDriver()  ##A股指数驱动
         drvier2 = ZZ500StockDriver()  ##中证500股票池驱动
         barManager:BarManager = BarManager.get(self.context)
@@ -51,7 +51,7 @@ class ZZ500_ProjectRunner(Runner):
             latest_bar = None
             if not runner.context.is_backtest():
                 latest_bar = runner.market.get_latest_bar([StockIndexDriver.INDEX_SYMBOL])
-            runner.context.log_i(f"检测开盘前指数值的状态->latest_bar: {latest_bar}")
+            runner.log(f"检测开盘前指数值的状态->latest_bar: {latest_bar}")
             now = runner.now();
             if now.hour > 9:
                 return False
@@ -123,7 +123,7 @@ class ZZ500_ProjectRunner(Runner):
             code = runner.getOrder().code
             bar: LatestBar = todayBarsMap.get(code)
             if bar is None:
-                self.context.log_w(f"获取{code}的bar信息失败！！")
+                self.log(f"获取{code}的bar信息失败！！")
                 continue
             is_updated = runner.update(bar.toBarData(), None)
             if is_updated:
@@ -131,7 +131,7 @@ class ZZ500_ProjectRunner(Runner):
             if (runner.isFinished() or not runner.canMarketToday()):
                 to_delete_runners.append(runner)
                 break
-        self.context.log_i(f" [onTrick]: update_size = {runner_size},finished_size = {len(to_delete_runners)}")
+        self.log(f" [onTrick]: update_size = {runner_size},finished_size = {len(to_delete_runners)}")
         for to_delete in to_delete_runners:
             self.unfinished_runners.remove(to_delete)
 
