@@ -9,9 +9,10 @@ from earnmi.uitl.utils import utils
 
 class Context:
 
-    def __init__(self, engine:MainEventEngine):
+    def __init__(self, engine:MainEventEngine,session_data = None):
         ##主线程环境
         self.engine: MainEventEngine = engine
+        self._session_data = session_data
 
     def post_at(self, hour_minute_second, function: Callable, args={},run_if_miss_time = False):
         """
@@ -48,7 +49,7 @@ class Context:
         """
         if not self.engine.is_running():
             raise RuntimeError("App main thread is not running")
-        return self.engine.postDelay(second, function, args)
+        return self.engine.postDelay(second, function, args,self._session_data)
 
     def post_event(self,event:str,data:Any=None):
         """
@@ -56,7 +57,7 @@ class Context:
         """
         if not self.engine.is_running():
             raise RuntimeError("App main thread is not running")
-        return self.engine.post_event(event,data)
+        return self.engine.post_event(event,data,self._session_data)
 
     def post_timer(self,timer_second,callback:Callable,args:dict = {},delay_second:int =0):
         """
@@ -64,7 +65,7 @@ class Context:
         """
         if not self.engine.is_running():
             raise RuntimeError("App main thread is not running")
-        return self.engine.postTimer(timer_second,callback,args,delay_second)
+        return self.engine.postTimer(timer_second,callback,args,delay_second,self._session_data)
 
     def now(self) -> datetime:
         """
@@ -115,42 +116,10 @@ class Context:
 
 class ContextWrapper(Context):
 
-    def __init__(self, context:Context):
+    def __init__(self, context:Context,session_data = None):
         ##主线程环境
+        Context.__init__(self,context.engine,session_data)
         self._context = context
-
-    def post(self, function: Callable, args={}):
-        """
-        提交到主线程执行。
-        """
-        self._context.post_delay(0, function, args)
-
-    def post_delay(self, second: int, function: Callable, args={}):
-        """
-        提交到主线程，并延迟second秒执行。
-        """
-        if not self.engine.is_running():
-            raise RuntimeError("App main thread is not running")
-        self._context.engine.postDelay(second, function, args)
-
-
-    def now(self) -> datetime:
-        """
-        获取当前时间。(实盘环境的对应的是当前时间，回撤环境对应的回撤时间）。
-        """
-        return self._context.engine.now();
-
-    def is_backtest(self) -> bool:
-        """
-        是否在回测环境下运行。
-        """
-        return self._context.is_backtest()
-
-    def is_mainThread(self) -> bool:
-        """
-        是否在主线程环境
-        """
-        return self._context.engine.inCallableThread()
 
     def log_i(self, tag,msg: str):
         self._context.log_i(tag,msg)
@@ -164,13 +133,9 @@ class ContextWrapper(Context):
     def log_e(self,tag, msg: str):
         self._context.log_e(tag,msg)
 
-
-
-    @abstractmethod
     def getDirPath(self, dirName,create_if_no_exist =True):
         return self._context.getDirPath(dirName,create_if_no_exist)
 
-    @abstractmethod
     def getFilePath(self, dirName:str,fileName:str):
         return self._context.getFilePath(dirName,fileName)
 

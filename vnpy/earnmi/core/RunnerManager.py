@@ -75,7 +75,7 @@ def parse_day_desc(text:str):
 
     return number_list
 
-def __secheduleToayJob__(engine:MainEventEngine, hour_minute_second:str, now:datetime, function:Callable, args:{}, run_if_miss_time:bool):
+def __secheduleToayJob__(context:Context, hour_minute_second:str, now:datetime, function:Callable, args:{}, run_if_miss_time:bool):
     hour, minute, second = parse_hour_minute_second(hour_minute_second)
     job_time = datetime(year=now.year, month=now.month, day=now.day, hour=hour, minute=minute, second=second)
     delay_second = int((job_time.timestamp() - now.timestamp() + 0.45))
@@ -83,7 +83,7 @@ def __secheduleToayJob__(engine:MainEventEngine, hour_minute_second:str, now:dat
     ##错过今天的运行时间
     if delay_second < 0 and not run_if_miss_time :
         return
-    engine.postDelay(delay_second, function, args)
+    context.post_delay(delay_second, function, args)
 
 
 @dataclass
@@ -94,13 +94,13 @@ class Run_Monthly_Job:
     args:{}
     run_if_miss_time:bool
 
-    def secheduleToayJob(self, engine:MainEventEngine):
+    def secheduleToayJob(self, context:Context):
         day_list = parse_day_desc(self.day_desc)
-        now = engine.now()
+        now = context.now()
         the_day = now.day
         is_match = day_list.__contains__(the_day)
         if is_match:
-            __secheduleToayJob__(engine, self.hour_minute_second, now, self.function, self.args, self.run_if_miss_time)
+            __secheduleToayJob__(context, self.hour_minute_second, now, self.function, self.args, self.run_if_miss_time)
 
 @dataclass
 class Run_Weekly_Job:
@@ -110,14 +110,14 @@ class Run_Weekly_Job:
     args:{}
     run_if_miss_time:bool
 
-    def secheduleToayJob(self, engine:MainEventEngine):
+    def secheduleToayJob(self, context:Context):
         week_list = parse_week_desc(self.week_desc)
-        now = engine.now()
+        now = context.now()
         the_week = now.weekday()  ##  0-6
         the_week+=1
         is_match = week_list.__contains__(the_week)
         if is_match:
-            __secheduleToayJob__(engine, self.hour_minute_second, now, self.function, self.args, self.run_if_miss_time)
+            __secheduleToayJob__(context, self.hour_minute_second, now, self.function, self.args, self.run_if_miss_time)
 
 
 @dataclass
@@ -127,18 +127,18 @@ class Run_Daily_Job:
     args:{}
     run_if_miss_time:bool
 
-    def secheduleToayJob(self, engine:MainEventEngine):
+    def secheduleToayJob(self, context:Context):
         """
         hour_minute_second:
         """
-        now = engine.now()
-        __secheduleToayJob__(engine,self.hour_minute_second,now,self.function,self.args,self.run_if_miss_time)
+        now = context.now()
+        __secheduleToayJob__(context,self.hour_minute_second,now,self.function,self.args,self.run_if_miss_time)
 
 
 class _RunnerSession(RunnerContext, RunnerScheduler):
 
     def __init__(self, runner:Runner, ower_context:Context):
-        ContextWrapper.__init__(self,ower_context)
+        ContextWrapper.__init__(self,ower_context,runner)
         assert runner.context is None
         self.engine = ower_context.engine
         self.runner:Runner = runner
@@ -156,10 +156,6 @@ class _RunnerSession(RunnerContext, RunnerScheduler):
     def is_backtest(self)->bool:
         return self.engine.is_backtest
 
-
-    def run_delay(self,second:int, function:Callable,args = {}):
-        self.engine.postDelay(second,function,args)
-
     def run_daily(self,hour_minute_seconde:str,function:Callable, args = {}, run_if_miss_time = False):
         job = Run_Daily_Job(hour_minute_second=hour_minute_seconde,
                             function=function,args=args,run_if_miss_time=run_if_miss_time)
@@ -176,10 +172,10 @@ class _RunnerSession(RunnerContext, RunnerScheduler):
                              function=function, args=args, run_if_miss_time=run_if_miss_time)
         self.run_montly_job_list.append(job)
 
-    def secheduleToayJob(self, engine:MainEventEngine):
-        [ job.secheduleToayJob(engine) for job in self.run_daily_job_list]  ##规划daily任务
-        [ job.secheduleToayJob(engine) for job in self.run_weekly_job_list] ##规划weekly任务
-        [ job.secheduleToayJob(engine) for job in self.run_montly_job_list] ##规划Monthly任务
+    def secheduleToayJob(self):
+        [ job.secheduleToayJob(self) for job in self.run_daily_job_list]  ##规划daily任务
+        [ job.secheduleToayJob(self) for job in self.run_weekly_job_list] ##规划weekly任务
+        [ job.secheduleToayJob(self) for job in self.run_montly_job_list] ##规划Monthly任务
 
 class RunnerManager:
 
@@ -194,9 +190,23 @@ class RunnerManager:
 
     def onInerceptCallable(self,callbale:Callable,args:{}):
         #TODO 分配到线程池里开多线程执行。
-        return callbale(**args)
+        try:
+            return callbale(**args)
+        except Exception as e:
+            session_data = self.engine.getProcessSessionData()
+            if not session_data is None and isinstance(session_data,Runner):
+                ###拦截Runner异常给具体的Runner的实例方法
+                runner = session_data
+                runner.onError(e)
+                self.engine.cancel_all(session_data)
+                self._remove_runner(runner)
+                return False
+            raise e
 
     def _onException(self,event:str,exception):
+        """
+        主线程环境的异常。
+        """
         self.context._logger.error("main engine error!!",exc_info = True)
 
     def _onStart(self,event:str,engine:MainEventEngine):
@@ -234,7 +244,7 @@ class RunnerManager:
          分配今天的任务
         """
         self.context.log_d(TAG, "_secheduleToayJob")
-        [ runner_wrapper.secheduleToayJob(self.engine) for runner_wrapper in self.runner_list ]
+        [ runner_wrapper.secheduleToayJob() for runner_wrapper in self.runner_list ]
 
 
     def add(self,runner:Runner):
@@ -245,7 +255,13 @@ class RunnerManager:
                 raise RuntimeError(f"runner.name [{runner.getName()}] 已经存在！")
         self.runner_list.append(_RunnerSession(runner, self.context))
 
-
+    def _remove_runner(self,runner:Runner):
+        target_object = None
+        for runner_wrapper in self.runner_list:
+            if runner_wrapper.runner.getName() == runner.getName():
+                target_object = runner_wrapper
+        if not target_object is None:
+            self.runner_list.remove(target_object)
 
 
 
@@ -273,7 +289,9 @@ if __name__ == "__main__":
             scheduler.run_monthly("7,4,10,9,14","1:11:11",self.on_RunAt_Monthly_1_11_11,args={},run_if_miss_time=False)
 
         def onRunAt_15_23_34(self):
+            ##raise RuntimeError("sfsfsf")
             self.log("onRunAt_15_23_34")
+
 
         def on_RunAt_Weekly_5_4_6(self):
             now = self.context.now();

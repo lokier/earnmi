@@ -29,6 +29,7 @@ class _callback_task:
         self.post_token = 0  ##相同时间提交的话，跟post_token来保证提交顺序。
         self.is_timer = False  ##是否定时操作
         self.timer_second = None ##定时秒数
+        self.session_data = None
 
     def __lt__(self, other):
         if(self.time < other.time):
@@ -44,6 +45,7 @@ class _callback_task:
 
     def dispose(self):
         self.engine = None
+        self.session_data = None
         self.is_delete = True
 
 
@@ -78,6 +80,7 @@ class MainEventEngine:
         self._token = 0
         self._handlers: defaultdict = defaultdict(list)
         self._handlers: defaultdict = defaultdict(list)
+        self.process_session_data = None
 
     def register(self, type: str, handler: HandlerType) -> None:
         """
@@ -101,19 +104,20 @@ class MainEventEngine:
         self.__condition.release()
 
 
-    def post_event(self,event:str,data:Any=None):
+    def post_event(self,event:str,data:Any=None,session_data = None):
         """
         发送事件。
         """
-        task = self._build_event_task(event,data)
+        task = self._build_event_task(event,data,session_data)
         return self._post_task(task)
 
-    def _build_event_task(self,event:str,data:Any=None):
+    def _build_event_task(self,event:str,data:Any=None,session_data = None):
         time = self.now()
         task = _callback_task(self, time=time, callback=None, args=None, event=event, event_data=data)
+        task.session_data = session_data
         return task
 
-    def postDelay(self,delay_second,callback:Callable,args:dict = {}):
+    def postDelay(self,delay_second,callback:Callable,args:dict = {},session_data = None):
         """
         发送deleay操作。
         Callable：方法名
@@ -121,9 +125,10 @@ class MainEventEngine:
         """
         time = self.now() + timedelta(seconds=delay_second)
         task = _callback_task(self,time=time, callback=callback, args = args)
+        task.session_data = session_data
         return self._post_task(task)
 
-    def postTimer(self,timer_second,callback:Callable,args:dict = {},delay_second:int =0):
+    def postTimer(self,timer_second,callback:Callable,args:dict = {},delay_second:int =0,session_data = None):
         """
         发送定时器操作。
         参数
@@ -138,14 +143,9 @@ class MainEventEngine:
         task = _callback_task(self, time=time, callback=callback, args=args)
         task.is_timer = True
         task.timer_second = timer_second
+        task.session_data = session_data
         return self._post_task(task)
 
-
-    def post(self,callback:Callable,args:dict = {}):
-        """
-        相同时间可以保证按照post的提交顺序执行。
-        """
-        return self.postDelay(0,callback,args)
 
     def cancel(self,task:Any):
         if isinstance(task, _callback_task):
@@ -155,6 +155,32 @@ class MainEventEngine:
             task.is_delete = True
             task.time = self.now() - timedelta(seconds=1)
             self.__condition.release()
+
+    def cancel_all(self,session_data = None):
+        self.__condition.acquire()
+        keep_tasks = []
+        try:
+            task: _callback_task = self.task_queue.get_nowait()
+            if not session_data is None and task.session_data == session_data:
+                keep_tasks.append(task)
+            else:
+                task.is_delete = True
+                task.time = self.now() - timedelta(seconds=1)
+                task.dispose()
+        except Q.Empty:
+            pass
+        ##重新放入队列
+        for task in keep_tasks:
+            self.task_queue.put(task, block=False)
+        self.__condition.release()
+
+
+
+    def getProcessSessionData(self):
+        """
+        返回当前正在处理的post的SessionData参数。
+        """
+        return self.process_session_data
 
     def now(self) -> datetime:
         """
@@ -236,6 +262,7 @@ class MainEventEngine:
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
             task = self._build_event_task(MainEventEngine.EVNET_EXCEPTION, e)
+            task.session_data = self.getProcessSessionData()
             self.__process_at_time(task.time,task)
         print("MainEventEngine finished!!")
         self._active = False
@@ -306,6 +333,7 @@ class MainEventEngine:
             self.post_event(MainEventEngine.EVNET_DAY_CHANED,self)
         if not task is None:
             is_callbale_tsk = not task.callback_args is None
+            self.process_session_data = task.session_data
             if is_callbale_tsk:
                 _continue_ = True
                 if self.intercept_callbale_handler is None:
@@ -327,6 +355,8 @@ class MainEventEngine:
                 if task.event in self._handlers:
                     self.__process_post_event_task(task)
                     task.dispose()
+            self.process_session_data = None
+
 
     def __process_post_event_task(self,task:_callback_task):
         handler_list = self._handlers[task.event]

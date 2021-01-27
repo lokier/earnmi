@@ -54,9 +54,9 @@ def case1(asserter: Asserter):
     asserter.log(timePoint, "设置时间基础点")
     engine.postDelay(2, asserter.eventOccurAt, {"time": timePoint + timedelta(seconds=2), "msg": "2s后发生"})  ##时间在一秒后发生。
     asserter.sleep(1) ##等待1s
-    engine.post(asserter.eventOccurAt, {"time": timePoint + timedelta(seconds=1), "msg": "1s后发生"})  ##时间在10秒后发生。
+    engine.postDelay(0,asserter.eventOccurAt, {"time": timePoint + timedelta(seconds=1), "msg": "1s后发生"})  ##时间在10秒后发生。
 
-    engine.post((lambda: print(f'lambda timePoint:{timePoint}')))
+    engine.postDelay(0,(lambda: print(f'lambda timePoint:{timePoint}')))
 
 
 
@@ -199,8 +199,8 @@ end = datetime(year=2019, month=9, day=30, hour=23)
 
 asserter = Asserter()  ###回测环境。
 asserter.engine.register(MainEventEngine.EVNET_DAY_CHANED,onDayChangedEvent)
-#asserter_backtest.engine.run_backtest(start)
-asserter.engine.run()
+asserter.engine.run_backtest(start)
+#asserter.engine.run()
 
 testAllCase(asserter)
 

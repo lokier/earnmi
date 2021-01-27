@@ -81,12 +81,16 @@ class Runner:
         """
         pass
 
+    def onError(self,exception):
+        raise exception
+
     def onStop(self):
         """
         程序停车。 在单一线程里执行。
         启动后使用scheuler去规划后续的日常任务。
         """
         pass
+
 
 
 class StockRunner(Runner):
