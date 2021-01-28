@@ -121,33 +121,15 @@ class JoinQuantBarDriver(BarDriver):
     def to_jq_code(self,symbol:str)->str:
         return symbol
 
-    @abstractmethod
     def download_bars_daily(self, context: Context,start_date: datetime, end_date: datetime,
                                storage: BarStorage) -> int:
         """
         只下载日行情。
         """
         download_cnt = 0
-        start_date = utils.to_start_date(start_date)
-        end_date = utils.to_end_date(end_date)
         for symbol in self.get_symbol_lists():
-            newest_bar = storage.get_newest_bar_data(symbol, self.get_name(), Interval.DAILY)
-            if newest_bar is None:
-                # 不含数据，全量更新
-                download_cnt += self._download_bars_from_jq(context, symbol, start_date, end_date, Interval.DAILY,
-                                                              storage)
-            else:
-                # 已经含有数据，增量更新
-                oldest_bar = storage.get_oldest_bar_data(symbol, self.get_name(), Interval.DAILY)
-                assert not oldest_bar is None
-                oldest_datetime = utils.to_end_date(oldest_bar.datetime - timedelta(days=1))
-                if start_date < oldest_datetime:
-                    download_cnt += self._download_bars_from_jq(context, symbol, start_date, oldest_datetime,
-                                                                  Interval.DAILY, storage)
-                newest_datetime = utils.to_start_date(newest_bar.datetime + timedelta(days=1))  ##第二天一开始
-                if newest_datetime < end_date:
-                    download_cnt += self._download_bars_from_jq(context, symbol, newest_datetime, end_date,
-                                                                  Interval.DAILY, storage)
+            # 不含数据，全量更新
+            download_cnt += self._download_bars_from_jq(context, symbol, start_date, end_date, Interval.DAILY,storage)
 
         return download_cnt
 
@@ -193,7 +175,7 @@ class JoinQuantBarDriver(BarDriver):
             saveCount += bars.__len__()
             storage.save_bar_data(bars)
             batch_start = batch_end  # + timedelta(days = 1)
-        context.log_i(f"_download_bars_from_jq() :driver:{self.get_name()} jq_code={jq_code} start={start_date},end={end_date},requcent_cnt={requcent_cnt},count={saveCount}")
+        context.log_i("JoinQuantBarDriver",f"_download_bars_from_jq() :driver:{self.get_name()} jq_code={jq_code} start={start_date},end={end_date},requcent_cnt={requcent_cnt},count={saveCount}")
         return saveCount
 
     def toBarData(self,jq_code,prices,rowIndex:int,interval)->BarData:

@@ -1,6 +1,6 @@
 # Earnmi工程.
-
-* [Earnmi分析](earnmi_docs/README.md)
+* [Earnmi](earnmi_docs/README.md)
+    * [计划与想法](earnmi_docs/book/计划与想法.md)
     * [运行框架]()
         * [Context运行环境](earnmi_docs/book/context.md)
             * [App与Context](earnmi_docs/book/context.md#app)
@@ -21,8 +21,9 @@
         * [行情数据BarData](earnmi_docs/book/数据源.md#BarData)
         * [行情数据下载与调用](earnmi_docs/book/数据源.md#Market)
         * [数据更新、缓存:BarDataHandler]()
-    * [分析框架]()
-        * [分布分析、FloatEncode和FloatRange]()
+    * [行情分析]()
+        * [涨幅分析](earnmi_docs/book/涨幅分析.md)
+        * [指标工具]()
               * [!!!名称需要重构]()
         * [IndicatorMeasure:指标测量](earnmi_docs/book/指标测量.md)
         * [行情图查看:Chart]()

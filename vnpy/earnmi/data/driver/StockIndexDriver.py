@@ -54,3 +54,6 @@ class StockIndexDriver(JoinQuantBarDriver):
         获取今天的行情数据。如果今天没有开盘的话，换回None。
         """
         return SinaUtil.fetch_latest_bar(['sh000001'])
+
+if __name__ == "__main__":
+    pass
