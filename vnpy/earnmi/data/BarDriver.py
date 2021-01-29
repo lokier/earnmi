@@ -5,12 +5,23 @@
 from datetime import datetime
 from abc import abstractmethod
 from typing import Sequence
-from earnmi.core.Context import Context
+from earnmi.core.Context import Context,ContextWrapper
 from earnmi.data.BarStorage import BarStorage
 from earnmi.model.bar import LatestBar, BarData
 from earnmi.uitl.utils import utils
 from vnpy.trader.constant import Interval
 
+
+class DayRange:
+
+    def start(self)->datetime:
+        pass
+
+    def end(self)->datetime:
+        pass
+
+    def items(self)->Sequence['datetime']:
+        pass
 
 class BarDriver:
 
@@ -62,13 +73,12 @@ class BarDriver:
 
 
     @abstractmethod
-    def download_bars_from_net(self, context:Context,start_date: datetime, end_date: datetime, storage: BarStorage):
+    def download_bars_from_net(self, context:Context, days:DayRange, storage: BarStorage):
         """
         下载历史行情数据到数据库。
         参数:
-            start_date： 开始日期
-            end_date:  结束日期
-            save_bars: 回调函数
+            day_list： 下载的所有日期
+            storage：下载完成之后保存的数据库对象
         """
         raise RuntimeError("未实现")
 

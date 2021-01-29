@@ -3,6 +3,7 @@ from abc import abstractmethod
 from typing import Sequence
 
 from earnmi.core.Context import Context
+from earnmi.data.BarDriver import DayRange
 from earnmi.data.BarStorage import BarStorage
 from earnmi.data.driver.JoinQuantBarDriver import JoinQuantBarDriver
 from earnmi.data.driver.SinaUtil import SinaUtil
@@ -40,11 +41,11 @@ class StockIndexDriver(JoinQuantBarDriver):
         return interval == Interval.DAILY
 
     @abstractmethod
-    def download_bars_from_net(self,context:Context, start_date: datetime, end_date: datetime,storage: BarStorage)->int:
+    def download_bars_from_net(self, context:Context, days:DayRange, storage: BarStorage):
         """
         只下载日行情。
         """
-        return super().download_bars_daily(context,start_date,end_date,storage)
+        return super().download_bars_daily(context,days.start(),days.end(),storage)
 
     @abstractmethod
     def fetch_latest_bar(self,symbol_list:['str'])->Sequence["LatestBar"]:

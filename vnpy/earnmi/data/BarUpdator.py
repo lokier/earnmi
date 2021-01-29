@@ -3,15 +3,74 @@
 行情数据驱动器。
 """
 from datetime import datetime, timedelta
+from typing import Sequence
 
 from earnmi.data.BarMarket import BarMarket
 from earnmi.uitl.utils import utils
 
 from earnmi.core.Context import Context
-from earnmi.data.BarDriver import BarDriver
+from earnmi.data.BarDriver import BarDriver, DayRange
 from earnmi.data.BarStorage import BarStorage
 from vnpy.trader.constant import Interval
 
+
+
+class _dayRange_impl(DayRange):
+
+    def __init__(self,start:datetime,end:datetime,daylist:[]=None):
+        self.daylist = daylist
+        self._start = start
+        self._end = end
+
+    def start(self) -> datetime:
+        return self._start
+
+    def end(self) -> datetime:
+        return self._end
+
+    def items(self) -> Sequence['datetime']:
+        if self.daylist is None:
+            return self._make_day_list(self._start,self._end)
+        else:
+            return self._sub_day_list(self.daylist,self._start,self._end)
+
+    def _make_day_list(self,start:datetime,end:datetime):
+        day_list = []
+        assert start <= end
+        day_list.append(start)
+        day = start
+        while not utils.is_same_day(day,end):
+            day = day + timedelta(days=1)
+            day_list.append(day)
+        assert utils.is_same_day(start, day_list[0])
+        assert utils.is_same_day(end, day_list[-1])
+        return day_list
+
+    def _sub_day_list(self,day_list:[],start:datetime,end:datetime):
+        start_index = 0
+        for i in range(0,len(day_list)):
+            if utils.is_same_day(day_list[i], start):
+                start_index = i
+                break
+            elif start < day_list[i]:
+                start_index = i
+                break
+
+        assert start_index>=0
+        end_index = len(day_list)
+        for i in range(start_index,len(day_list)):
+            if utils.is_same_day(day_list[i],end):
+                end_index = i +1
+                break
+            elif day_list[i] > end:
+                end_index = i
+                break
+        assert start_index>=0
+        assert start_index<=end_index
+        subList =  day_list[start_index:end_index]
+        #assert utils.is_same_day(start,subList[0])
+        #assert utils.is_same_day(end,subList[-1])
+        return subList
 
 class BarUpdator:
     """
@@ -50,7 +109,7 @@ class BarUpdator:
         storage = self._storage
 
         ###先更新市场指数行情
-        update_count = self._update_driver(index_driver, start, end, clear)
+        update_count = self._update_driver(index_driver, _dayRange_impl(start, end), clear)
         self.context.log_i("BarUpdator",f'update  index({index_driver.get_name()}): update_count = {update_count}')
 
         ##根据指数日行情，修正更新时间节点（过滤那些不在的交易日的时间）
@@ -65,23 +124,34 @@ class BarUpdator:
 
         newest_time = utils.to_end_date(newest_bar.datetime)
         oldest_time = utils.to_start_date(oldest_bar.datetime)
+        index_bars = index_driver.load_bars(index_symbol,Interval.DAILY,start,end,storage)
+        trade_day_list = self._to_day_list(index_bars)
 
         ##更新的时间范围(start,end)不能超过市场指数的时间范围
         if start < oldest_time:
             start = oldest_time
         if end > newest_time:
             end = newest_time
+        _day_list = _dayRange_impl(start, end, trade_day_list)
 
         update_count = 0
         for driver in drivers:
-            update_count += self._update_driver(driver, start, end, clear)
+            update_count += self._update_driver(driver, _day_list, clear)
         self.context.log_i("BarUpdator",f'update  drivers: update_count = {update_count}')
 
-    def _update_driver(self,driver:BarDriver,start,end,clear)->int:
+    def _to_day_list(self,bars:Sequence["BarData"]):
+        day_list = []
+        for bar in bars:
+            day_list.append(bar.datetime)
+        return day_list
+
+    def _update_driver(self, driver:BarDriver, days:_dayRange_impl, clear)->int:
         driver_name = driver.get_name()
         if clear:
             self._storage.clean(driver=driver_name)
         download_cnt = 0
+        start = days.start()
+        end = days.end()
         start_date = utils.to_start_date(start)
         end_date = utils.to_end_date(end)
         storage = self._storage
@@ -89,7 +159,7 @@ class BarUpdator:
             newest_bar = storage.get_newest_bar_data(symbol, driver.get_name(), Interval.DAILY)
             if newest_bar is None:
                 # 不含数据，全量更新
-                download_cnt += driver.download_bars_from_net(self.context, start_date, end_date, self._storage)
+                download_cnt += driver.download_bars_from_net(self.context, days, self._storage)
             else:
                 # 已经含有数据，增量更新
                 oldest_bar = storage.get_oldest_bar_data(symbol, driver.get_name(), Interval.DAILY)
@@ -97,10 +167,13 @@ class BarUpdator:
                 oldest_datetime = utils.to_end_date(oldest_bar.datetime - timedelta(days=1))
                 newest_datetime = utils.to_start_date(newest_bar.datetime + timedelta(days=1))  ##第二天一开始
                 if start_date < oldest_datetime:
-                    download_cnt += driver.download_bars_from_net(self.context, start_date, oldest_datetime,self._storage)
+                    _the_day_list = _dayRange_impl(start_date, oldest_datetime, days.daylist)
+                    download_cnt += driver.download_bars_from_net(self.context, _the_day_list,self._storage)
                 if newest_datetime < end_date:
-                    download_cnt += driver.download_bars_from_net(self.context, newest_datetime, end_date,self._storage)
+                    _the_day_list = _dayRange_impl(newest_datetime, end_date, days.daylist)
+                    download_cnt += driver.download_bars_from_net(self.context, _the_day_list,self._storage)
         return download_cnt
+
 
 
 if __name__ == "__main__":
@@ -123,7 +196,7 @@ if __name__ == "__main__":
 
         bar_updator = BarUpdator(app,storage)
 
-        bar_updator.update_drivers(drvier1,[drvier2],datetime(year=2021,month=1,day=21),clear=False)
+        bar_updator.update_drivers(drvier1,[],datetime(year=2021,month=1,day=8),clear=False)
         app.log_i("xxxx","run_bar_updator() finished!")
 
 
