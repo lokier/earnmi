@@ -3,8 +3,8 @@ from abc import abstractmethod
 from typing import Sequence
 
 from earnmi.core.Context import Context
-from earnmi.data.BarDriver import JoinQuantBarDriver
 from earnmi.data.BarStorage import BarStorage
+from earnmi.data.driver.JoinQuantBarDriver import JoinQuantBarDriver
 from earnmi.data.driver.SinaUtil import SinaUtil
 from earnmi.model.bar import LatestBar
 from vnpy.trader.constant import Interval

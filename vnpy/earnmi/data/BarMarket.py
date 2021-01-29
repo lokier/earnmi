@@ -61,6 +61,7 @@ class BarMarket:
         """
         self._driver_index:BarDriver = indexDriver
         self._drivers = drivers
+        self._symbol_to_driver_map = {}
         for code in self._driver_index.get_symbol_lists():
             self._symbol_to_driver_map[code] = self._driver_index
         for driver in self._drivers:
@@ -92,6 +93,25 @@ class BarMarket:
             raise RuntimeError("end time must be < today")
         return driver.load_bars(symbol,interval,start,end,self._storage)
 
+    def get_symbol_list(self,symbol:str):
+        """
+        通过symbol获取子成分股列表。对应BarDriver的get_sub_symbol_lists方法
+        """
+        if not self._inited:
+            raise RuntimeError("BarMarket has not inited yet!")
+        driver: BarDriver = self._symbol_to_driver_map.get(symbol)
+        if driver is None:
+            raise RuntimeError(f" cant't find drvier from symbol: {symbol}")
+        return driver.get_sub_symbol_lists(symbol)
+
+    def get_symbol_list_at(self,driver_name:str):
+        """
+        获取某个驱动名称的成分股列表。
+        """
+        if not self._inited:
+            raise RuntimeError("BarMarket has not inited yet!")
+        driver:BarDriver = self._find_bar_driver(driver_name)
+        return driver.get_symbol_lists()
 
     def get_latest_bar(self,symbol_list:['str'] = None)->{}:
         """

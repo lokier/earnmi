@@ -2,16 +2,14 @@
 """
 行情数据驱动器。
 """
-from datetime import timedelta,datetime
+from datetime import datetime
 from abc import abstractmethod
-from enum import Enum
 from typing import Sequence
 from earnmi.core.Context import Context
 from earnmi.data.BarStorage import BarStorage
 from earnmi.model.bar import LatestBar, BarData
 from earnmi.uitl.utils import utils
 from vnpy.trader.constant import Interval
-import numpy as np
 
 
 class BarDriver:
@@ -35,36 +33,32 @@ class BarDriver:
     @abstractmethod
     def get_symbol_lists(self):
         """
-        支持的股票代码列表
+        该驱动名称的成分股代码(成分股可能是指数，行业代码，股票代码，合约代码)
         """
         raise RuntimeError("未实现")
-
 
     @abstractmethod
-    def get_symbol_name(self,symbol:str):
+    def get_symbol_name(self, symbol: str):
         """
-          对应股票代码的名称。
+          对应成分股代码的名称。
         """
         raise RuntimeError("未实现")
+
+    @abstractmethod
+    def get_sub_symbol_lists(self,symobl:str):
+        """
+        参数：返回该成分股下的所有的子成分股
+        """
+        return None
+
+
 
     @abstractmethod
     def support_interval(self, interval: Interval) -> bool:
         """
-        是否支持的行情粒度。分为分钟、小时、天、周
+        支持的行情粒度。分为分钟、小时、天、周
         """
         raise RuntimeError("未实现")
-
-    def load_bars(self, symbol: str,interval:Interval, start: datetime,end:datetime, storage: BarStorage) -> Sequence["BarData"]:
-        """
-        从数据库加载行情。
-        """
-        return storage.load_bar_data(symbol,self.get_name(),interval,start,end)
-
-    def load_newest_bar(self,symbol: str,interval:Interval,storage: BarStorage) -> BarData:
-        return storage.get_newest_bar_data(symbol,self.get_name(),interval)
-
-    def load_oldest_bar(self,symbol: str,interval:Interval,storage: BarStorage) -> BarData:
-        return storage.get_oldest_bar_data(symbol,self.get_name(),interval)
 
 
     @abstractmethod
@@ -116,89 +110,18 @@ class BarDriver:
                 laterst_bars.append(None)
         return laterst_bars
 
-class JoinQuantBarDriver(BarDriver):
-
-    def to_jq_code(self,symbol:str)->str:
-        return symbol
-
-    def download_bars_daily(self, context: Context,start_date: datetime, end_date: datetime,
-                               storage: BarStorage) -> int:
+    def load_bars(self, symbol: str,interval:Interval, start: datetime,end:datetime, storage: BarStorage) -> Sequence["BarData"]:
         """
-        只下载日行情。
+        从数据库加载行情。
         """
-        download_cnt = 0
-        for symbol in self.get_symbol_lists():
-            # 不含数据，全量更新
-            download_cnt += self._download_bars_from_jq(context, symbol, start_date, end_date, Interval.DAILY,storage)
+        return storage.load_bar_data(symbol,self.get_name(),interval,start,end)
 
-        return download_cnt
+    def load_newest_bar(self,symbol: str,interval:Interval,storage: BarStorage) -> BarData:
+        return storage.get_newest_bar_data(symbol,self.get_name(),interval)
 
-    def _download_bars_from_jq(self, context:Context,symbol:str, start_date: datetime, end_date: datetime,interval:Interval,storage: BarStorage)->int:
-        from earnmi.uitl.jqSdk import jqSdk
-        jq = jqSdk.get()
-        frequency = "1d"
-        batch_day = 900
-        if interval == Interval.DAILY:
-            frequency = "1d"
-            batch_day = 900
-        elif interval == Interval.MINUTE:
-            frequency = '1m'
-            batch_day = 4
-        elif interval == Interval.HOUR:
-            frequency = "1h"
-            batch_day = 200
-        else:
-            raise RuntimeError(f"unsupport interval:{interval}")
+    def load_oldest_bar(self,symbol: str,interval:Interval,storage: BarStorage) -> BarData:
+        return storage.get_oldest_bar_data(symbol,self.get_name(),interval)
 
-        interval = Interval.DAILY
-        batch_start = start_date
-        saveCount = 0
-        jq_code = self.to_jq_code(symbol)
-        requcent_cnt = 0
-        while (batch_start.__lt__(end_date)):
-            batch_end = batch_start + timedelta(days=batch_day)
-            batch_end = utils.to_end_date(batch_end)
-            if (batch_end.__gt__(end_date)):
-                batch_end = end_date
 
-            requcent_cnt+=1
-            prices = jq.get_price(jq_code, start_date=batch_start, end_date=batch_end,
-                                  fields=['open', 'close', 'high', 'low', 'volume'], frequency=frequency)
-            if (prices is None):
-                break
-            bars = []
-            lists = np.array(prices)
-            for rowIndex in range(0, lists.shape[0]):
-                bar = self.toBarData(symbol,prices,rowIndex,interval)
-                if not bar is None:
-                    bars.append(bar)
-            saveCount += bars.__len__()
-            storage.save_bar_data(bars)
-            batch_start = batch_end  # + timedelta(days = 1)
-        context.log_i("JoinQuantBarDriver",f"_download_bars_from_jq() :driver:{self.get_name()} jq_code={jq_code} start={start_date},end={end_date},requcent_cnt={requcent_cnt},count={saveCount}")
-        return saveCount
-
-    def toBarData(self,jq_code,prices,rowIndex:int,interval)->BarData:
-        open_interest = 0
-        row = prices.iloc[rowIndex]
-        wd = prices.index[rowIndex]
-        date = datetime(year=wd.year, month=wd.month, day=wd.day, hour=wd.hour, minute=wd.minute, second=wd.second);
-        return BarData(
-            symbol=jq_code,
-            _driver=self.get_name(),
-            datetime=date,
-            interval=interval,
-            volume=self._defualt_value(row['volume'],0.0),
-            open_price=self._defualt_value(row['open'],0.0),
-            high_price=self._defualt_value(row['high'],0.0),
-            low_price=self._defualt_value(row['low'],0.0),
-            close_price=self._defualt_value(row['close'],0.0),
-            open_interest=self._defualt_value(open_interest,0.0),
-        )
-
-    def _defualt_value(self,value,deufault_value):
-        if np.math.isnan(value):
-            return deufault_value
-        return value
 
 
