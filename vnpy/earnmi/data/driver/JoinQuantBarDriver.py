@@ -14,19 +14,9 @@ class JoinQuantBarDriver(BarDriver):
     def to_jq_code(self,symbol:str)->str:
         return symbol
 
-    def download_bars_daily(self, context: Context,start_date: datetime, end_date: datetime,
-                               storage: BarStorage) -> int:
-        """
-        只下载日行情。
-        """
-        download_cnt = 0
-        for symbol in self.get_symbol_lists():
-            # 不含数据，全量更新
-            download_cnt += self._download_bars_from_jq(context, symbol, start_date, end_date, Interval.DAILY,storage)
 
-        return download_cnt
 
-    def _download_bars_from_jq(self, context:Context,symbol:str, start_date: datetime, end_date: datetime,interval:Interval,storage: BarStorage)->int:
+    def download_bars_from_jq(self, context:Context,symbol:str, start_date: datetime, end_date: datetime,interval:Interval,storage: BarStorage)->int:
         from earnmi.uitl.jqSdk import jqSdk
         jq = jqSdk.get()
         frequency = "1d"

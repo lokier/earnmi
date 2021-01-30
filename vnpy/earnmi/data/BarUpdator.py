@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Sequence
 
 from earnmi.data.BarMarket import BarMarket
+from earnmi.data.driver.Sw2Driver import SW2Driver
 from earnmi.uitl.utils import utils
 
 from earnmi.core.Context import Context
@@ -159,7 +160,7 @@ class BarUpdator:
             newest_bar = storage.get_newest_bar_data(symbol, driver.get_name(), Interval.DAILY)
             if newest_bar is None:
                 # 不含数据，全量更新
-                download_cnt += driver.download_bars_from_net(self.context, days, self._storage)
+                download_cnt += driver.download_bars_from_net(self.context, symbol,days, self._storage)
             else:
                 # 已经含有数据，增量更新
                 oldest_bar = storage.get_oldest_bar_data(symbol, driver.get_name(), Interval.DAILY)
@@ -168,10 +169,10 @@ class BarUpdator:
                 newest_datetime = utils.to_start_date(newest_bar.datetime + timedelta(days=1))  ##第二天一开始
                 if start_date < oldest_datetime:
                     _the_day_list = _dayRange_impl(start_date, oldest_datetime, days.daylist)
-                    download_cnt += driver.download_bars_from_net(self.context, _the_day_list,self._storage)
+                    download_cnt += driver.download_bars_from_net(self.context,symbol, _the_day_list,self._storage)
                 if newest_datetime < end_date:
                     _the_day_list = _dayRange_impl(newest_datetime, end_date, days.daylist)
-                    download_cnt += driver.download_bars_from_net(self.context, _the_day_list,self._storage)
+                    download_cnt += driver.download_bars_from_net(self.context,symbol, _the_day_list,self._storage)
         return download_cnt
 
 
@@ -193,10 +194,11 @@ if __name__ == "__main__":
         assert not storage is None
         drvier1 = StockIndexDriver()
         drvier2 = ZZ500StockDriver()
+        driver3 = SW2Driver()
 
         bar_updator = BarUpdator(app,storage)
 
-        bar_updator.update_drivers(drvier1,[],datetime(year=2021,month=1,day=8),clear=False)
+        bar_updator.update_drivers(drvier1,[driver3],datetime(year=2021,month=1,day=8),clear=False)
         app.log_i("xxxx","run_bar_updator() finished!")
 
 

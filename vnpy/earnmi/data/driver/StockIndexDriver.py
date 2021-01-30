@@ -41,11 +41,12 @@ class StockIndexDriver(JoinQuantBarDriver):
         return interval == Interval.DAILY
 
     @abstractmethod
-    def download_bars_from_net(self, context:Context, days:DayRange, storage: BarStorage):
+    def download_bars_from_net(self, context:Context, symbol:str, days:DayRange, storage: BarStorage):
         """
         只下载日行情。
         """
-        return super().download_bars_daily(context,days.start(),days.end(),storage)
+        return super().download_bars_from_jq(context, symbol, days.start(), days.end(), Interval.DAILY,storage)
+
 
     @abstractmethod
     def fetch_latest_bar(self,symbol_list:['str'])->Sequence["LatestBar"]:

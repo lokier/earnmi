@@ -73,7 +73,7 @@ class BarDriver:
 
 
     @abstractmethod
-    def download_bars_from_net(self, context:Context, days:DayRange, storage: BarStorage):
+    def download_bars_from_net(self, context:Context, symbol:str, days:DayRange, storage: BarStorage):
         """
         下载历史行情数据到数据库。
         参数:
