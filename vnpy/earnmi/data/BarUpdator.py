@@ -22,6 +22,7 @@ class _dayRange_impl(DayRange):
         self.daylist = daylist
         self._start = start
         self._end = end
+        self.reverse = False
 
     def start(self) -> datetime:
         return self._start
@@ -69,6 +70,8 @@ class _dayRange_impl(DayRange):
         assert start_index>=0
         assert start_index<=end_index
         subList =  day_list[start_index:end_index]
+        if self.reverse:
+            return list(reversed(subList))
         #assert utils.is_same_day(start,subList[0])
         #assert utils.is_same_day(end,subList[-1])
         return subList
@@ -169,6 +172,7 @@ class BarUpdator:
                 newest_datetime = utils.to_start_date(newest_bar.datetime + timedelta(days=1))  ##第二天一开始
                 if start_date < oldest_datetime:
                     _the_day_list = _dayRange_impl(start_date, oldest_datetime, days.daylist)
+                    _the_day_list.reverse = True ###翻转时间，优先下载大日期
                     download_cnt += driver.download_bars_from_net(self.context,symbol, _the_day_list,self._storage)
                 if newest_datetime < end_date:
                     _the_day_list = _dayRange_impl(newest_datetime, end_date, days.daylist)
@@ -198,7 +202,7 @@ if __name__ == "__main__":
 
         bar_updator = BarUpdator(app,storage)
 
-        bar_updator.update_drivers(drvier1,[driver3],datetime(year=2021,month=1,day=29),clear=False)
+        bar_updator.update_drivers(drvier1,[driver3],datetime(year=2020,month=1,day=6),clear=False)
         app.log_i("xxxx","run_bar_updator() finished!")
 
 
