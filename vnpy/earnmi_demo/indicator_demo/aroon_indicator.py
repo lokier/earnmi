@@ -5,7 +5,7 @@ from werkzeug.routing import Map
 
 from earnmi.chart.Chart import Chart, Signal, IndicatorItem
 from earnmi.chart.Factory import Factory
-from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange
+from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange2
 from earnmi.chart.Indicator import Indicator
 from earnmi.data.SWImpl import SWImpl
 from earnmi.uitl.utils import utils
@@ -95,8 +95,8 @@ for code in lists:
 
 day_list = np.array(day_list)
 pct_list = np.array(pct_list)
-print(f"     天数:{day_list.mean()},值分布:{FloatRange.toStr(day_encoder.computeValueDisbustion(day_list), day_encoder)}" )
-print(f"     pct:{pct_list.mean()},值分布:{FloatRange.toStr(pct_encoder.computeValueDisbustion(pct_list), pct_encoder)}")
+print(f"     天数:{day_list.mean()},值分布:{FloatRange2.toStr(day_encoder.computeValueDisbustion(day_list), day_encoder)}")
+print(f"     pct:{pct_list.mean()},值分布:{FloatRange2.toStr(pct_encoder.computeValueDisbustion(pct_list), pct_encoder)}")
 
 
 
