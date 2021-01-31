@@ -2,7 +2,7 @@ import numpy as np
 import talib
 import numpy as np  # 数组相关的库
 import matplotlib.pyplot as plt  # 绘图库
-from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange
+from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange2
 
 
 class _FactoryItem:
@@ -43,7 +43,7 @@ class FactoryParser:
             for i in range(0, N + 1):
                 spli_list.append(_min + i * (_max - _min) / N)
             dif_encoder = FloatEncoder(spli_list)
-            print( f"      值分布:{FloatRange.toStr(dif_encoder.computeValueDisbustion(value_list), dif_encoder)}")
+            print( f"      值分布:{FloatRange2.toStr(dif_encoder.computeValueDisbustion(value_list), dif_encoder)}")
 
     """
         计算相关性情况。
@@ -112,7 +112,7 @@ class FactoryParser:
 
             dif_encoder = FloatEncoder([-1,1])
             print(f"name:{factory_elemen_name} , size:{size}, maxFactory:%.2f,minFactory:%.2f,avgPct:%.2f" % (_max, _min, pct_list.mean()))
-            print( f"      pct值分布:{FloatRange.toStr(dif_encoder.computeValueDisbustion(pct_list), dif_encoder)}")
+            print( f"      pct值分布:{FloatRange2.toStr(dif_encoder.computeValueDisbustion(pct_list), dif_encoder)}")
 
             # plt.scatter(value_list, pct_list, alpha=0.15,marker='.')  #
             # plt.show()

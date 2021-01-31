@@ -13,7 +13,7 @@ from typing import Sequence
 import pandas as pd
 from peewee import Database
 
-from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
+from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange2
 from earnmi.data.SWImpl import SWImpl
 from earnmi.model.BarDataSource import BarDataSource, ZZ500DataSource
 from earnmi.model.CoreEngine import CoreEngine
@@ -494,8 +494,8 @@ class CoreEngineRunner():
                     data.longData.loss_pct_max = min(data.longData.loss_pct_max, pct)
 
 
-    def __getFloatRangeInfo(self,ranges:['FloatRange'],encoder:FloatEncoder):
-        return FloatRange.toStr(ranges,encoder)
+    def __getFloatRangeInfo(self, ranges:['FloatRange2'], encoder:FloatEncoder):
+        return FloatRange2.toStr(ranges, encoder)
 
     """"
     """

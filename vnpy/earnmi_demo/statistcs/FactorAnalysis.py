@@ -4,7 +4,7 @@ import numpy as np
 import talib
 import numpy as np  # 数组相关的库
 import matplotlib.pyplot as plt  # 绘图库
-from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange
+from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange2
 
 
 class _Item:
@@ -64,7 +64,7 @@ class FactoryAnalysis:
                 pct = item.pct_list[day]
                 pct_values.append(pct)
             pct_values = np.array(pct_values)
-            print(f"  {item_desc}:{FactoryAnalysis.keep_3_float(pct_values.mean())},pct值分布:{FloatRange.toStr(dif_encoder.computeValueDisbustion(pct_values), dif_encoder)}")
+            print(f"  {item_desc}:{FactoryAnalysis.keep_3_float(pct_values.mean())},pct值分布:{FloatRange2.toStr(dif_encoder.computeValueDisbustion(pct_values), dif_encoder)}")
 
     def __get_avg_pct(self,pct_range,pct_list:np.ndarray):
         startIndex = pct_range[0]

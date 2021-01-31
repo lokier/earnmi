@@ -7,7 +7,7 @@ from earnmi_demo.statistcs.FactoryParser import FactoryParser
 from vnpy.trader.object import BarData
 
 from earnmi.chart.Chart import Chart
-from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange
+from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange2
 from earnmi.chart.Indicator import Indicator
 from earnmi.chart.Factory import Factory
 from earnmi.data.MarketImpl import Market2Impl

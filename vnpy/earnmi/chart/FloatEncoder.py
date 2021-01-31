@@ -81,7 +81,7 @@ class FloatEncoder:
             probal = 0.0
             if totalCount > 0:
                 probal = count / totalCount
-            floatRange = FloatRange(encode=encode, probal=probal)
+            floatRange = FloatRange2(encode=encode, probal=probal)
             rangeList.append(floatRange)
 
         return rangeList
@@ -102,7 +102,7 @@ def FloatRangeCompare(d1, d2):
     return d1.probal - d2.probal
 
 @dataclass
-class FloatRange(object):
+class FloatRange2(object):
     """
     FloatEncoder里的编码值
     """
@@ -112,14 +112,14 @@ class FloatRange(object):
     """
     probal:float
 
-    def sort(lists:['FloatRange'],reverse = True)->['FloatRange']:
+    def sort(lists:['FloatRange2'], reverse = True)->['FloatRange2']:
         return sorted(lists, key=cmp_to_key(FloatRangeCompare), reverse=reverse)
     
     @staticmethod
-    def toStr(ranges:['FloatRange'],encoder:FloatEncoder)->str:
+    def toStr(ranges:['FloatRange2'], encoder:FloatEncoder)->str:
         info = "["
         for i in range(0, len(ranges)):
-            r: FloatRange = ranges[i]
+            r: FloatRange2 = ranges[i]
             _min, _max = encoder.parseEncode(r.encode)
             if _min is None:
                 _min = "min"

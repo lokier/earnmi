@@ -4,7 +4,7 @@ from functools import cmp_to_key
 
 from earnmi.chart.Chart import HoldBar
 from earnmi.chart.Factory import Factory
-from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange
+from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange2
 from earnmi.chart.Indicator import Indicator
 from earnmi.model.BarDataSource import ZZ500DataSource, BarDataSource
 from earnmi.uitl.BarUtils import BarUtils
@@ -171,7 +171,7 @@ class IndicatorMeasure:
         ragneList = pct_encoder.computeValueDisbustion(pct_list)
         other_probal = None
         for i in range(0, len(ragneList)):
-            r: FloatRange = ragneList[i]
+            r: FloatRange2 = ragneList[i]
             if r.probal < 0.01:
                 ##小于1%，归为other
                 if other_probal is None:

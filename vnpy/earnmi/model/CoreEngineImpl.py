@@ -9,7 +9,7 @@ import sklearn
 from sklearn.ensemble import RandomForestClassifier
 import joblib
 
-from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
+from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange2
 from earnmi.model.BarDataSource import SWDataSource, BarDataSource
 from earnmi.model.PredictAbilityData import PredictAbilityData, ModelAbilityData
 from earnmi.model.PredictOrder import PredictOrder
@@ -163,7 +163,7 @@ class ClassifierModel(PredictModel):
         fillList = []
         for index in range(0, len(probal_list)):
             encode = label_list[index]
-            floatRange = FloatRange(encode=encode, probal=probal_list[index])
+            floatRange = FloatRange2(encode=encode, probal=probal_list[index])
             fillList.append(floatRange)
         return fillList
 
@@ -192,10 +192,10 @@ class ClassifierModel(PredictModel):
                 floatSellRangeList2 = self.buldRangeList(self.labelListSell2,sellRange2_probal_list[i])
                 floatBuyRangeList2 = self.buldRangeList(self.labelListBuy2,buyRange2_probal_list[i])
 
-                pData.buyRange1 = FloatRange.sort(floatBuyRangeList1)
-                pData.buyRange2 = FloatRange.sort(floatBuyRangeList2)
-                pData.sellRange1 = FloatRange.sort(floatSellRangeList1)
-                pData.sellRange2 = FloatRange.sort(floatSellRangeList2)
+                pData.buyRange1 = FloatRange2.sort(floatBuyRangeList1)
+                pData.buyRange2 = FloatRange2.sort(floatBuyRangeList2)
+                pData.sellRange1 = FloatRange2.sort(floatSellRangeList1)
+                pData.sellRange2 = FloatRange2.sort(floatSellRangeList2)
                 #print(f"===> predict powerate: {pData.getPowerRate()}"  )
                 retList.append(pData)
             if single:
@@ -351,11 +351,11 @@ class CoreEngineImpl(CoreEngine):
         dimenCountEncoder = FloatEncoder([10, 50, 100, 150, 200, 500, 1000, 2000, 5000])
         dimenCountRangeList = dimenCountEncoder.computeValueDisbustion(dataCountList)
         ##打印维度的分布情况
-        self.printLog(f"各个维度数量分布情况（将过滤数量少于{min_size}个的维度）:\n    {FloatRange.toStr(dimenCountRangeList,dimenCountEncoder)}")
+        self.printLog(f"各个维度数量分布情况（将过滤数量少于{min_size}个的维度）:\n    {FloatRange2.toStr(dimenCountRangeList, dimenCountEncoder)}")
         occurDateCountEncoder = FloatEncoder([1, 3, 8,15,30])
         occurDateCountRangeList = occurDateCountEncoder.computeValueDisbustion(list(dateOccurCount.values()))
         ##打印维度的分布情况
-        self.printLog(f"每个交易日产生收集数据个数的分布情况:\n    {FloatRange.toStr(occurDateCountRangeList, occurDateCountEncoder)}")
+        self.printLog(f"每个交易日产生收集数据个数的分布情况:\n    {FloatRange2.toStr(occurDateCountRangeList, occurDateCountEncoder)}")
 
         self.printLog(f"可用训练的数据利用率为: {fitlerTotalCount} / {totalCount} = %.2f%%" % (100 * fitlerTotalCount /totalCount) )
 
@@ -528,8 +528,8 @@ class CoreEngineImpl(CoreEngine):
             self.printLog(f"dimen:{dimen.value} => {abilityData.toStr()}")
             self.printLog(f"    量化数据情况：{quantData.abilityData.toStr()}")
             self.printLog(f"    预测 sellPct能力:%.3f,buyPct能力:%.2f：" % (abilityData.getSellAbility(pctEncoder),abilityData.getBuyAbility(pctEncoder)))
-            self.printLog(f"    预测SellPct值分布情况:{FloatRange.toStr(abilityData.sellPctRnageList,pctEncoder)}")
-            self.printLog(f"    预测Buy_Pct值分布情况:{FloatRange.toStr(abilityData.buyPctRnageList,pctEncoder)}")
+            self.printLog(f"    预测SellPct值分布情况:{FloatRange2.toStr(abilityData.sellPctRnageList, pctEncoder)}")
+            self.printLog(f"    预测Buy_Pct值分布情况:{FloatRange2.toStr(abilityData.buyPctRnageList, pctEncoder)}")
         abilitySize = len(abilityDataMap)
         sell_extra = 100 * (sell_score_total - sell_score_total_quant) / sell_score_total_quant if sell_score_total_quant > 0 else 0
         buy_extra  = 100 *  (buy_score_total - buy_score_total_quant) / buy_score_total_quant if buy_score_total_quant > 0 else 0
@@ -587,8 +587,8 @@ class CoreEngineImpl(CoreEngine):
         pctEncoder = self.getEngineModel().getPctEncoder1()
         abilityData.sellPctRnageList = pctEncoder.computeValueDisbustion(train_sell_pct_value_list + test_sell_pct_value_list )
         abilityData.buyPctRnageList = pctEncoder.computeValueDisbustion(train_buy_pct_value_list + test_buy_pct_value_list )
-        abilityData.sellPctRnageList = FloatRange.sort(abilityData.sellPctRnageList)
-        abilityData.buyPctRnageList = FloatRange.sort(abilityData.buyPctRnageList)
+        abilityData.sellPctRnageList = FloatRange2.sort(abilityData.sellPctRnageList)
+        abilityData.buyPctRnageList = FloatRange2.sort(abilityData.buyPctRnageList)
 
         return abilityData
 
@@ -704,7 +704,7 @@ class CoreEngineImpl(CoreEngine):
     """
     计算编码分区最佳的QuantData
     """
-    def __findBestFloatEncoder(self,pct_list:[],originEncoder:FloatEncoder)->Union[FloatEncoder,Sequence['FloatRange']]:
+    def __findBestFloatEncoder(self,pct_list:[],originEncoder:FloatEncoder)->Union[FloatEncoder,Sequence['FloatRange2']]:
         SCALE = 5000
         min,max = originEncoder.parseEncode(int(originEncoder.mask()/2))
         min = int(min * SCALE)
@@ -726,7 +726,7 @@ class CoreEngineImpl(CoreEngine):
 
         return bestEncoder,bestRnageList
 
-    def __computeRangeFloatList(self,pct_list:[],encoder:FloatEncoder,sort = True)->Sequence['FloatRange']:
+    def __computeRangeFloatList(self,pct_list:[],encoder:FloatEncoder,sort = True)->Sequence['FloatRange2']:
         rangeCount = {}
         totalCount = len(pct_list)
         for i in range(0, encoder.mask()):
@@ -740,10 +740,10 @@ class CoreEngineImpl(CoreEngine):
             probal = 0.0
             if totalCount > 0:
                 probal = count / totalCount
-            floatRange = FloatRange(encode=encode, probal=probal)
+            floatRange = FloatRange2(encode=encode, probal=probal)
             rangeList.append(floatRange)
         if sort:
-            return FloatRange.sort(rangeList)
+            return FloatRange2.sort(rangeList)
         return rangeList
 
     def __getSellBuyPctLabel(self,cData:CollectData):
@@ -861,8 +861,8 @@ class CoreEngineImpl(CoreEngine):
         #     quant.getPowerRate(), quant.getPowerProbal(True), quant.sellCenterPct))
 
         self.printLog(f"[dime:{dimen.value}]: count={quant.count},pow_rate=%.3f,sCenterPct=%.2f,bCenterPct=%.2f"  % (quant.getPowerRate(),quant.sellCenterPct,quant.buyCenterPct))
-        self.printLog(f"      sellRange:{FloatRange.toStr(quant.sellRange,quant.getSellFloatEncoder())}")
-        self.printLog(f"      buyRange:{FloatRange.toStr(quant.buyRange,quant.getBuyFloatEncoder())}")
+        self.printLog(f"      sellRange:{FloatRange2.toStr(quant.sellRange, quant.getSellFloatEncoder())}")
+        self.printLog(f"      buyRange:{FloatRange2.toStr(quant.buyRange, quant.getBuyFloatEncoder())}")
 
 
         pass

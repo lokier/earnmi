@@ -2,7 +2,7 @@ import math
 from dataclasses import dataclass
 from typing import Sequence
 
-from earnmi.chart.FloatEncoder import FloatRange
+from earnmi.chart.FloatEncoder import FloatRange2
 from earnmi.uitl.utils import utils
 
 
@@ -50,8 +50,8 @@ class PredictAbilityData(object):
     """
     预测值的pct值范围分布。
     """
-    sellPctRnageList: Sequence["FloatRange"] = None
-    buyPctRnageList: Sequence["FloatRange"] = None
+    sellPctRnageList: Sequence["FloatRange2"] = None
+    buyPctRnageList: Sequence["FloatRange2"] = None
 
     """
     返回卖方的预测能力值，对做多来说，越大越好。
@@ -59,7 +59,7 @@ class PredictAbilityData(object):
     def getSellAbility(self,encoder):
         ability = 0
         for i in range(0, len(self.sellPctRnageList)):
-            r: FloatRange = self.sellPctRnageList[i]
+            r: FloatRange2 = self.sellPctRnageList[i]
             _min, _max = encoder.parseEncode(r.encode)
             if _min is None:
                 _min = _max
@@ -74,7 +74,7 @@ class PredictAbilityData(object):
     def getBuyAbility(self,encoder):
         ability = 0
         for i in range(0, len(self.buyPctRnageList)):
-            r: FloatRange = self.buyPctRnageList[i]
+            r: FloatRange2 = self.buyPctRnageList[i]
             _min, _max = encoder.parseEncode(r.encode)
             if _min is None:
                 _min = _max

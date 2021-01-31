@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
+from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange2
 from earnmi.model.Dimension import Dimension
 
 # @dataclass
@@ -29,12 +29,12 @@ class QuantData(object):
     """
     卖方力量分布，没有排好序
     """
-    sellRange:['FloatRange']
+    sellRange:['FloatRange2']
 
     """
     买方力量分布，没有排好序
     """
-    buyRange:['FloatRange']
+    buyRange:['FloatRange2']
 
     sellSplits:['float']
 

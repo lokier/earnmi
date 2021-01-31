@@ -34,7 +34,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Union, Tuple, Sequence
 
-from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
+from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange2
 from earnmi.model.CollectData import CollectData
 from earnmi.model.CoreEngine import CoreEngine,PredictModel
 from earnmi.model.CoreEngineImpl import SWDataSource
@@ -263,8 +263,8 @@ def analysicQuantDataOnly():
         #     break
 
     dayEncoder = FloatEncoder(list(np.arange(0,15,2)))
-    print(f"    分布:{FloatRange.toStr(dayEncoder.computeValueDisbustion(day_value), dayEncoder)}")
-    print(f"    分布:{FloatRange.toStr(dayEncoder.computeValueDisbustion(sell_day_value), dayEncoder)}")
+    print(f"    分布:{FloatRange2.toStr(dayEncoder.computeValueDisbustion(day_value), dayEncoder)}")
+    print(f"    分布:{FloatRange2.toStr(dayEncoder.computeValueDisbustion(sell_day_value), dayEncoder)}")
     day_value = np.array(day_value)
     sell_day_value = np.array(sell_day_value)
 

@@ -8,7 +8,7 @@ from earnmi_demo.statistcs.FactoryParser import FactoryParser
 from vnpy.trader.object import BarData
 
 from earnmi.chart.Chart import Chart
-from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange
+from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange2
 from earnmi.chart.Indicator import Indicator
 from earnmi.chart.Factory import Factory
 from earnmi.data.MarketImpl import Market2Impl
@@ -228,7 +228,7 @@ def parse_wave_disbute():
                 spli_list.append(_min + i * (_max - _min) / N)
             # spli_list = [ 0,100]
             dif_encoder = FloatEncoder(spli_list)
-            print(f"                分布:{FloatRange.toStr(dif_encoder.computeValueDisbustion(value_list), dif_encoder)}")
+            print(f"                分布:{FloatRange2.toStr(dif_encoder.computeValueDisbustion(value_list), dif_encoder)}")
     pass
 
 

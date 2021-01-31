@@ -1,7 +1,7 @@
 import os
 
 from earnmi.chart.Chart import Chart
-from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange
+from earnmi.chart.FloatEncoder import FloatEncoder,FloatRange2
 from earnmi.chart.Indicator import Indicator
 from earnmi.chart.Factory import Factory
 from earnmi.data.MarketImpl import Market2Impl
@@ -75,8 +75,8 @@ def parse_macd_disbute():
     dea_spli_list = [-10, -5, -2.5, 2.5, 5, 10]
     dif_encoder = FloatEncoder(dif_spli_list)
     dea_encoder = FloatEncoder(dea_spli_list)
-    print(f"dif分布:{FloatRange.toStr(dif_encoder.computeValueDisbustion(dif_list), dif_encoder)}")
-    print(f"dea分布:{FloatRange.toStr(dea_encoder.computeValueDisbustion(dea_list), dea_encoder)}")
+    print(f"dif分布:{FloatRange2.toStr(dif_encoder.computeValueDisbustion(dif_list), dif_encoder)}")
+    print(f"dea分布:{FloatRange2.toStr(dea_encoder.computeValueDisbustion(dea_list), dea_encoder)}")
     pass
 
 def parse_macd_rao_disbute():
@@ -141,7 +141,7 @@ def parse_macd_rao_disbute():
             spli_list.append(_min + i * (_max - _min) / N)
         #spli_list = [ 0,100]
         dif_encoder = FloatEncoder(spli_list)
-        print(f"    分布:{FloatRange.toStr(dif_encoder.computeValueDisbustion(value_list), dif_encoder)}")
+        print(f"    分布:{FloatRange2.toStr(dif_encoder.computeValueDisbustion(value_list), dif_encoder)}")
     pass
 
 if __name__ == "__main__":

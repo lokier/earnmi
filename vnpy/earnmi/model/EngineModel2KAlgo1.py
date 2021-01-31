@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Union, Tuple, Sequence
 
-from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange
+from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange2
 from earnmi.model.CollectData import CollectData
 from earnmi.model.CoreEngine import CoreEngine, BarDataSource,PredictModel
 from earnmi.model.CoreEngineImpl import SWDataSource

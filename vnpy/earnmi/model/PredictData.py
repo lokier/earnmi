@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from earnmi.chart.FloatEncoder import FloatRange
+from earnmi.chart.FloatEncoder import FloatRange2
 from earnmi.model.CollectData import CollectData
 from earnmi.model.Dimension import Dimension
 from earnmi.model.QuantData import QuantData
@@ -39,16 +39,16 @@ class PredictData(object):
     """
     卖方概率分布
     """
-    sellRange1:['FloatRange'] = None
+    sellRange1:['FloatRange2'] = None
 
-    sellRange2: ['FloatRange']= None
+    sellRange2: ['FloatRange2']= None
 
     """
      买方概率分布
     """
-    buyRange1:['FloatRange'] = None
+    buyRange1:['FloatRange2'] = None
 
-    buyRange2:['FloatRange']= None
+    buyRange2:['FloatRange2']= None
 
 
     def getPredictSellPct(self,engineModel)->float:
