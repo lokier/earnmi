@@ -203,6 +203,8 @@ if __name__ == "__main__":
         bar_updator = BarUpdator(app,storage)
 
         bar_updator.update_drivers(drvier1,[driver3],datetime(year=2020,month=1,day=6),clear=False)
+        #bar_updator.update_drivers(drvier1,[drvier2],datetime(year=2018,month=1,day=6),clear=False)
+
         app.log_i("xxxx","run_bar_updator() finished!")
 
 

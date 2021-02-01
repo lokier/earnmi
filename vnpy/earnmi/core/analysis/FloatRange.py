@@ -116,8 +116,17 @@ class FloatDistribute:
     def items(self,reverse = True)->['FloatDistributeItem']:
         """
         获取分布情况。默认按大到小排序
+        参数:
+            reverse: Ture，按分布大小降序排列，false，按分布大小升序排列，None: 按区间顺序排列
+
         """
+        if reverse is None:
+            def __the_cmp(a1,a2):
+                return a1.index - a2.index
+            return sorted(self._distribute_item,key=cmp_to_key(__the_cmp), reverse=False)
+
         if not reverse:
+            ##降序排列
             return list(reversed(self._distribute_item))
         else:
             return list(self._distribute_item)
@@ -184,6 +193,34 @@ class FloatDistribute:
         plt.show()
         pass
 
+    def showBarChart(self, title="None"):
+        """
+        生成条形图
+        """
+        show_item_list = self._cal_show_items(True, None, None, None)
+
+        def __my_compare(a1,a2):
+            return a1.avg_value - a2.avg_value
+
+        _item_list = sorted(show_item_list, key=cmp_to_key(__my_compare), reverse=False)
+
+        import matplotlib.pyplot as plt
+        # 这两行代码解决 plt 中文显示的问题
+        plt.rcParams['font.sans-serif'] = ['SimHei']
+        plt.rcParams['axes.unicode_minus'] = False
+        x = [item.avg_value for item in _item_list]
+        y = [item.probal*100 for item in _item_list]
+        plt.bar(x, y)
+
+        # 对应x轴与字符串
+        # plt.bar(range(len(x)), y, width=0.3)
+        # plt.xticks(range(len(x)), x)
+        plt.ylabel('分布概率%')
+        plt.xlabel('涨幅情况%')
+
+        plt.title(title)
+        plt.show()
+
 
     def _cal_items(self, frange: FloatRange, value_list: ['float']) -> []:
         totalCount = len(value_list)
@@ -206,13 +243,60 @@ class FloatDistribute:
 class FloatParser:
 
     def __init__(self,values:['float']):
-        pass
+        self._values = np.array(values)
+        self._min_value = self._values.min()
+        self._max_value = self._values.max()
 
-    def find_best(self,):
+
+    def find_best_range(self,delta_value:float):
         """
-        返回区间最集中的范围。
+        找出涨幅值中区间范围差值为delta_value(即right-legt = delta_value)的间最优的几个区间值
+        返回:
+            [[区间(left,righ)平均值，分布值]....]
+            即[[(left1+right1)/2, probal1][(left2+right2)/,proboal2]]
         """
-        pass
+        low = self._min_value
+        hight = self._max_value
+        range_size = 15   ##粒度为15
+        split = delta_value / float(range_size)
+        split_size = int((hight-low) / split)
+        frange = FloatRange(low,hight,split_size)
+
+        dist = frange.calculate_distribute(self._values);
+        dist_items = dist.items(reverse=None)
+
+        ret_list = []
+        while True:
+            best_probal = 0
+            best_range_value = 0
+            best_start=0
+            best_end = 0
+            for i in range(0,len(dist_items)):
+                _start = max(0, i - range_size)
+                _end = i
+                _probal_total = 0
+                for j in range(_start, _end + 1):
+                    _probal_total+= dist_items[j].probal
+                if _probal_total > best_probal:
+                    best_probal = _probal_total
+                    best_range_value = (dist_items[_start].left + dist_items[_end].right) / 2
+                    best_start = _start
+                    best_end = _end
+            if best_probal <= 0:
+                break
+            #print(f"{[best_range_value,best_probal]}")
+            ret_list.append([best_range_value,best_probal])
+            ##去除当前最好的区域
+            for j in range(best_start, best_end + 1):
+                dist_items[j].probal = -100
+
+        # for i in range(0, len(dist_items)):
+        #     if dist_items[i].probal == -100:
+        #         dist_items[i].probal = 0
+        #
+        # dist.showBarChart()
+        return ret_list
+
 
 if __name__ == "__main__":
 
@@ -251,5 +335,13 @@ if __name__ == "__main__":
     # print(f"dist 0:{item_list[0].values}")
     # print(f"dist 1:{item_list[1].values}")
     #
-    dist.showPipChart()
+    #dist.showPipChart()
+    #dist.showBarChart()
+
+
+    values = np.random.uniform(low=-10.0, high=10.0, size=500)  ##随机生成涨幅情况
+    fPrarser = FloatParser(values)
+    result = fPrarser.find_best_range(2.0)
+    print(f"{result}")
+
 
