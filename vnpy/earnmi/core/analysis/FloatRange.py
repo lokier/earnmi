@@ -22,8 +22,12 @@ class FloatRange:
         创建一个浮点值的区间块，split_size必须大于0的整数。
         """
         assert split_size > 0
+        self.min = min
+        self.max = max
         self.split_value = (max-min)/(float(split_size))
         self._range_list = [min+float(i)*self.split_value for i in range(0,split_size+1)]
+
+
 
     def items(self,reverse =False):
         """
@@ -58,23 +62,25 @@ class FloatRange:
         """
         解码Index值，返回区间范围[lef,right)
         参数:
-            negative_infinite：如果返回的区间含有负无穷大，则可以指定返回的负无穷大值，默认为min-1
-            positive_infinite：如果返回的区间含有正无穷大，则可以指定返回的正无穷大值，默认为max+1
+            negative_infinite：如果返回的区间含有负无穷大，则可以指定返回的负无穷大值，默认为min-区间间隔值
+            positive_infinite：如果返回的区间含有正无穷大，则可以指定返回的正无穷大值，默认为max+区间间隔值
         """
         n = len(self._range_list)
         if index < 0 or index > n:
             raise RuntimeError("out of range encode")
         if index == 0:
+            negative_infinite =  self._range_list[0] - self.split_value if negative_infinite is None else negative_infinite
             return  [negative_infinite, self._range_list[0]]
         if index < n:
             return [self._range_list[index - 1], self._range_list[index]]
+        positive_infinite = self._range_list[n - 1] + self.split_value if positive_infinite is None else positive_infinite
         return [self._range_list[n - 1], positive_infinite]
 
     def __str__(self):
         return f"FloatRange:{self._range_list}"
 
     def calculate_distribute(self,values:Sequence['float']):
-        return FloatDistribute(self,values)
+        return FloatDistribute(values,self)
 
 @dataclass
 class FloatDistributeItem(object):
@@ -107,7 +113,14 @@ class FloatDistribute:
     """
     浮点值分布情况。
     """
-    def __init__(self,range:FloatRange,values:['float']):
+    def __init__(self,values:['float'],range:FloatRange = None):
+        values = np.array(values)
+        if range is None:
+            low = values.min()
+            hight = values.max()
+            split_size = 15
+            range = FloatRange(low,hight,split_size)
+        assert len(values) > 0
         self._frange = range
         self._values = values
         self._distribute_item:Sequence['FloatDistributeItem'] = self._cal_items(range,values)
@@ -153,7 +166,7 @@ class FloatDistribute:
                     right = r.left + self._frange.split_value
                 else:
                     _max = f"%.2f" % _max
-                show_item = _float_distbute_show_item(probal=r.probal, text=f"[{_min}:{_max})",avg_value=left+right / 2)
+                show_item = _float_distbute_show_item(probal=r.probal, text=f"[{_min}:{_max})",avg_value=(left+right) / 2)
                 show_item_list.append(show_item)
             else:
                 if other_probal is None:
@@ -193,28 +206,23 @@ class FloatDistribute:
         plt.show()
         pass
 
-    def showBarChart(self, title="None"):
-        """
-        生成条形图
-        """
+    def showLineChart(self,title="None"):
         show_item_list = self._cal_show_items(True, None, None, None)
-
-        def __my_compare(a1,a2):
+        def __my_compare(a1, a2):
             return a1.avg_value - a2.avg_value
 
         _item_list = sorted(show_item_list, key=cmp_to_key(__my_compare), reverse=False)
-
         import matplotlib.pyplot as plt
         # 这两行代码解决 plt 中文显示的问题
         plt.rcParams['font.sans-serif'] = ['SimHei']
         plt.rcParams['axes.unicode_minus'] = False
+        #data = [[item.avg_value,item.probal*100] for item in _item_list]
+        y = [item.probal * 100 for item in _item_list]
         x = [item.avg_value for item in _item_list]
-        y = [item.probal*100 for item in _item_list]
-        plt.bar(x, y)
+        plt.xlim(xmin=self._frange.min, xmax=self._frange.max)
 
-        # 对应x轴与字符串
-        # plt.bar(range(len(x)), y, width=0.3)
-        # plt.xticks(range(len(x)), x)
+        plt.plot(x,y)
+        plt.scatter(x, y)
         plt.ylabel('分布概率%')
         plt.xlabel('涨幅情况%')
 
@@ -222,9 +230,15 @@ class FloatDistribute:
         plt.show()
 
 
+
     def _cal_items(self, frange: FloatRange, value_list: ['float']) -> []:
         totalCount = len(value_list)
         distrubute_map = {}
+        ###初始化
+        # for index in range(0,frange.indexSize()):
+        #     left, right = frange.decodeIndex(index)
+        #     item = FloatDistributeItem(index=index, left=left, right=right)
+        #     distrubute_map[index] = item
         for value in value_list:
             index = frange.encodeIndex(value)
             item: FloatDistributeItem = distrubute_map.get(index)
@@ -235,34 +249,61 @@ class FloatDistribute:
             item.values.append(value)
         item_list = distrubute_map.values()
         for item in item_list:
-            if totalCount > 0:
-                count = len(item.values)
-                item.probal = count / totalCount
+            count = len(item.values)
+            item.probal = count * 1.0 / totalCount
+
+        ##assert len(item_list) == frange.indexSize()
         return sorted(item_list, key=cmp_to_key(__FloatRangeCompare__), reverse=True)
 
 class FloatParser:
 
-    def __init__(self,values:['float']):
-        self._values = np.array(values)
-        self._min_value = self._values.min()
-        self._max_value = self._values.max()
+    def __init__(self,low:float,high:float):
+        """
+        设置涨幅上、下限。
+        """
+        self.low = low
+        self.high = high
+        assert low < high
+        # if abs(low) < 1 or abs(high) < 1:
+        #     raise RuntimeError("涨跌幅上限必须大于1的值，否则会丢失浮点精度")
 
+    def calc_op_score(self,values:[],delta_value:float = None)->float:
+        """
+        计算该涨幅情况具备可操作得分值。得分值越高越具备可操作性。
+        """
+        if delta_value is None:
+            delta_value = (self.high - self.low) / 12
+        ret_value = self.find_best_range(values,delta_value)
 
-    def find_best_range(self,delta_value:float):
+        ##取前3个，去点最靠近0的那个分布
+        closest_0_index = 0
+        size = min(len(ret_value),3)
+        for i in range(1,size):
+            if abs(ret_value[closest_0_index][0]) > abs(ret_value[i][0]):
+                closest_0_index = i
+                pass
+        score = 0.0
+        for i in range(0, size):
+            if i!= closest_0_index and ret_value[i][0] > 0:
+                score += ret_value[i][0]*ret_value[i][1]
+
+        return score
+
+    def find_best_range(self,values:[],delta_value:float):
         """
         找出涨幅值中区间范围差值为delta_value(即right-legt = delta_value)的间最优的几个区间值
         返回:
             [[区间(left,righ)平均值，分布值]....]
             即[[(left1+right1)/2, probal1][(left2+right2)/,proboal2]]
         """
-        low = self._min_value
-        hight = self._max_value
+        low = self.low
+        hight = self.high
         range_size = 15   ##粒度为15
         split = delta_value / float(range_size)
         split_size = int((hight-low) / split)
         frange = FloatRange(low,hight,split_size)
 
-        dist = frange.calculate_distribute(self._values);
+        dist = frange.calculate_distribute(values);
         dist_items = dist.items(reverse=None)
 
         ret_list = []
@@ -298,6 +339,15 @@ class FloatParser:
         return ret_list
 
 
+    def showLineChart(self, values:[],title="None"):
+        """
+        生成条形图
+        """
+        frange = FloatRange(self.low,self.high,50)
+        dist = frange.calculate_distribute(values)
+        dist.showLineChart(title)
+
+
 if __name__ == "__main__":
 
     float_range = FloatRange(-7,7,14)
@@ -312,15 +362,15 @@ if __name__ == "__main__":
     assert float_range.encodeIndex(7) == 15
     assert float_range.encodeIndex(6.99999) == 14
 
-    assert float_range.decodeIndex(0) == [None,-7.0]
+    assert float_range.decodeIndex(0) == [-8.0,-7.0]
     assert float_range.decodeIndex(0,negative_infinite=-10) == [-10,-7.0]
-    assert float_range.decodeIndex(0,negative_infinite=None) == [None,-7.0]
+    assert float_range.decodeIndex(0,negative_infinite=None) == [-8.0,-7.0]
     assert float_range.decodeIndex(1) == [-7.0,-6.0]
     assert float_range.decodeIndex(2) == [-6.0,-5.0]
     assert float_range.decodeIndex(3) == [-5.0,-4.0]
     assert float_range.decodeIndex(4) == [-4.0,-3.0]
     assert float_range.decodeIndex(14) == [6.0,7.0]
-    assert float_range.decodeIndex(15) == [7.0,None]
+    assert float_range.decodeIndex(15) == [7.0,8.0]
     assert float_range.decodeIndex(15,positive_infinite=10) == [7.0,10]
 
     float_range = FloatRange(-10,10,20)  #生成浮点值范围区间对象
@@ -339,9 +389,13 @@ if __name__ == "__main__":
     #dist.showBarChart()
 
 
-    values = np.random.uniform(low=-10.0, high=10.0, size=500)  ##随机生成涨幅情况
-    fPrarser = FloatParser(values)
-    result = fPrarser.find_best_range(2.0)
-    print(f"{result}")
+    values = np.random.uniform(low=-10, high=10, size=500)  ##随机生成涨幅情况
+    fPrarser = FloatParser(-10,10)
+    fPrarser.showBarChart(values)
+
+    # result = fPrarser.find_best_range(values,2.0)
+    # print(f"{result}")
+
+
 
 
