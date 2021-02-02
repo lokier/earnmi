@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from earnmi.chart.KPattern import KPattern
+from earnmi.chart.KPattern2 import KPattern
 from earnmi.data.SWImpl import SWImpl
 from earnmi.chart.Indicator import Indicator
 

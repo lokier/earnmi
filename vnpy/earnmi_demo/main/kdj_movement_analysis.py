@@ -43,7 +43,7 @@ from earnmi.model.CoreEngineModel import CoreEngineModel
 from vnpy.trader.object import BarData
 import numpy as np
 import pandas as pd
-from earnmi.chart.KPattern import KPattern
+from earnmi.chart.KPattern2 import KPattern
 
 class KDJMovementEngineModel(CoreEngineModel):
 

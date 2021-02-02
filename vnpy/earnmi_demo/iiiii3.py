@@ -11,7 +11,7 @@ import sched
 
 from earnmi.chart.Chart import Chart
 from earnmi.chart.Indicator import Indicator
-from earnmi.chart.KPattern import KPattern
+from earnmi.chart.KPattern2 import KPattern
 from earnmi.core.App import App
 from earnmi.core.analysis.FloatRange import FloatParser, FloatDistribute
 from earnmi.data.driver.ZZ500StockDriver import ZZ500StockDriver
