@@ -36,7 +36,7 @@
         * [指标分析]()
             * [自建指标](earnmi_docs/book/自建指标.md)
     * [案例分析]()
-        * [k线形态分析]
+        * [encode_2k_by_algo1形态编码算法的涨幅分析](earnmi_docs/book/案例/encode_2k_by_algo1形态编码算法的涨幅分析.md)
     * [网站系统]()
         * [数据定期清理]()
      

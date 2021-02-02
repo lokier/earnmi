@@ -51,6 +51,8 @@ anaylsisPatternCoverity(bar_source,calc_pattern_value,min_coverity_rate=0.001)
 可以看出，使用encode_2k_by_algo1编码算法的总覆盖率为18.74%是可以得到要求的，而上面的计算出来的75个形态也是可以作为有研究意义的形态。因为这几个形态处于不过于聚合有不过与离散，且
 覆盖率又说明是容易产生的概率，是可以作为量化计算的。
 
+至于这75有意义的个形态编码值，后续如何做分析，可以参考下面这篇文章。
+[encode_2k_by_algo1形态编码算法的涨幅分析](案例/encode_2k_by_algo1形态编码算法的涨幅分析.md)
 
 <span id='analysis'/>
 
