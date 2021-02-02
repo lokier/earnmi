@@ -9,9 +9,11 @@ import talib
 import time
 import sched
 
+from earnmi.chart.KPattern import KPattern
+
 from earnmi.chart.Chart import Chart
 from earnmi.chart.Indicator import Indicator
-from earnmi.chart.KPattern2 import KPattern
+from earnmi.chart.KPattern2 import KPattern2
 from earnmi.core.App import App
 from earnmi.core.analysis.FloatRange import FloatParser, FloatDistribute
 from earnmi.data.driver.ZZ500StockDriver import ZZ500StockDriver
@@ -33,10 +35,10 @@ while not bars is None:
     bar_list = []
     for bar in bars:
         if BarUtils.isOpen(bar):
-            bar_list.append(bar)
             if not pre_bar is None:
-                pattern_value = KPattern.encode2KAgo1(indicator)  ##前2个交易日的k线形态编码
-                if pattern_value == 1770:
+                pattern_value = KPattern.encode_2k_by_algo1(bar_list)  ##前2个交易日的k线形态编码
+                bar_list.append(bar)
+                if pattern_value == 265749:
                     chart = Chart()
                     size = min(15,len(bar_list))
                     chart.show(bar_list[-size:])

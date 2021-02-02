@@ -1,10 +1,17 @@
+from collections import defaultdict
+from typing import Callable
+from earnmi.data.BarSoruce import BarSource
 from earnmi.model.bar import BarData
+from earnmi.uitl.BarUtils import BarUtils
 
 
-class KPatterndsdf:
+class KPattern:
 
-    ALGO1_PCT_LIST = [-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7]
-    ALGO1_EXTRA_PCT_LIST = [0.3, 1.2, 3]
+    # ALGO1_PCT_LIST = [-7, -5, -3, -1.5, -0.5, 0.5, 1.5, 3, 5, 7]
+    # ALGO1_EXTRA_PCT_LIST = [0.3, 1.2, 3]
+
+    ALGO1_PCT_LIST = [-7, -4, -2, -0.8, 0.8, 2, 4, 7]
+    ALGO1_EXTRA_PCT_LIST = [0.3, 1.6]
 
     @staticmethod
     def encode_k_bars(pre_close:float,open:float,high:float,low:float,close:float,pct_split:[],extra_split:[]):
@@ -81,3 +88,37 @@ class KPatterndsdf:
                                                   KPattern.ALGO1_PCT_LIST, KPattern.ALGO1_EXTRA_PCT_LIST)
             ret = ret * mask + encode
         return ret
+
+
+def anaylsisPatternCoverity(bar_source:BarSource,calc_pattern_value:Callable,min_coverity_rate = 0.0005):
+    from earnmi.core.analysis.FloatRange import FloatDistribute
+    pattern_value_map = defaultdict(int)
+    total_count = 0
+    bars,symbol = bar_source.nextBars()
+    while not bars is None:
+        print(f"symbol:{symbol}: size = {len(bars)}")
+        bar_list = []
+        for bar in bars:
+            if BarUtils.isOpen(bar):
+                bar_list.append(bar)
+                pattern_value = calc_pattern_value(bar_list)  ##前2个交易日的k线形态编码
+                if not pattern_value is None:
+                    total_count+=1
+                    pattern_value_map[pattern_value] = pattern_value_map[pattern_value] +1
+            else:
+                bar_list = []
+        bars, symbol = bar_source.nextBars()
+    accept_min_count = total_count * min_coverity_rate
+    accept_pattern_list = []
+    accept_pattern_count_list = []
+    accept_count =0.0
+    for pattern_value,count in pattern_value_map.items():
+        if count >  accept_min_count:
+            accept_pattern_list.append(pattern_value)
+            accept_pattern_count_list.append(float(count))
+            accept_count+=count
+    dist = FloatDistribute(accept_pattern_count_list)
+    print(f"发生总共{total_count}个形态识别事件，设定的最小满足覆盖率{min_coverity_rate*100}% = {int(accept_min_count)}")
+    print(f"  满足最小覆盖率的形态个数:{len(accept_pattern_list)}, 最终覆盖率为:{accept_count/total_count *100}%")
+    print(f"  各个形态的个数分布为: {dist.toStr(limit_show_count=6)}")
+    print(f"  满足形态的模式值: {accept_pattern_list}")

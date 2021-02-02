@@ -24,7 +24,7 @@
         * [行情数据下载与调用](earnmi_docs/book/数据源.md#donwnload)
     * [行情分析]()
         * [K线形态分析](earnmi_docs/book/k线形态分析.md)
-            * [形态编码:KPattern](earnmi_docs/book/k线形态分析.md#pattern)
+            * [形态编码识别](earnmi_docs/book/k线形态分析.md#pattern)
             * [形态分析](earnmi_docs/book/k线形态分析.md#analysis)
         * [涨幅分析](earnmi_docs/book/涨幅分析.md)
         * [指标工具]()

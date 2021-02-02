@@ -12,7 +12,7 @@ from earnmi.chart.Chart import Chart
 from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.chart.Indicator import Indicator
 from earnmi.chart.KEncode import KEncode
-from earnmi.chart.KPattern import KPattern
+from earnmi.chart.KPattern2 import KPattern2
 from earnmi.uitl.BarUtils import BarUtils
 from vnpy.trader.object import BarData
 
@@ -47,7 +47,7 @@ def compute_SW_KPattern_data():
         preBar = None
         for bar in barList:
             ##先识别形态
-            rets = KPattern.matchIndicator(indicator)
+            rets = KPattern2.matchIndicator(indicator)
             size = len(rets)
             if size > 0 and not preBar is None:
                 """有形态识别出来
@@ -180,7 +180,7 @@ def compute_SW_KEncode_data():
         kBarListTotalDay = len(barList)
         for bar in barList:
             ##先识别形态
-            kEncodeValue  = KPattern.encode1KAgo1(indicator)
+            kEncodeValue  = KPattern2.encode1KAgo1(indicator)
             if kEncodeValue is None:
                 indicator.update_bar(bar)
                 preBar = bar
@@ -282,7 +282,7 @@ def printKPatterMoreDetail(
         for i in range(0, len(barList)):
             bar = barList[i]
             indicator.update_bar(bar)
-            patternValue = KPattern.encode1KAgo1(indicator)
+            patternValue = KPattern2.encode1KAgo1(indicator)
             todayIsMatch = False
             if not patternValue is None:
                 todayIsMatch = kPattersMap.__contains__(patternValue)
@@ -362,7 +362,7 @@ def collectKPattherAndShowChart():
         for i in range(0, len(barList)):
             bar = barList[i]
             indicator.update_bar(bar)
-            patternValue = KPattern.encode1KAgo1(indicator)
+            patternValue = KPattern2.encode1KAgo1(indicator)
             todayIsMatch = 9 == patternValue
 
             if todayIsMatch:

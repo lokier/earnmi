@@ -3,7 +3,7 @@ from typing import Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.chart.Indicator import Indicator
-from earnmi.chart.KPattern import KPattern
+from earnmi.chart.KPattern2 import KPattern2
 from earnmi.data.KBarCollector import KBarCollector, TraceData
 from earnmi.data.SWImpl import SWImpl
 from vnpy.trader.object import BarData
@@ -60,7 +60,7 @@ class Find_KPattern_skip1_predit2(KBarCollector):
 
     def collect(self, bar: BarData) -> TraceData:
         self.indicator.update_bar(bar)
-        kPatternValue = KPattern.encode2KAgo1(self.indicator)
+        kPatternValue = KPattern2.encode2KAgo1(self.indicator)
         if not kPatternValue is None and self.indicator.count > 20:
             self.collect_k_count += 1
             traceData = Skip1_Predict2_TraceData(kPatternValue,bar)

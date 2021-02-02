@@ -182,7 +182,7 @@ class FloatDistribute:
         分布情况
         """
         show_item_list = self._cal_show_items(reverse,negative_infinite,positive_infinite,limit_show_count)
-        info = f"size={len(self._values) }"
+        info = ""
         for item in show_item_list:
             info += f",{item.text}=%.2f%%" % (100 * item.probal)
         return info

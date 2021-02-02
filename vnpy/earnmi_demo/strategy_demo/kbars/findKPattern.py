@@ -5,7 +5,7 @@ from datetime import datetime
 
 from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.chart.Indicator import Indicator
-from earnmi.chart.KPattern import KPattern
+from earnmi.chart.KPattern2 import KPattern2
 from vnpy.trader.object import BarData
 import numpy as np
 from earnmi.data.SWImpl import SWImpl
@@ -110,7 +110,7 @@ def findKPatternThatIn3Day(first_day_pct:float = 3,targe_pct = 3):
                 traceItems.remove(traceItem)
 
             indicator.update_bar(bar)
-            kEncodeValue = KPattern.encode2KAgo1(indicator)
+            kEncodeValue = KPattern2.encode2KAgo1(indicator)
             if kEncodeValue is None:
                 continue
             traceItem = TraceIn3DayItem(kEncodeValue,bar)
@@ -210,7 +210,7 @@ def ganerateKPatternTrainData( ):
         """
         def checkIfTrace(self, newBar: BarData) -> TraceIn3DayItem:
             self.indicator.update_bar(newBar)
-            kEncodeValue = KPattern.encode2KAgo1(self.indicator)
+            kEncodeValue = KPattern2.encode2KAgo1(self.indicator)
             if kEncodeValue is None:
                 return None
             if self.collectKPatternOnly and self.kPattersMap.get(kEncodeValue) is None:
@@ -336,7 +336,7 @@ def printKPatterMoreDetail(
                 traceItems.remove(traceItem)
 
             indicator.update_bar(bar)
-            kEncodeValue = KPattern.encode2KAgo1(indicator)
+            kEncodeValue = KPattern2.encode2KAgo1(indicator)
             if kEncodeValue is None or kPattersMap.get(kEncodeValue) is None:
                 continue
             traceItem = TraceIn3DayItem(kEncodeValue,bar)
