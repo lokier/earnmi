@@ -69,7 +69,7 @@ class Indicator(object):
         """
         Update new bar data into array manager.
         """
-        if type(bars) is BarData:
+        if not type(bars) is list:
             #后面追加1个
             bar:BarData = bars
             self.count += 1
