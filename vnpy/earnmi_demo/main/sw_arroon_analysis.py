@@ -70,10 +70,10 @@ class SKDJ_EngineModel(CoreEngineModel):
 
         if self.indicator.count >=30:
             aroon_down,aroon_up = self.indicator.aroon(n=14, array=False)
-            from earnmi.chart.KPattern2 import KPattern
+            from earnmi.chart.KPattern2 import KPattern2
             if  aroon_up < aroon_down or aroon_up < 50:
                 return None
-            kPatternValue = KPattern.encode2KAgo1(self.indicator)
+            kPatternValue = KPattern2.encode2KAgo1(self.indicator)
             if not kPatternValue is None :
                 self.mDateOccurCountMap[timeKey] +=1
 

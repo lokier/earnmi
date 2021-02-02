@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 
-from earnmi.chart.KPattern2 import KPattern
+from earnmi.chart.KPattern2 import KPattern2
 from earnmi.data.SWImpl import SWImpl
 from earnmi.chart.Indicator import Indicator
 
@@ -35,7 +35,7 @@ def generateSWTrainData(kPatterns:[],start:datetime,end:datetime)-> pd.DataFrame
             ##先识别形态
             kEncodeValue = None
             if indicator.inited:
-                tmpKEncodeValue = KPattern.encode3KAgo1(indicator)
+                tmpKEncodeValue = KPattern2.encode3KAgo1(indicator)
                 if kPatternMap.__contains__(tmpKEncodeValue):
                     kEncodeValue = tmpKEncodeValue
             if kEncodeValue is None:

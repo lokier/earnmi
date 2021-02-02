@@ -43,7 +43,7 @@ from earnmi.model.CoreEngineModel import CoreEngineModel
 from vnpy.trader.object import BarData
 import numpy as np
 import pandas as pd
-from earnmi.chart.KPattern2 import KPattern
+from earnmi.chart.KPattern2 import KPattern2
 
 class KDJMovementEngineModel(CoreEngineModel):
 
@@ -102,7 +102,7 @@ class KDJMovementEngineModel(CoreEngineModel):
             goldCross =  k0 < d0 and k1>=d1
             if not goldCross:
                 return None
-            kPatternValue = KPattern.encode2KAgo1(self.indicator)
+            kPatternValue = KPattern2.encode2KAgo1(self.indicator)
             if not kPatternValue is None :
                 dimen = Dimension(type=TYPE_2KAGO1 ,value=kPatternValue)
                 collectData = CollectData(dimen=dimen)

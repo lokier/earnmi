@@ -64,8 +64,8 @@ class EngineModel2KAlgo2(CoreEngineModel):
         self.lasted3Bar[-1] = bar
         self.lasted3BarKdj[-1] = [k, d, j]
         if self.indicator.count >=20:
-            from earnmi.chart.KPattern2 import KPattern
-            kPatternValue = KPattern.encode2KAgo1(self.indicator)
+            from earnmi.chart.KPattern2 import KPattern2
+            kPatternValue = KPattern2.encode2KAgo1(self.indicator)
             if not kPatternValue is None :
 
                 _kdj_mask = self.kdjEncoder.mask()

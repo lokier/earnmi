@@ -44,7 +44,7 @@ from earnmi.model.CoreEngineModel import CoreEngineModel
 from vnpy.trader.object import BarData
 import numpy as np
 import pandas as pd
-from earnmi.chart.KPattern2 import KPattern
+from earnmi.chart.KPattern2 import KPattern2
 
 class KDJMovementEngineModel(CoreEngineModel):
 
@@ -104,7 +104,7 @@ class KDJMovementEngineModel(CoreEngineModel):
         if kdjHoldDay !=1:
             return None
 
-        kPatternValue = KPattern.encode2KAgo1(self.indicator)
+        kPatternValue = KPattern2.encode2KAgo1(self.indicator)
         if not kPatternValue is None:
             p_di = self.indicator.plus_di(14, array=True)
             m_di = self.indicator.minus_di(14, array=True)
