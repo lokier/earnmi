@@ -4,7 +4,7 @@ from datetime import datetime
 from functools import cmp_to_key
 from typing import Callable, Sequence, Union
 
-
+from earnmi.chart.ChartUtis import ChartUtils
 from earnmi.chart.KPattern import KPattern, anaylsisPatternCoverity
 
 from earnmi.chart.Chart import Chart
@@ -36,6 +36,10 @@ class Pattern_2k_by_algo1_handler(CollectHandler):
         self.bar_list = []
         print(f"onTraceStart:{symbol}")
         pass
+
+    # def onCollected(self, data: CollectData):
+    #     if data.isFinished() and data.dimen_value == 265801:
+    #         ChartUtils.show_collect_data(data)
 
     def onTraceBar(self, bar: BarData):
         if not BarUtils.isOpen(bar):
@@ -87,7 +91,7 @@ for cData in finished_list:
     value_list_14_map[pattern_vaule].append(pct_14)   #收集14日K线的涨幅情况
 
 dataSet  = {}
-fParser = FloatParser(-10,10)
+fParser = FloatParser()
 pattern_value_list = list(value_list_1_map.keys())
 ##计算分叉线值
 dataSet['pattern_value'] = pattern_value_list
@@ -95,5 +99,16 @@ dataSet['1日分叉线'] = [ fParser.calc_avg_line(value_list_1_map[pattern_valu
 dataSet['3日分叉线'] = [ fParser.calc_avg_line(value_list_3_map[pattern_value])  for pattern_value in pattern_value_list]
 dataSet['7日分叉线'] = [ fParser.calc_avg_line(value_list_7_map[pattern_value])  for pattern_value in pattern_value_list]
 dataSet['14日分叉线'] = [ fParser.calc_avg_line(value_list_14_map[pattern_value])  for pattern_value in pattern_value_list]
-pData = pandas.DataFrame(dataSet).sort_values(by='14日分叉线')
+
+# dataSet['1日score'] = [ fParser.calc_op_score(value_list_1_map[pattern_value])  for pattern_value in pattern_value_list]
+# dataSet['3日score'] = [ fParser.calc_op_score(value_list_3_map[pattern_value])  for pattern_value in pattern_value_list]
+# dataSet['7日score'] = [ fParser.calc_op_score(value_list_7_map[pattern_value])  for pattern_value in pattern_value_list]
+# dataSet['14日score'] = [ fParser.calc_op_score(value_list_14_map[pattern_value])  for pattern_value in pattern_value_list]
+
+# for pattern_value in pattern_value_list:
+#     print(f"{value_list_14_map[pattern_value]}\n")
+
+print(f"{value_list_14_map[258420]}\n")
+
+pData = pandas.DataFrame(dataSet).sort_values(by='7日分叉线')
 print(f"{pData}")

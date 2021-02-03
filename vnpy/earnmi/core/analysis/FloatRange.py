@@ -257,51 +257,48 @@ class FloatDistribute:
 
 class FloatParser:
 
-    def __init__(self,low:float,high:float):
-        """
-        设置涨幅上、下限。
-        """
-        self.low = low
-        self.high = high
-        assert low < high
-        # if abs(low) < 1 or abs(high) < 1:
-        #     raise RuntimeError("涨跌幅上限必须大于1的值，否则会丢失浮点精度")
-
     def calc_avg_line(self,values:[])->float:
         """
            计算该涨幅情况的中间分叉线的涨幅值，该分叉线把涨幅值得分布情况分成一半。
         """
-        low = self.low
-        hight = self.high
-        frange = FloatRange(low, hight, 100)
+        values = sorted(values)
+        return values[int(len(values)/2)]
 
-        dist = frange.calculate_distribute(values);
-        dist_items = dist.items(reverse=None)
-        avg_index,avg_probl = self._find_avg_line(dist_items,0,len(dist_items))
-        #print(f"avg_index = {avg_index}, avg_probol={avg_probl}")
-        return (dist_items[avg_index].left + dist_items[avg_index].right) / 2.0
-
-    def _find_avg_line(self,dist_items:[],left:int,right:int):
-        """
-        找出最佳中间值。
-        """
-        if left >= right:
-            return [None,None]
-        if left + 1 == right:
-            return [left,self._compute_distbule_value(dist_items,right)]
-
-        middle = int((left+right)/2)
-
-        middle_value = self._compute_distbule_value(dist_items,middle)
-        #[left,middle)[middle,middle+1)[middle+1,right]
-        best_left,best_left_value = self._find_avg_line(dist_items,left,middle)
-        best_right,best_right_value = self._find_avg_line(dist_items,middle+1,right)
-        best_index,best_value = [middle,middle_value]
-        if not best_left_value is None and abs(middle_value-0.5) > abs(best_left_value-0.5):
-            best_index, best_value = [best_left,best_left_value]
-        if not best_right_value is None and abs(middle_value-0.5) > abs(best_right_value-0.5):
-            best_index, best_value = [best_right,best_right_value]
-        return [best_index,best_value]
+    # def calc_avg_line2(self,values:[])->float:
+    #     """
+    #        计算该涨幅情况的中间分叉线的涨幅值，该分叉线把涨幅值得分布情况分成一半。
+    #     """
+    #     low, hight = self._find_min_max(values)
+    #     split_size = int((hight-low) / 0.1)
+    #     frange = FloatRange(low, hight, split_size)
+    #
+    #     dist = frange.calculate_distribute(values);
+    #     dist_items = dist.items(reverse=None)
+    #     avg_index,avg_probl = self._find_avg_line(dist_items,0,len(dist_items))
+    #     print(f"avg_index = {avg_index}, avg_probol={avg_probl}")
+    #     return (dist_items[avg_index].left + dist_items[avg_index].right) / 2.0
+    #
+    # def _find_avg_line(self,dist_items:[],left:int,right:int):
+    #     """
+    #     找出最佳中间值。
+    #     """
+    #     if left >= right:
+    #         return [None,None]
+    #     if left + 1 == right:
+    #         return [left,self._compute_distbule_value(dist_items,right)]
+    #
+    #     middle = int((left+right)/2)
+    #
+    #     middle_value = self._compute_distbule_value(dist_items,middle)
+    #     #[left,middle)[middle,middle+1)[middle+1,right]
+    #     best_left,best_left_value = self._find_avg_line(dist_items,left,middle)
+    #     best_right,best_right_value = self._find_avg_line(dist_items,middle+1,right)
+    #     best_index,best_value = [middle,middle_value]
+    #     if not best_left_value is None and abs(middle_value-0.5) > abs(best_left_value-0.5):
+    #         best_index, best_value = [best_left,best_left_value]
+    #     if not best_right_value is None and abs(middle_value-0.5) > abs(best_right_value-0.5):
+    #         best_index, best_value = [best_right,best_right_value]
+    #     return [best_index,best_value]
 
 
     def _compute_distbule_value(self,dist_items:[],end)->float:
@@ -314,8 +311,9 @@ class FloatParser:
         """
         计算该涨幅情况具备可操作得分值。得分值越高越具备可操作性。
         """
+        low, high = self._find_min_max(values)
         if delta_value is None:
-            delta_value = (self.high - self.low) / 12
+            delta_value = (high - low) / 12
         ret_value = self.find_best_range(values,delta_value)
 
         ##取前3个，去点最靠近0的那个分布
@@ -339,8 +337,8 @@ class FloatParser:
             [[区间(left,righ)平均值，分布值]....]
             即[[(left1+right1)/2, probal1][(left2+right2)/,proboal2]]
         """
-        low = self.low
-        hight = self.high
+        low, hight = self._find_min_max(values)
+
         range_size = 15   ##粒度为15
         split = delta_value / float(range_size)
         split_size = int((hight-low) / split)
@@ -384,12 +382,30 @@ class FloatParser:
 
     def showLineChart(self, values:[],title="None"):
         """
-        生成条形图
+        生成曲线图
         """
-        frange = FloatRange(self.low,self.high,50)
+        low, high = self._find_min_max(values)
+        frange = FloatRange(low,high,50)
         dist = frange.calculate_distribute(values)
         dist.showLineChart(title)
 
+    def showPipChart(self, values:[],title="None",limit_show_count = 5):
+        """
+        生成饼图
+        """
+        low,high = self._find_min_max(values)
+        frange = FloatRange(low,high,50)
+        dist = frange.calculate_distribute(values)
+        dist.showPipChart(title,limit_show_count=limit_show_count)
+
+    def _find_min_max(self,values:[]):
+        min,max = [values[0],values[0]]
+        for i in range(1,len(values)):
+            if min > values[i]:
+                min = values[i]
+            if max < values[i]:
+                max = values[i]
+        return [min,max]
 
 if __name__ == "__main__":
 
