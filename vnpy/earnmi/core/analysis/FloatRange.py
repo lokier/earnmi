@@ -267,6 +267,49 @@ class FloatParser:
         # if abs(low) < 1 or abs(high) < 1:
         #     raise RuntimeError("涨跌幅上限必须大于1的值，否则会丢失浮点精度")
 
+    def calc_avg_line(self,values:[])->float:
+        """
+           计算该涨幅情况的中间分叉线的涨幅值，该分叉线把涨幅值得分布情况分成一半。
+        """
+        low = self.low
+        hight = self.high
+        frange = FloatRange(low, hight, 100)
+
+        dist = frange.calculate_distribute(values);
+        dist_items = dist.items(reverse=None)
+        avg_index,avg_probl = self._find_avg_line(dist_items,0,len(dist_items))
+        #print(f"avg_index = {avg_index}, avg_probol={avg_probl}")
+        return (dist_items[avg_index].left + dist_items[avg_index].right) / 2.0
+
+    def _find_avg_line(self,dist_items:[],left:int,right:int):
+        """
+        找出最佳中间值。
+        """
+        if left >= right:
+            return [None,None]
+        if left + 1 == right:
+            return [left,self._compute_distbule_value(dist_items,right)]
+
+        middle = int((left+right)/2)
+
+        middle_value = self._compute_distbule_value(dist_items,middle)
+        #[left,middle)[middle,middle+1)[middle+1,right]
+        best_left,best_left_value = self._find_avg_line(dist_items,left,middle)
+        best_right,best_right_value = self._find_avg_line(dist_items,middle+1,right)
+        best_index,best_value = [middle,middle_value]
+        if not best_left_value is None and abs(middle_value-0.5) > abs(best_left_value-0.5):
+            best_index, best_value = [best_left,best_left_value]
+        if not best_right_value is None and abs(middle_value-0.5) > abs(best_right_value-0.5):
+            best_index, best_value = [best_right,best_right_value]
+        return [best_index,best_value]
+
+
+    def _compute_distbule_value(self,dist_items:[],end)->float:
+        probal = 0.0
+        for i in range(0,end):
+            probal+=dist_items[i].probal
+        return probal
+
     def calc_op_score(self,values:[],delta_value:float = None)->float:
         """
         计算该涨幅情况具备可操作得分值。得分值越高越具备可操作性。
@@ -391,7 +434,9 @@ if __name__ == "__main__":
 
     values = np.random.uniform(low=-10, high=10, size=500)  ##随机生成涨幅情况
     fPrarser = FloatParser(-10,10)
-    fPrarser.showBarChart(values)
+    print(f"calc_avg_line: {fPrarser.calc_avg_line(values)}")
+
+    fPrarser.showLineChart(values)
 
     # result = fPrarser.find_best_range(values,2.0)
     # print(f"{result}")
