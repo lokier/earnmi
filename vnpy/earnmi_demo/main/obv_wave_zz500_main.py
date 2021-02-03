@@ -33,7 +33,7 @@ from datetime import datetime
 from typing import Union, Tuple, Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange2
-from earnmi.model.CollectData import CollectData
+from earnmi.model.CollectData2 import CollectData2
 from earnmi.model.CoreEngine import CoreEngine,PredictModel
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
@@ -81,7 +81,7 @@ class ObvWave_EngineModel(CoreEngineModel):
             low_price = min(low_price,bar.low_price)
         return  100 * (high_price - low_price) / base_price, 100 * (close_price-base_price)/base_price
 
-    def onCollectTrace(self, bar: BarData) -> CollectData:
+    def onCollectTrace(self, bar: BarData) -> CollectData2:
         if (not BarUtils.isOpen(bar)):
             return None
         self.lasted15Bar[:-1] = self.lasted15Bar[1:]
@@ -97,7 +97,7 @@ class ObvWave_EngineModel(CoreEngineModel):
         encdoe = ObvWave_EngineModel.FLOAT_ENCOLDE.encode(wave_down) * 10 +ObvWave_EngineModel.FLOAT_ENCOLDE.encode(wave_up)
         ##生成维度值
         dimen = Dimension(type=TYPE_2KAGO1, value=encdoe)
-        collectData = CollectData(dimen=dimen)
+        collectData = CollectData2(dimen=dimen)
         collectData.occurBars = list(self.lasted15Bar[-3:])
         collectData.occurExtra['wave_up'] = wave_up
         collectData.occurExtra['wave_down'] =  wave_down
@@ -114,7 +114,7 @@ class ObvWave_EngineModel(CoreEngineModel):
         collectData.setValid(True)
         return collectData
 
-    def onCollect(self, data: CollectData, newBar: BarData) :
+    def onCollect(self, data: CollectData2, newBar: BarData) :
         if (not BarUtils.isOpen(newBar)):
             return
         #不含停牌数据
@@ -123,11 +123,11 @@ class ObvWave_EngineModel(CoreEngineModel):
         if size >= 3:
             data.setFinished()
 
-    def getYBasePrice(self, cData: CollectData) -> float:
+    def getYBasePrice(self, cData: CollectData2) -> float:
         ## 金叉形成后的前一天
         return cData.occurBars[-1].close_price
 
-    def getYLabelPct(self, cData:CollectData)->[float, float]:
+    def getYLabelPct(self, cData:CollectData2)->[float, float]:
         if len(cData.predictBars) < 3:
             #不能作为y标签。
             return None, None
@@ -157,7 +157,7 @@ class ObvWave_EngineModel(CoreEngineModel):
             return False
         return True
 
-    def generateXFeature(self, cData: CollectData) -> []:
+    def generateXFeature(self, cData: CollectData2) -> []:
         #保证len等于三，要不然就不能作为生成特征值。
         if (len(cData.occurBars) < 3):
             return None

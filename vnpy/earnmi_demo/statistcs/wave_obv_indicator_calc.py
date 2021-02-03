@@ -1,7 +1,7 @@
 import numpy as np
 from future.backports.datetime import datetime
 
-from earnmi.model.CollectData import CollectData
+from earnmi.model.CollectData2 import CollectData2
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
 from earnmi_demo.statistcs.FactorAnalysis import FactoryAnalysis
 from earnmi_demo.statistcs.FactoryParser import FactoryParser
@@ -39,7 +39,7 @@ def parse_wave_ability_disbute():
         def onCollectStart(self, code: str) -> bool:
             self.indicator = Indicator(54)
             return True
-        def onCollectTrace(self, bar: BarData) -> CollectData:
+        def onCollectTrace(self, bar: BarData) -> CollectData2:
             if not BarUtils.isOpen(bar):
                 return None
             self.indicator.update_bar(bar)
@@ -59,12 +59,12 @@ def parse_wave_ability_disbute():
             assert up_encode2 == up_encode
 
             dimen = Dimension(type=TYPE_2KAGO1, value=key)
-            data = CollectData(dimen)
+            data = CollectData2(dimen)
             data.occurBars.append(bar)
             data.occurExtra['wave_down'] = wave_down
             data.occurExtra['wave_up'] = wave_up
             return data
-        def onCollect(self, data: CollectData, newBar: BarData):
+        def onCollect(self, data: CollectData2, newBar: BarData):
             if not BarUtils.isOpen(newBar):
                 return
             data.predictBars.append(newBar)

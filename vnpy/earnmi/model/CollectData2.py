@@ -1,13 +1,11 @@
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
-
 from earnmi.model.Dimension import Dimension
 from vnpy.trader.object import BarData
 
 
 @dataclass
-class CollectData(object):
+class CollectData2(object):
     """
     维度值
     """
@@ -17,8 +15,6 @@ class CollectData(object):
     生成维度值bars
     """
     occurBars:['BarData'] = None
-
-    occurKdj:[] = None
 
     """
       预测情况的bar值。

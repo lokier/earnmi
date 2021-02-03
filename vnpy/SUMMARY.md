@@ -27,6 +27,7 @@
             * [形态编码识别](earnmi_docs/book/k线形态分析.md#pattern)
             * [形态分析](earnmi_docs/book/k线形态分析.md#analysis)
         * [涨幅分析](earnmi_docs/book/涨幅分析.md)
+        * [bar收集框架]()
         * [指标工具]()
             * [!!!名称需要重构]()
         * [IndicatorMeasure:指标测量](earnmi_docs/book/指标测量.md)

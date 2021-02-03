@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from earnmi.chart.FloatEncoder import FloatRange2
-from earnmi.model.CollectData import CollectData
+from earnmi.model.CollectData2 import CollectData2
 from earnmi.model.Dimension import Dimension
 from earnmi.model.QuantData import QuantData
 
@@ -34,7 +34,7 @@ class PredictData(object):
     """
     测试特征值得原始数据。
     """
-    collectData:CollectData
+    collectData:CollectData2
 
     """
     卖方概率分布

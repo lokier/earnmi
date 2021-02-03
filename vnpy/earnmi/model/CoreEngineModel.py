@@ -11,7 +11,7 @@ from abc import abstractmethod
 from typing import Tuple, Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder
-from earnmi.model.CollectData import CollectData
+from earnmi.model.CollectData2 import CollectData2
 from earnmi.model.CollectModel import CollectModel
 from earnmi.model.Dimension import Dimension
 from earnmi.model.PredictData import PredictData
@@ -40,7 +40,7 @@ class CoreEngineModel():
     """
       预处理样本数据，比如，拆减等。
     """
-    def generateSampleData(self, engine,collectList: Sequence['CollectData']) -> Sequence['CollectData']:
+    def generateSampleData(self, engine, collectList: Sequence['CollectData2']) -> Sequence['CollectData2']:
         return collectList
 
     """
@@ -48,7 +48,7 @@ class CoreEngineModel():
     返回值为：[x1,x2,x3....]
     """
     @abstractmethod
-    def generateXFeature(self, cData:CollectData)->[]:
+    def generateXFeature(self, cData:CollectData2)->[]:
         pass
 
     """
@@ -56,11 +56,11 @@ class CoreEngineModel():
     通过getYBasePrice()，可以计算得出买方力量和卖方里的涨跌幅度标签值。
     """
     # def getYLabelPrice(self, cData:CollectData)->[float, float]:
-    def getYLabelPct(self, cData:CollectData)->[float, float]:
+    def getYLabelPct(self, cData:CollectData2)->[float, float]:
         pass
 
     @abstractmethod
-    def getYBasePrice(self, cData:CollectData)->float:
+    def getYBasePrice(self, cData:CollectData2)->float:
         pass
 
     """
@@ -84,5 +84,6 @@ class CoreEngineModel():
     #         xFeature = self.generateXFeature(data)
     #         assert not xFeature is None
 
-    def collectBars(self,barList: ['BarData'],symbol:str,dimensValue:[] = None) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
+    def collectBars(self,barList: ['BarData'],symbol:str,dimensValue:[] = None) -> Tuple[Sequence['CollectData2'], Sequence[
+        'CollectData2']]:
         return CollectModel.collect(self.getCollectModel(),barList,symbol,dimensValue)

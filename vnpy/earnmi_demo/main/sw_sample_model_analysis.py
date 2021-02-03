@@ -30,7 +30,7 @@ from datetime import datetime
 from typing import Union, Tuple, Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange2
-from earnmi.model.CollectData import CollectData
+from earnmi.model.CollectData2 import CollectData2
 from earnmi.model.CoreEngine import CoreEngine, BarDataSource,PredictModel
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
@@ -56,7 +56,7 @@ class EngineModel2KAlgo2(CoreEngineModel):
         self.code = code
         return True
 
-    def onCollectTrace(self, bar: BarData) -> CollectData:
+    def onCollectTrace(self, bar: BarData) -> CollectData2:
         self.indicator.update_bar(bar)
         self.lasted3Bar[:-1] = self.lasted3Bar[1:]
         self.lasted3BarKdj[:-1] = self.lasted3BarKdj[1:]
@@ -72,7 +72,7 @@ class EngineModel2KAlgo2(CoreEngineModel):
                 kPatternValue = kPatternValue * _kdj_mask* _kdj_mask + self.kdjEncoder.encode(k) * _kdj_mask + self.kdjEncoder.encode(d)
 
                 dimen = Dimension(type=TYPE_2KAGO1 ,value=kPatternValue)
-                collectData = CollectData(dimen=dimen)
+                collectData = CollectData2(dimen=dimen)
                 collectData.occurBars.append(self.lasted3Bar[-2])
                 collectData.occurBars.append(self.lasted3Bar[-1])
 
@@ -82,7 +82,7 @@ class EngineModel2KAlgo2(CoreEngineModel):
                 return collectData
         return None
 
-    def onCollect(self, data: CollectData, newBar: BarData) -> bool:
+    def onCollect(self, data: CollectData2, newBar: BarData) -> bool:
         if len(data.occurBars) < 3:
             data.occurBars.append(self.lasted3Bar[-1])
             data.occurKdj.append(self.lasted3BarKdj[-1])
@@ -93,7 +93,7 @@ class EngineModel2KAlgo2(CoreEngineModel):
 
 
     @abstractmethod
-    def getYLabelPrice(self, cData:CollectData)->[float, float, float]:
+    def getYLabelPrice(self, cData:CollectData2)->[float, float, float]:
         bars: ['BarData'] = cData.predictBars
         if len(bars) > 0:
             sell_price = -9999999999
@@ -104,10 +104,10 @@ class EngineModel2KAlgo2(CoreEngineModel):
             return sell_price,buy_price
         return None,None
 
-    def getYBasePrice(self, cData:CollectData)->float:
+    def getYBasePrice(self, cData:CollectData2)->float:
         return cData.occurBars[-2].close_price
 
-    def generateXFeature(self, cData: CollectData) -> []:
+    def generateXFeature(self, cData: CollectData2) -> []:
         #保证len小于三，要不然就不能作为生成特征值。
         if(len(cData.occurBars) < 3):
             return None

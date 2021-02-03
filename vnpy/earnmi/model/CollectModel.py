@@ -9,7 +9,7 @@
 """
 from abc import abstractmethod
 from typing import Tuple, Sequence
-from earnmi.model.CollectData import CollectData
+from earnmi.model.CollectData2 import CollectData2
 from vnpy.trader.object import BarData
 
 
@@ -25,13 +25,13 @@ class CollectModel:
     最终bar，如果需要开始收集，返回一个CollectData对象。
     """
     @abstractmethod
-    def onCollectTrace(self, bar: BarData) -> CollectData:
+    def onCollectTrace(self, bar: BarData) -> CollectData2:
         pass
     """
     收集对象。如果收集完成,得把CollectData.isFinished();
     """
     @abstractmethod
-    def onCollect(self, data: CollectData, newBar: BarData):
+    def onCollect(self, data: CollectData2, newBar: BarData):
         pass
 
     def onCollectEnd(self, code: str):
@@ -40,11 +40,12 @@ class CollectModel:
     """
     收集完成,isFinished表示是否正常结束
     """
-    def onCollectFinished(self,data:CollectData,isFinished:bool):
+    def onCollectFinished(self, data:CollectData2, isFinished:bool):
         pass
 
     @staticmethod
-    def collect(model,barList: ['BarData'],symbol:str,dimensValue:[] = None) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
+    def collect(model,barList: ['BarData'],symbol:str,dimensValue:[] = None) -> Tuple[Sequence['CollectData2'], Sequence[
+        'CollectData2']]:
         collector = model
         collector.onCollectStart(symbol)
         traceItems = []

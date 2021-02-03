@@ -18,7 +18,7 @@ from earnmi.uitl.LogUtil import LogUtil
 from vnpy.trader.object import BarData
 
 from earnmi.data.SWImpl import SWImpl
-from earnmi.model.CollectData import CollectData
+from earnmi.model.CollectData2 import CollectData2
 from earnmi.model.CoreEngine import CoreEngine, PredictModel
 from earnmi.model.Dimension import Dimension, TYPE_3KAGO1, TYPE_2KAGO1
 from earnmi.model.PredictData import PredictData
@@ -79,7 +79,7 @@ class ClassifierModel(PredictModel):
     """
     建造模型
     """
-    def build(self,engine:CoreEngine, sampleData:Sequence['CollectData'], quantData:QuantData):
+    def build(self, engine:CoreEngine, sampleData:Sequence['CollectData2'], quantData:QuantData):
 
         start = timeit.default_timer()
         self.quantData = quantData
@@ -119,7 +119,7 @@ class ClassifierModel(PredictModel):
         生成特征值。(有4个标签）
         返回值为：x, y_sell_1,y_buy_1,y_sell_2,y_buy_2
         """
-    def __generateFeature(self, dataList: Sequence['CollectData']):
+    def __generateFeature(self, dataList: Sequence['CollectData2']):
         model = self.engine.getEngineModel()
         x_features = []
         y_sell_1 = []
@@ -167,10 +167,10 @@ class ClassifierModel(PredictModel):
             fillList.append(floatRange)
         return fillList
 
-    def predict(self, data: Union[CollectData, Sequence['CollectData']]) -> Union[PredictData, Sequence['PredictData']]:
+    def predict(self, data: Union[CollectData2, Sequence['CollectData2']]) -> Union[PredictData, Sequence['PredictData']]:
         single = False
         engine = self.engine
-        if type(data) is CollectData:
+        if type(data) is CollectData2:
             data = [data]
             single = True
         model = self.engine.getEngineModel()
@@ -449,7 +449,7 @@ class CoreEngineImpl(CoreEngine):
 
         oldLogger = self.logger
         self.logger = LogUtil.create_Filelogger(f"{self.__file_dir}/buildModel.log", "buidModel")
-        def cmp_collectdata_time(c1:CollectData,c2:CollectData):
+        def cmp_collectdata_time(c1:CollectData2, c2:CollectData2):
             d1 = c1.occurBars[-1].datetime
             d2 = c2.occurBars[-1].datetime
             if d1 < d2:
@@ -473,8 +473,8 @@ class CoreEngineImpl(CoreEngine):
             dataList = self.loadCollectData(dimen)
             size = len(dataList)
             trainSize = int( size* split_rate)
-            trainDataList:Sequence['CollectData'] = []
-            testDataList:Sequence['CollectData'] = []
+            trainDataList:Sequence['CollectData2'] = []
+            testDataList:Sequence['CollectData2'] = []
 
             dataList = sorted(dataList, key=cmp_to_key(cmp_collectdata_time), reverse=False)
             split_date = None
@@ -551,7 +551,8 @@ class CoreEngineImpl(CoreEngine):
         self.printLog(f"创建模型完成", True)
         self.logger = oldLogger
 
-    def __buildModelAbility(self, dimen:Dimension, trainDataList:Sequence['CollectData'], testDataList:Sequence['CollectData'],useSVM:bool):
+    def __buildModelAbility(self, dimen:Dimension, trainDataList:Sequence['CollectData2'], testDataList:Sequence[
+        'CollectData2'], useSVM:bool):
         self.printLog("buildAbilityData:", True)
         trainQauntData = self.computeQuantData(trainDataList)
         model = ClassifierModel(self, dimen,useSVM)
@@ -614,7 +615,7 @@ class CoreEngineImpl(CoreEngine):
 
 
         for i in range(0,count):
-            collectData:CollectData = cDataList[i]
+            collectData:CollectData2 = cDataList[i]
             high_price = -99999999
             low_price = -high_price
             for bar in collectData.predictBars:
@@ -660,7 +661,7 @@ class CoreEngineImpl(CoreEngine):
 
 
 
-    def loadCollectData(self, dimen: Dimension) -> Sequence['CollectData']:
+    def loadCollectData(self, dimen: Dimension) -> Sequence['CollectData2']:
         filePath = self.__getCollectFilePath(dimen)
         collectData = None
         with open(filePath, 'rb') as fp:
@@ -670,7 +671,7 @@ class CoreEngineImpl(CoreEngine):
     def getEngineModel(self) ->CoreEngineModel:
         return self.__model
 
-    def computeQuantData(self, dataList: Sequence['CollectData']) -> QuantData:
+    def computeQuantData(self, dataList: Sequence['CollectData2']) -> QuantData:
         return self.__computeQuantData(dataList)
 
     """
@@ -746,14 +747,14 @@ class CoreEngineImpl(CoreEngine):
             return FloatRange2.sort(rangeList)
         return rangeList
 
-    def __getSellBuyPctLabel(self,cData:CollectData):
+    def __getSellBuyPctLabel(self, cData:CollectData2):
         sellPrice, buyPrice = self.getEngineModel().getYLabelPrice(cData)
         basePrice = self.getEngineModel().getYBasePrice(cData)
         __sell_pct = 100 * (sellPrice - basePrice) / basePrice
         __buy_pct = 100 * (buyPrice - basePrice) / basePrice
         return __sell_pct,__buy_pct
 
-    def __computeQuantData(self,dataList: Sequence['CollectData']):
+    def __computeQuantData(self, dataList: Sequence['CollectData2']):
 
         sell_pct_list = []
         buy_pct_list = []
@@ -787,7 +788,7 @@ class CoreEngineImpl(CoreEngine):
         return quantData;
 
 
-    def collect(self, bars: ['BarData']) -> Tuple[Sequence['CollectData'], Sequence['CollectData']]:
+    def collect(self, bars: ['BarData']) -> Tuple[Sequence['CollectData2'], Sequence['CollectData2']]:
         model = self.__model
         #collector.onCreate()
         code = bars[0].symbol

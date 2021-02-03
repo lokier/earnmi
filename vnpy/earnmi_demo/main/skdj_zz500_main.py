@@ -9,7 +9,7 @@ from earnmi.core.App import App
 from earnmi.data.driver.StockIndexDriver import StockIndexDriver
 from earnmi.data.driver.ZZ500StockDriver import ZZ500StockDriver
 from earnmi.model.BarDataSource import ZZ500DataSource
-from earnmi.model.CollectData import CollectData
+from earnmi.model.CollectData2 import CollectData2
 from earnmi.model.CoreEngine import CoreEngine
 from earnmi.model.CoreEngineModel import CoreEngineModel
 from earnmi.model.CoreEngineRunner import CoreEngineRunner
@@ -33,7 +33,7 @@ class SKDJ_CollectModel(CollectModel):
         self.code = code
         return True
 
-    def onCollectTrace(self, bar: BarData) -> CollectData:
+    def onCollectTrace(self, bar: BarData) -> CollectData2:
         self.indicator.update_bar(bar)
         self.lastedBars[:-1] = self.lastedBars[1:]
         self.lasted3BarKdj[:-1] = self.lasted3BarKdj[1:]
@@ -74,7 +74,7 @@ class SKDJ_CollectModel(CollectModel):
         kPatternValue = self.makePatthernValue(verbute,gold_dif_factory,gold_dea_factory);
 
         dimen = Dimension(type=TYPE_2KAGO1, value=kPatternValue)
-        collectData = CollectData(dimen=dimen)
+        collectData = CollectData2(dimen=dimen)
         collectData.occurBars = list(self.lastedBars)
         collectData.occurKdj = list(self.lasted3BarKdj)
         collectData.occurExtra['lasted3BarMacd'] = self.lasted3BarMacd
@@ -98,7 +98,7 @@ class SKDJ_CollectModel(CollectModel):
         v3 = SKDJ_EngineModel.ENCODE2.encode(dea)
         return v1 * mask2 * mask2 + v2 * mask2 + v3;
 
-    def onCollect(self, data: CollectData, newBar: BarData):
+    def onCollect(self, data: CollectData2, newBar: BarData):
         # 不含停牌数据
         data.predictBars.append(newBar)
         size = len(data.predictBars)
@@ -133,11 +133,11 @@ class SKDJ_EngineModel(CoreEngineModel):
     ENCODE2 = FloatEncoder([-1,0,1,2.2,4.7]);
 
 
-    def getYBasePrice(self, cData: CollectData) -> float:
+    def getYBasePrice(self, cData: CollectData2) -> float:
         ## 金叉形成后的前一天
         return cData.occurBars[-1].close_price
 
-    def getYLabelPct(self, cData:CollectData)->[float, float]:
+    def getYLabelPct(self, cData:CollectData2)->[float, float]:
         if len(cData.predictBars) < SKDJ_EngineModel.PREDICT_LENGT:
             #不能作为y标签。
             return None, None
@@ -164,7 +164,7 @@ class SKDJ_EngineModel(CoreEngineModel):
             return 1
         return (vallue - min_value) / (max_value-min_value)
 
-    def generateXFeature(self, cData: CollectData) -> []:
+    def generateXFeature(self, cData: CollectData2) -> []:
         #保证len等于三，要不然就不能作为生成特征值。
         if (len(cData.occurBars) < 3):
             return None
@@ -232,7 +232,7 @@ class SKDJ_EngineModelV2(SKDJ_EngineModel):
                 return 1
             return (vallue - min_value) / (max_value - min_value)
 
-        def generateXFeature(self, cData: CollectData) -> []:
+        def generateXFeature(self, cData: CollectData2) -> []:
             # 保证len等于三，要不然就不能作为生成特征值。
             if (len(cData.occurBars) < 3):
                 return None

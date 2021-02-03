@@ -35,7 +35,7 @@ from datetime import datetime
 from typing import Union, Tuple, Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange2
-from earnmi.model.CollectData import CollectData
+from earnmi.model.CollectData2 import CollectData2
 from earnmi.model.CoreEngine import CoreEngine,PredictModel
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
@@ -106,7 +106,7 @@ class AsignalModel(CoreEngineModel):
     def getPctEncoder1(self)->FloatEncoder:
         return FloatEncoder([-12, -5, 0, 5, 12], minValue=-20, maxValue=20)
 
-    def onCollectTrace(self, bar: BarData) -> CollectData:
+    def onCollectTrace(self, bar: BarData) -> CollectData2:
         self.indicator.update_bar(bar)
         self.aSignal.update_bar(bar)
         self.lastedBars[:-1] = self.lastedBars[1:]
@@ -122,7 +122,7 @@ class AsignalModel(CoreEngineModel):
             return None
 
         dimen = Dimension(type=TYPE_2KAGO1, value=1)
-        collectData = CollectData(dimen=dimen)
+        collectData = CollectData2(dimen=dimen)
         collectData.occurBars = self.lastedBars
         assert collectData.occurBars is self.lastedBars
         collectData.occurBars = list(self.lastedBars)
@@ -133,7 +133,7 @@ class AsignalModel(CoreEngineModel):
         collectData.setValid(False)
         return collectData
 
-    def onCollect(self, data: CollectData, newBar: BarData) :
+    def onCollect(self, data: CollectData2, newBar: BarData) :
 
         if  self.aSignal.isOccurNow():
             down ,up =  self.indicator.aroon(20)
@@ -145,11 +145,11 @@ class AsignalModel(CoreEngineModel):
             data.extraBars.append(newBar)
             data.setFinished()
 
-    def getYBasePrice(self, cData: CollectData) -> float:
+    def getYBasePrice(self, cData: CollectData2) -> float:
         ## 金叉形成后的前一天
         return cData.occurBars[-1].close_price
 
-    def getYLabelPct(self, cData:CollectData)->[float, float]:
+    def getYLabelPct(self, cData:CollectData2)->[float, float]:
 
         # basePrice = self.getYBasePrice(cData)
         # assert len(cData.predictBars) > 0
@@ -171,7 +171,7 @@ class AsignalModel(CoreEngineModel):
         return sell_pct, buy_pct
 
 
-    def generateXFeature(self, cData: CollectData) -> []:
+    def generateXFeature(self, cData: CollectData2) -> []:
         data = []
         return data
 
@@ -247,7 +247,7 @@ def analysicQuantDataOnly():
     chart = Chart()
     chart_count = 0
     for i in range(0,len(cDataList)):
-        cData:CollectData = cDataList[i];
+        cData:CollectData2 = cDataList[i];
         day_value.append(len(cData.predictBars))
         sell_day_value.append(cData.sell_day)
 

@@ -8,7 +8,7 @@ from typing import Union, Tuple, Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder
 from earnmi.model.BarDataSource import BarDataSource
-from earnmi.model.CollectData import CollectData
+from earnmi.model.CollectData2 import CollectData2
 from earnmi.model.CoreEngineModel import CoreEngineModel
 from earnmi.model.Dimension import Dimension
 from earnmi.model.PredictAbilityData import PredictAbilityData
@@ -29,7 +29,7 @@ class PredictModel:
 
 
     @abstractmethod
-    def predict(self, data: Union[CollectData, Sequence['CollectData']]) -> Union[PredictData, Sequence['PredictData']]:
+    def predict(self, data: Union[CollectData2, Sequence['CollectData2']]) -> Union[PredictData, Sequence['PredictData']]:
         # 1、加载
         pass
 
@@ -110,11 +110,11 @@ class CoreEngine():
         pass
 
     @abstractmethod
-    def computeQuantData(self,data:Sequence['CollectData']) ->QuantData:
+    def computeQuantData(self, data:Sequence['CollectData2']) ->QuantData:
         pass
 
     @abstractmethod
-    def loadCollectData(self, dimen: Dimension) -> Sequence['CollectData']:
+    def loadCollectData(self, dimen: Dimension) -> Sequence['CollectData2']:
         pass
 
     @abstractmethod
@@ -135,7 +135,7 @@ class CoreEngine():
     预测数据。
     """
     @abstractmethod
-    def predict(self,data:Tuple[CollectData, Sequence['CollectData']])->Tuple[PredictData, Sequence['PredictData']]:
+    def predict(self, data:Tuple[CollectData2, Sequence['CollectData2']])->Tuple[PredictData, Sequence['PredictData']]:
         pass
 
 

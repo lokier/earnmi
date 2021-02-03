@@ -33,7 +33,7 @@ from datetime import datetime
 from typing import Union, Tuple, Sequence
 
 from earnmi.chart.FloatEncoder import FloatEncoder, FloatRange2
-from earnmi.model.CollectData import CollectData
+from earnmi.model.CollectData2 import CollectData2
 from earnmi.model.CoreEngine import CoreEngine,PredictModel
 from earnmi.model.CoreEngineImpl import SWDataSource
 from earnmi.model.Dimension import Dimension, TYPE_2KAGO1
@@ -89,7 +89,7 @@ class DI_ZZ500_EngineModel(CoreEngineModel):
             holdDay += 1
         return holdDay
 
-    def onCollectTrace(self, bar: BarData) -> CollectData:
+    def onCollectTrace(self, bar: BarData) -> CollectData2:
         if not BarUtils.isOpen(bar):
             return None
         self.indicator.update_bar(bar)
@@ -110,7 +110,7 @@ class DI_ZZ500_EngineModel(CoreEngineModel):
 
         ##生成维度值
         dimen = Dimension(type=TYPE_2KAGO1, value=1)
-        collectData = CollectData(dimen=dimen)
+        collectData = CollectData2(dimen=dimen)
         collectData.occurBars = list(self.lasted15Bar[-3:])
 
         collectData.occurExtra['hold_day'] = hold_day - 4
@@ -127,7 +127,7 @@ class DI_ZZ500_EngineModel(CoreEngineModel):
         collectData.setValid(True)
         return collectData
 
-    def onCollect(self, data: CollectData, newBar: BarData) :
+    def onCollect(self, data: CollectData2, newBar: BarData) :
         if not BarUtils.isOpen(newBar):
             return
         #不含停牌数据
@@ -139,11 +139,11 @@ class DI_ZZ500_EngineModel(CoreEngineModel):
         if size >= DI_ZZ500_EngineModel.PREDICT_LENGT:
             data.setFinished()
 
-    def getYBasePrice(self, cData: CollectData) -> float:
+    def getYBasePrice(self, cData: CollectData2) -> float:
         ## 金叉形成后的前一天
         return cData.occurBars[-1].close_price
 
-    def getYLabelPct(self, cData:CollectData)->[float, float]:
+    def getYLabelPct(self, cData:CollectData2)->[float, float]:
         if len(cData.predictBars) < 1:
             #不能作为y标签。
             return None, None
@@ -163,7 +163,7 @@ class DI_ZZ500_EngineModel(CoreEngineModel):
         assert buy_pct < self.PCT_MAX_LIMIT
         return sell_pct, buy_pct
 
-    def generateXFeature(self, cData: CollectData) -> []:
+    def generateXFeature(self, cData: CollectData2) -> []:
         #保证len等于三，要不然就不能作为生成特征值。
         if (len(cData.occurBars) < 3):
             return None
