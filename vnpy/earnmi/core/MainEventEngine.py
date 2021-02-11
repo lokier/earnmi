@@ -1,4 +1,6 @@
+import sys
 import threading
+import traceback
 from collections import defaultdict
 from datetime import timedelta,datetime
 from threading import Thread,Condition
@@ -55,12 +57,14 @@ class _callback_task:
     EVNET_DAY_CHANED  天数变化
     EVNET_START   主引擎开始执行
     EVNET_END  主引擎执行完毕
+    EVNET_EXCEPTION  主引擎运行异常
 """
 class MainEventEngine:
 
     EVNET_DAY_CHANED:str= "__main_event_engine_day_changed"
     EVNET_START:str= "__main_event_engine_day_start"
     EVNET_END:str= "__main_event_engine_day_end"
+    EVNET_EXCEPTION:str= "__main_event_engine_eceception"
 
 
     def __init__(self):
@@ -101,9 +105,13 @@ class MainEventEngine:
         """
         发送事件。
         """
-        time = self.now()
-        task = _callback_task(self,time=time, callback=None, args=None,event=event,event_data=data)
+        task = self._build_event_task(event,data)
         return self._post_task(task)
+
+    def _build_event_task(self,event:str,data:Any=None):
+        time = self.now()
+        task = _callback_task(self, time=time, callback=None, args=None, event=event, event_data=data)
+        return task
 
     def postDelay(self,delay_second,callback:Callable,args:dict = {}):
         """
@@ -222,6 +230,17 @@ class MainEventEngine:
         Get event from queue and then process it.
         """
         self.post_event(MainEventEngine.EVNET_START,self)  ##启动
+        try:
+            self._run_looper()
+            self.post_event(MainEventEngine.EVNET_START, self)  ##主线程结束执行。
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+            task = self._build_event_task(MainEventEngine.EVNET_EXCEPTION, e)
+            self.__process_at_time(task.time,task)
+        print("MainEventEngine finished!!")
+        self._active = False
+
+    def _run_looper(self):
         while self._active:
             self.__condition.acquire()
             now = self.now()
@@ -242,7 +261,7 @@ class MainEventEngine:
                 self.task_queue.put(next_task, block=False)
             except Q.Empty:
                 wait_time_second = self._next_day_delay_second(now)
-            assert  wait_time_second > 0
+            assert  wait_time_second >= 0
             ##需要延迟处理。
             if self.is_backtest:
                 ##马上跳转到下一个时间点执行。
@@ -260,16 +279,14 @@ class MainEventEngine:
                     else:
                         now = next_time
             else:
-                ##等待执行
-                self.__condition.notify()
-                self.__condition.wait(wait_time_second)
-                now = self.now()
+                if wait_time_second > 0:
+                    ##线程挂起等待
+                    self.__condition.notify()
+                    self.__condition.wait(wait_time_second)
+                    now = self.now()
             self.__condition.release()
             ##时间继续往下走
             self.__process_at_time(now, None)
-
-        self._active = False
-        self.post_event(MainEventEngine.EVNET_START,self)  ##主线程结束执行。
 
 
     def _post_task(self,task:_callback_task):
@@ -325,9 +342,12 @@ class MainEventEngine:
 
 
     def _next_day_delay_second(self,d:datetime):
+        """
+        存在为0的情况
+        """
         next_day = datetime(year=d.year, month=d.month, day=d.day, hour=0, minute=0, second=0) + timedelta(days=1)
-        return int(next_day.timestamp() - d.timestamp() + 0.49)
-
+        delay_second =  int(next_day.timestamp() - d.timestamp() + 0.49)
+        return delay_second;
 
 
 

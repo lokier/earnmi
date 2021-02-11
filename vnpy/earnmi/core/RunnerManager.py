@@ -11,6 +11,8 @@ __all__ = [
 ]
 
 
+TAG = "Runner_manager"
+
 def parse_hour_minute_second(text:str):
     digit_list = text.split(":")
     assert len(digit_list) == 3
@@ -155,18 +157,6 @@ class _RunnerSession(RunnerContext, RunnerScheduler):
         return self.engine.is_backtest
 
 
-    def log_i(self, msg: str):
-        self._context._logger.info(f"[{self.engine.now()}|{self.is_mainThread()}|{self.runner.getName()}]: {msg}")
-
-    def log_d(self, msg: str):
-        self._context._logger.debug(f"[{self.engine.now()}|{self.is_mainThread()}|{self.runner.getName()}]: {msg}")
-
-    def log_w(self, msg: str):
-        self._context._logger.warn(f"[{self.engine.now()}|{self.is_mainThread()}|{self.runner.getName()}]: {msg}")
-
-    def log_e(self, msg: str):
-        self._context._logger.error(f"[{self.engine.now()}|{self.is_mainThread()}|{self.runner.getName()}]: {msg}")
-
     def run_delay(self,second:int, function:Callable,args = {}):
         self.engine.postDelay(second,function,args)
 
@@ -199,26 +189,33 @@ class RunnerManager:
         self.runner_list:['_RunnerSession'] = []
         self.engine.register(MainEventEngine.EVNET_START,self._onStart)
         self.engine.register(MainEventEngine.EVNET_END,self._onStop)
+        self.engine.register(MainEventEngine.EVNET_EXCEPTION,self._onException)
 
 
     def onInerceptCallable(self,callbale:Callable,args:{}):
         #TODO 分配到线程池里开多线程执行。
         return callbale(**args)
 
+    def _onException(self,event:str,exception):
+        self.context._logger.error("main engine error!!",exc_info = True)
 
     def _onStart(self,event:str,engine:MainEventEngine):
         """
         启动,开始安排工作
         """
+        self.context.log_d(TAG,"onStart")
         self.engine.register(MainEventEngine.EVNET_DAY_CHANED,self._onDayChanged)
         for runner_session in self.runner_list:
             runner_session.reset()
             runner_session.runner.onStart(runner_session)
         ##拦截引擎的callable方法调用
+        if not engine.intercept_callbale_handler is None:
+            raise RuntimeError("only one RunnerManager enable,please use App.getRunnerManager()")
         self.engine.intercept_callbale_handler = self.onInerceptCallable
         self._secheduleToayJob()
 
     def _onStop(self,event:str,engine:MainEventEngine):
+        self.context.log_d(TAG, "onStop")
         self.engine.unregister(MainEventEngine.EVNET_DAY_CHANED,self._onDayChanged)
         for runner_session in self.runner_list:
             runner_session.runner.onStop()
@@ -229,12 +226,14 @@ class RunnerManager:
         """
         天数变化：新的一天开始安排工作。
         """
+        self.context.log_d(TAG, "_onDayChanged")
         self._secheduleToayJob()
 
     def _secheduleToayJob(self):
         """
          分配今天的任务
         """
+        self.context.log_d(TAG, "_secheduleToayJob")
         [ runner_wrapper.secheduleToayJob(self.engine) for runner_wrapper in self.runner_list ]
 
 
@@ -290,9 +289,9 @@ if __name__ == "__main__":
 
     from earnmi.core.App import App
     app = App()
-    runnerManager = RunnerManager(app)
+    runnerManager = app.getRunnerManager()
     runnerManager.add(MyRunner())
 
-    start = datetime(year=2021, month=1, day=2, hour=14)
+    start = datetime(year=2021, month=1, day=12, hour=14)
     app.run_backtest(start)
     app.engine.go(3600*24*10)

@@ -84,16 +84,16 @@ class Context:
         """
         return self.engine.inCallableThread()
 
-    def log_i(self, msg: str):
+    def log_i(self,tag, msg: str):
         print(f"[{self.engine.now()}|{self.is_mainThread()}]: {msg}")
 
-    def log_d(self, msg: str):
+    def log_d(self,tag, msg: str):
         print(f"[{self.engine.now()}|{self.is_mainThread()}]: {msg}")
 
-    def log_w(self, msg: str):
+    def log_w(self,tag, msg: str):
         print(f"[{self.engine.now()}|{self.is_mainThread()}]: {msg}")
 
-    def log_e(self, msg: str):
+    def log_e(self,tag, msg: str):
         print(f"[{self.engine.now()}|{self.is_mainThread()}]: {msg}")
 
     @abstractmethod
@@ -152,17 +152,17 @@ class ContextWrapper(Context):
         """
         return self._context.engine.inCallableThread()
 
-    def log_i(self, msg: str):
-        self._context.log_i(msg)
+    def log_i(self, tag,msg: str):
+        self._context.log_i(tag,msg)
 
-    def log_d(self, msg: str):
-        self._context.log_d(msg)
+    def log_d(self,tag, msg: str):
+        self._context.log_d(tag,msg)
 
-    def log_w(self, msg: str):
-        self._context.log_w(msg)
+    def log_w(self, tag,msg: str):
+        self._context.log_w(tag,msg)
 
-    def log_e(self, msg: str):
-        self._context.log_e(msg)
+    def log_e(self,tag, msg: str):
+        self._context.log_e(tag,msg)
 
 
 

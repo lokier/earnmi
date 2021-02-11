@@ -61,7 +61,8 @@ event|data|说明
 --|--|--
 MainEventEngine.EVNET_DAY_CHANED | engine|天数变化
 MainEventEngine.EVNET_START | engine|主线程开始执行
-MainEventEngine.EVNET_END | engine|主线程结束执行
+MainEventEngine.EVNET_END | engine|主线程正常结束执行
+MainEventEngine.EVNET_EXCEPTION | exception|主引擎运行异常结束执行
 
 
 

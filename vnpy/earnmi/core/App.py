@@ -9,6 +9,11 @@ from earnmi.core.RunnerManager import RunnerManager
 from earnmi.data.BarManager import BarManager
 from earnmi.uitl.LogUtil import LogUtil
 
+__all__ = [
+    # Super-special typing primitives.
+    'RunnerManager',
+]
+
 
 class App(Context):
 
@@ -53,17 +58,17 @@ class App(Context):
         self.running = True
         self.engine.run_backtest(start)
 
-    def log_i(self, msg: str):
-        self._logger.info(f"[{self.engine.now()}|{self.is_mainThread()}]: {msg}")
+    def log_i(self,tag, msg: str):
+        self._logger.info(f"[{self.engine.now()}|{self.is_mainThread()}|{tag}]: {msg}")
 
-    def log_d(self, msg: str):
-        self._logger.debug(f"[{self.engine.now()}|{self.is_mainThread()}]: {msg}")
+    def log_d(self,tag, msg: str):
+        self._logger.debug(f"[{self.engine.now()}|{self.is_mainThread()}|{tag}]: {msg}")
 
-    def log_w(self, msg: str):
-        self._logger.warn(f"[{self.engine.now()}|{self.is_mainThread()}]: {msg}")
+    def log_w(self,tag, msg: str):
+        self._logger.warn(f"[{self.engine.now()}|{self.is_mainThread()}|{tag}]: {msg}")
 
-    def log_e(self, msg: str):
-        self._logger.error(f"[{self.engine.now()}|{self.is_mainThread()}]: {msg}")
+    def log_e(self,tag, msg: str):
+        self._logger.error(f"[{self.engine.now()}|{self.is_mainThread()}|{tag}]: {msg}")
 
     @staticmethod
     def __create_Filelogger(log_path, logging_name):
@@ -82,7 +87,7 @@ class App(Context):
         logger.setLevel(level=logging.DEBUG)
         # 获取文件日志句柄并设置日志级别，第二层过滤
         handler = logging.FileHandler(log_path, encoding='UTF-8')
-        handler.setLevel(logging.INFO)
+        handler.setLevel(logging.DEBUG)
         # 生成并设置文件日志格式
         formatter = logging.Formatter('%(levelname)s:%(message)s')
         handler.setFormatter(formatter)

@@ -160,12 +160,30 @@ def casePostTimer(asserter: Asserter):
 
     pass
 
-def testAllCase(asserter: Asserter):
-    case1(asserter)
-    casePostEvent(asserter)
-    casePostTimer(asserter)
 
-    pass
+def checkRealTimeCase(asserter: Asserter):
+    """
+    实盘环境信息查看
+    """
+    engine: MainEventEngine = asserter.engine
+    print(f"[{engine.now()}]: checkRealTimeCase，请手动更新系统时间查看日志情况")
+    def wake_up_ui_thread():
+        print(f"[{engine.now()}]: wake_up_ui_thread")
+
+    engine.postTimer(5,wake_up_ui_thread)
+
+
+def testAllCase(asserter: Asserter):
+
+
+    engine: MainEventEngine = asserter.engine
+    if engine.is_backtest:
+        case1(asserter)
+        casePostEvent(asserter)
+        casePostTimer(asserter)
+        asserter.engine.go(3600 * 24 * 10)  ##开始回撤执行。
+    else:
+        checkRealTimeCase(asserter)
 
 
 def onDayChanged(engine:MainEventEngine):
@@ -178,14 +196,11 @@ def onDayChangedEvent(event:str,engine:MainEventEngine):
 start = datetime(year=2019, month=6, day=30, hour=23)
 end = datetime(year=2019, month=9, day=30, hour=23)
 
-asserter = Asserter()
-###实盘环境。
-# asserter.engine.run()
-# testAllCase(asserter)
 
-asserter_backtest = Asserter()  ###回测环境。
-asserter_backtest.engine.register(MainEventEngine.EVNET_DAY_CHANED,onDayChangedEvent)
-asserter_backtest.engine.run_backtest(start)
-testAllCase(asserter_backtest)
+asserter = Asserter()  ###回测环境。
+asserter.engine.register(MainEventEngine.EVNET_DAY_CHANED,onDayChangedEvent)
+#asserter_backtest.engine.run_backtest(start)
+asserter.engine.run()
 
-asserter_backtest.engine.go(3600*24*10) ##开始回撤执行。
+testAllCase(asserter)
+

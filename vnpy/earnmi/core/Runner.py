@@ -64,7 +64,7 @@ class Runner:
         return self.context.now()
 
     def log(self,msg:str):
-        self.context.log_i(msg)
+        self.context.log_i(self.getName(),msg)
 
     @abstractmethod
     def getName(self):
