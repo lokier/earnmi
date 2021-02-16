@@ -1,6 +1,6 @@
 # Earnmi工程.
 * [Earnmi](earnmi_docs/README.md)
-    * [计划与想法](earnmi_docs/book/计划与想法.md)
+    * [计划与问题汇总](earnmi_docs/book/计划与想法.md)
     * [运行框架]()
         * [Context运行环境](earnmi_docs/book/context.md)
             * [App与Context](earnmi_docs/book/context.md#app)
@@ -20,6 +20,7 @@
     * [行情数据](earnmi_docs/book/数据源.md)
         * [数据驱动BarDriver](earnmi_docs/book/数据源.md#BarDataDriver)
         * [行情数据BarData](earnmi_docs/book/数据源.md#BarData)
+            * [BarV2](earnmi_docs/book/数据源.md#BarV2)
         * [市场行情Market与BarSource](earnmi_docs/book/数据源.md#Market)
         * [行情数据下载与调用](earnmi_docs/book/数据源.md#donwnload)
     * [行情分析]()
@@ -39,6 +40,7 @@
             * [自建指标](earnmi_docs/book/自建指标.md)
     * [案例分析]()
         * [encode_2k_by_algo1形态编码算法的涨幅分析](earnmi_docs/book/案例/encode_2k_by_algo1形态编码算法的涨幅分析.md)
+        * [加工bar指标分析](earnmi_docs/book/案例/加工bar指标分析.md)
     * [网站系统]()
         * [数据定期清理]()
      
