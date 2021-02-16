@@ -34,16 +34,12 @@ class JoinQuantBarDriver(BarDriver):
             raise RuntimeError(f"unsupport interval:{interval}")
 
         interval = Interval.DAILY
-        batch_start = start_date
         saveCount = 0
         jq_code = self.to_jq_code(symbol)
         requcent_cnt = 0
-        while (batch_start.__lt__(end_date)):
-            batch_end = batch_start + timedelta(days=batch_day)
-            batch_end = utils.to_end_date(batch_end)
-            if (batch_end.__gt__(end_date)):
-                batch_end = end_date
-
+        batch_time_list = utils.split_datetime(start_date, end_date, batch_day)
+        for batch_time in batch_time_list:
+            batch_start, batch_end = batch_time
             requcent_cnt+=1
             prices = jq.get_price(jq_code, start_date=batch_start, end_date=batch_end,
                                   fields=['open', 'close', 'high', 'low', 'volume'], frequency=frequency)
@@ -57,7 +53,6 @@ class JoinQuantBarDriver(BarDriver):
                     bars.append(bar)
             saveCount += bars.__len__()
             storage.save_bar_data(bars)
-            batch_start = batch_end  # + timedelta(days = 1)
         context.log_i("JoinQuantBarDriver",f"_download_bars_from_jq() :driver:{self.get_name()} jq_code={jq_code} start={start_date},end={end_date},requcent_cnt={requcent_cnt},count={saveCount}")
         return saveCount
 

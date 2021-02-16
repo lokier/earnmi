@@ -10,6 +10,29 @@ import jqdatasdk as jq
 
 class utils:
 
+    @staticmethod
+    def split_datetime(start:datetime,end:datetime,batch_day:int):
+        """
+        分割一段时间，以便分批处理。
+        返回:
+            [[start1,end1],[start2,end2]...]
+        """
+        assert batch_day > 0
+        batch_start = start
+        time_span_list = []
+        while batch_start.__lt__(end):
+            batch_end = batch_start + timedelta(days=batch_day)
+            batch_end = utils.to_end_date(batch_end)
+            if (batch_end.__gt__(end)):
+                batch_end = end
+            assert batch_start<=batch_end
+            time_span_list.append([batch_start,batch_end])
+            batch_start = utils.to_start_date(batch_end + timedelta(days = 1))
+            assert batch_start>=batch_end
+        assert time_span_list[-1][-1] == end
+        assert time_span_list[0][0] == start
+        return time_span_list
+
     """
     计算收益率
     返回: 最终收益率，最大收益率，最小收益率，波动
