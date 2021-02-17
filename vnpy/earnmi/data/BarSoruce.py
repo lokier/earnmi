@@ -2,6 +2,7 @@
 """
 行情数据驱动器。
 """
+from abc import abstractmethod
 from datetime import datetime
 
 from vnpy.trader.constant import Interval
@@ -11,10 +12,23 @@ from earnmi.data.BarDriver import BarDriver
 from earnmi.data.BarStorage import BarStorage
 from earnmi.model.bar import LatestBar, BarData
 from typing import Tuple, Sequence
-
-
+__all__ = [
+    # Super-special typing primitives.
+    'BarSource',
+    'DefaultBarSource',
+]
 
 class BarSource:
+
+    @abstractmethod
+    def nextBars(self) -> Tuple[Sequence['BarData'], str]:
+        pass
+
+    @abstractmethod
+    def reset(self):
+        pass
+
+class DefaultBarSource(BarSource):
 
     def __init__(self,context:Context,storage:BarStorage,drivers:[],interval:Interval,start:datetime,end:datetime):
        """

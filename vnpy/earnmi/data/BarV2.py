@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Sequence
+from typing import Sequence, Tuple
 
 from earnmi.data.BarMarket import BarMarket
+from earnmi.data.BarSoruce import BarSource
 from earnmi.model.bar import BarData
 from earnmi.uitl.utils import utils
 from vnpy.trader.constant import Interval
@@ -51,9 +52,11 @@ class BarV2(BarData):
             assert is_same_day
             if is_grand_volume:
                 ##分钟级别的成交量是否是累加形式
-                assert bar.volume >= volume
                 ##改成非累加方式
                 _minute_volume = bar.volume - volume
+                # if bar.volume < volume:
+                #     print(f"why")
+                assert bar.volume >= volume
                 bar.volume = _minute_volume
             volume += bar.volume  ##累计分钟级别成交量
             __time = bar.datetime
@@ -78,12 +81,12 @@ class BarV2(BarData):
 
         sell_price_list = np.array([ (bar.open_price + bar.close_price) / 2   for bar in sell_price_bars])
         buy_price_list = np.array([ (bar.open_price + bar.close_price) / 2   for bar in buy_price_bars])
-        sell_volume_list = np.array([ bar.volume  for bar in sell_price_bars])
-        buy_volume_list = np.array([ bar.volume  for bar in buy_price_bars])
+        # sell_volume_list = np.array([ bar.volume  for bar in sell_price_bars])
+        # buy_volume_list = np.array([ bar.volume  for bar in buy_price_bars])
 
         sell_price = sell_price_list.mean()
         buy_price = buy_price_list.mean()
-        power_rate = sell_volume_list.sum() / buy_volume_list.sum()
+        power_rate = ((avg_price- buy_price) - (sell_price - avg_price)) / (sell_price - buy_price)
 
         dayly_bar = BarV2(
             symbol=first_bar.symbol,

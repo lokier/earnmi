@@ -741,7 +741,7 @@ if __name__ == "__main__":
     #url = f"http://139.196.211.109/sw_k.action?username=raodongming&password=58edde63081e2ce001cf5800f68df36f&id={code}&num={count}&datetime={dt}&period=d&srcIndex=1"
 
     drvier = SW2Driver()
-    bars = drvier.download_day_and_mintue_bar_from_net('801024',datetime(2020,1,24))
+    bars = drvier.download_day_and_mintue_bar_from_net('801744',datetime(2020,2,25))
 
     for _b in bars:
         print(f"__bar:{_b}")

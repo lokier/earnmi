@@ -6,7 +6,7 @@ from vnpy.trader.constant import Interval
 from earnmi.core.Context import Context, ContextWrapper
 from earnmi.data.BarDriver import BarDriver
 from earnmi.data.BarMarket import BarMarket
-from earnmi.data.BarSoruce import BarSource
+from earnmi.data.BarSoruce import BarSource, DefaultBarSource
 from earnmi.data.BarStorage import BarStorage
 from earnmi.data.BarUpdator import BarUpdator
 
@@ -48,7 +48,7 @@ class BarManager:
         参数:
             drivers: 各种股票池行情数据驱动器
         """
-        source = BarSource(self.context, self._storage,drivers,interval,start,end)
+        source = DefaultBarSource(self.context, self._storage,drivers,interval,start,end)
         return source
 
     def createUpdator(self)->BarUpdator:

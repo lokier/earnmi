@@ -6,7 +6,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Sequence, Tuple
 
-from earnmi.data.BarSoruce import BarSource
+from earnmi.data.BarSoruce import BarSource, DefaultBarSource
 from earnmi.model.bar import BarData, LatestBar
 from earnmi.core.Context import Context
 from earnmi.data.BarDriver import BarDriver
@@ -52,7 +52,7 @@ class BarMarket:
         if start is None or end is None:
             return None
         assert start < end
-        source = BarSource(self.context, self._storage,self._drivers,interval,start,end)
+        source = DefaultBarSource(self.context, self._storage,self._drivers,interval,start,end)
         return source
 
     def init(self,indexDriver:BarDriver,drivers:['BarDriver']):
