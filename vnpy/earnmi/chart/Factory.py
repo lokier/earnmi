@@ -128,3 +128,39 @@ class Factory:
             volumn_pct_list[i] = pre_volum + lsosc * volumn[i]
             pre_volum = volumn_pct_list[i]
         return pct_list,volumn_pct_list
+
+
+    """
+    第一个元素总是为0
+    """
+    def ad_diff(close: np.ndarray,high: np.ndarray,low:np.ndarray,volumn:np.ndarray):
+        size = len(close)
+        ad_diff_list = np.full(size, 0.0)
+
+        for i in range(1,size):
+            # 多空对比 = [（收盘价- 最低价） - （最高价 - 收盘价）] / （最高价 - 最低价)
+            dk1 = ((close[i] - low[i]) - (high[i] - close[i])) /(high[i] - low[i])
+
+            adj_high = max(high[i],close[i-1])
+            adj_low = min(low[i],close[i-1])
+            dk2 = ((close[i] - adj_low) - (adj_high - close[i])) /(adj_high - adj_low)
+
+            diff = abs(dk1-dk2)
+            ad_diff_list[i] = ad_diff_list[i-1]+ diff * volumn[i]
+        return ad_diff_list
+
+    def ad_diff2(close: np.ndarray,high: np.ndarray,low:np.ndarray,volumn:np.ndarray):
+        size = len(close)
+        ad_diff_list = np.full(size, 0.0)
+
+        for i in range(1,size):
+            # 多空对比 = [（收盘价- 最低价） - （最高价 - 收盘价）] / （最高价 - 最低价)
+            dk1 = ((close[i] - low[i]) - (high[i] - close[i])) /(high[i] - low[i])
+
+            adj_high = max(high[i],close[i-1])
+            adj_low = min(low[i],close[i-1])
+            dk2 = ((close[i] - adj_low) - (adj_high - close[i])) /(adj_high - adj_low)
+
+            diff = dk2-dk1
+            ad_diff_list[i] = ad_diff_list[i-1]+ diff * volumn[i]
+        return ad_diff_list

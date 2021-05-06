@@ -449,13 +449,13 @@ if __name__ == "__main__":
 
 
     values = np.random.uniform(low=-10, high=10, size=500)  ##随机生成涨幅情况
-    fPrarser = FloatParser(-10,10)
+    fPrarser = FloatParser()
     print(f"calc_avg_line: {fPrarser.calc_avg_line(values)}")
 
-    fPrarser.showLineChart(values)
+    #fPrarser.showLineChart(values)
 
-    # result = fPrarser.find_best_range(values,2.0)
-    # print(f"{result}")
+    result = fPrarser.find_best_range(values,2.0)
+    print(f"{result}")
 
 
 

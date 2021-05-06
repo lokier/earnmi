@@ -3,10 +3,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import cmp_to_key
 from typing import Callable, Sequence, Union
-
 from earnmi.chart.ChartUtis import ChartUtils
 from earnmi.chart.KPattern import KPattern, anaylsisPatternCoverity
-
 from earnmi.chart.Chart import Chart
 from earnmi.chart.Indicator import Indicator
 from earnmi.chart.KPattern2 import KPattern2

@@ -138,11 +138,25 @@ class HoldBarMaker:
 
 
 class IndicatorItem(metaclass=abc.ABCMeta):
-    _holdbarMaker:HoldBarMaker = None
 
     def __init__(self,generateHoldbars:bool = True):
         if generateHoldbars:
             self._holdbarMaker = HoldBarMaker()
+        else:
+            self._holdbarMaker = None
+        self.names = []
+        self.colors = ['b', 'g', 'r', 'black']
+        self.init()
+
+    def init(self):
+        pass
+
+    """
+        返回指标名称的在某个点的值。
+        """
+    @abc.abstractmethod
+    def getValues(self, indicator: Indicator, bar: BarData, signal: Signal) -> Map:
+        pass
 
     def getHoldBars(self)->['HoldBar']:
         if(self._holdbarMaker is None):
@@ -151,17 +165,14 @@ class IndicatorItem(metaclass=abc.ABCMeta):
 
 
     def getNames(self)->List:
-        return []
+        return self.names
 
-    """
-    返回指标名称的在某个点的值。
-    """
-    @abc.abstractmethod
-    def getValues(self,indicator:Indicator,bar:BarData,signal:Signal)->Map:
-        pass
 
-    def getColor(self,name:str):
-        return 'b'
+    def getColor(self, name: str):
+        index = self.names.index(name)
+        if index >= 0:
+            return self.colors[index]
+        return 'r'
 
     """
     是否在底部显示
