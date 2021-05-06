@@ -7,7 +7,23 @@ import numpy as np
 
 class BarUtils:
 
-
+    """
+    返回np.narray形式：low,high,open,close,volume
+    """
+    def to_np_array(bars:['BarData']):
+        size = len(bars)
+        low = np.full(size,0.0)
+        high = np.full(size,0.0)
+        open = np.full(size,0.0)
+        close = np.full(size,0.0)
+        volume = np.full(size,0.0)
+        for i in range(size):
+            low[i] = bars[i].low_price
+            high[i] = bars[i].high_price
+            open[i] = bars[i].open_price
+            close[i] = bars[i].close_price
+            volume[i] = bars[i].volume
+        return low,high,open,close,volume
 
     """
     将零散的整理bars的价格

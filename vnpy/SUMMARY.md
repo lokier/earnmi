@@ -32,7 +32,7 @@
         * [指标工具]()
             * [!!!名称需要重构]()
         * [IndicatorMeasure:指标测量](earnmi_docs/book/指标测量.md)
-        * [行情图查看:Chart]()
+        * [行情图绘制:Chart](earnmi_docs/book/行情图绘制.md)
         * [PredictModeL:预测模型](earnmi_docs/book/predict_model.md)
             * [!!!太乱，需要重新重构]()
         * [指标分析]()
