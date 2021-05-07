@@ -22,6 +22,7 @@
         * [行情数据BarData](earnmi_docs/book/数据源.md#BarData)
         * [市场行情Market与BarSource](earnmi_docs/book/数据源.md#Market)
         * [行情数据下载与调用](earnmi_docs/book/数据源.md#donwnload)
+        * [模拟买卖和测评](earnmi_docs/book/数据源.md#trader)
     * [行情分析]()
         * [行情收集](earnmi_docs/book/行情收集.md)
             * [CollectData](earnmi_docs/book/行情收集.md#collect_data)
