@@ -42,6 +42,7 @@
     * [策略分析]()
         * [encode_2k_by_algo1形态编码算法的涨幅分析](earnmi_docs/book/案例/encode_2k_by_algo1形态编码算法的涨幅分析.md)
         * [行业轮动策略分析](earnmi_docs/book/案例/行业轮动策略分析.md)
+        * [申万二级行业策略分析](earnmi_docs/book/案例/申万二级行业策略分析.md)
     * [网站系统]()
         * [数据定期清理]()
      
