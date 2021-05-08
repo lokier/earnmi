@@ -29,6 +29,7 @@ class kdj1_Strategy(BuyOrSellStrategy):
 
         return None
 
+
 class macd_Strategy(BuyOrSellStrategy):
 
     def is_buy_or_sell(self, bar: BarSource) -> bool:
