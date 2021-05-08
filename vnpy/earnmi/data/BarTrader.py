@@ -70,6 +70,9 @@ class SimpleTrader:
             hold_day_list.append(order.hold_day)
         pct_range = FloatRange(-10, 10, 4)  # 生成浮点值范围区间对象
         hold_day_rang = FloatRange(1, 20, 3)
+        if total_size < 1:
+            print(f"交易总数:0")
+            return
         print(f"交易总数:{total_size},平均涨幅:%.2f, 平均持有天数:%.2f" % (total_pct/total_size,total_hold_day/total_size))
         print(f"涨幅分布情况:{pct_range.calculate_distribute(pct_list).toStr()}")
         print(f"持有天数分布情况:{hold_day_rang.calculate_distribute(hold_day_list).toStr()}")

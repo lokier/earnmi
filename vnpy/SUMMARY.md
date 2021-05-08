@@ -1,3 +1,5 @@
+git config  http.proxy http://10.98.16.2:3128
+git config  https.proxy http://10.98.16.2:3128
 # Earnmi工程.
 * [Earnmi](earnmi_docs/README.md)
     * [计划与想法](earnmi_docs/book/计划与想法.md)
@@ -40,6 +42,7 @@
             * [自建指标](earnmi_docs/book/自建指标.md)
             * [ad-diff(待研究)](earnmi_docs/book/indicator/ad-diff.md)
     * [策略分析]()
+        * [交易策略框架](earnmi_docs/book/案例/交易策略框架.md)
         * [encode_2k_by_algo1形态编码算法的涨幅分析](earnmi_docs/book/案例/encode_2k_by_algo1形态编码算法的涨幅分析.md)
         * [行业轮动策略分析](earnmi_docs/book/案例/行业轮动策略分析.md)
         * [申万二级行业策略分析](earnmi_docs/book/案例/申万二级行业策略分析.md)
