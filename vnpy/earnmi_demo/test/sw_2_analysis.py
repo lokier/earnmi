@@ -29,6 +29,26 @@ class kdj1_Strategy(BuyOrSellStrategy):
 
         return None
 
+'''
+macd 与 kdj结合。
+'''
+class macd_kdj_Strategy(BuyOrSellStrategy):
+
+    def is_buy_or_sell(self, bar: BarSource) -> bool:
+        self.indicator.update_bar(bar)
+        if self.indicator.count > 34:
+            dif, dea, macd_bar = self.indicator.macd(fast_period=12, slow_period=26, signal_period=9, array=True)
+            if macd_bar[-1] < 0:
+                ##金叉出现
+                return None
+            k, d, j = self.indicator.kdj(fast_period=9, slow_period=3,array=True)
+            gold_cross = k[-1] > d[-1] and k[-2] <= d[-2]
+            if gold_cross:
+                return True
+            deadCorss = k[-1] < d[-1] and k[-2] >= d[-2]
+            if deadCorss:
+                return False
+        return None
 
 class macd_Strategy(BuyOrSellStrategy):
 
@@ -38,10 +58,10 @@ class macd_Strategy(BuyOrSellStrategy):
             dif, dea, macd_bar = self.indicator.macd(fast_period=12, slow_period=26, signal_period=9, array=True)
             if (macd_bar[-1] >= 0 and macd_bar[-2] <= 0):
                 ##金叉出现
-                return True
+                return False
             elif (macd_bar[-1] <= 0 and macd_bar[-2] >= 0):
                 ##死叉出现
-                return False
+                return True
         return None
 
 
@@ -57,6 +77,4 @@ end = datetime(year=2021,month=3,day=20)
 bar_source = app.getBarManager().createBarSoruce([drvier2],Interval.DAILY,start,end)
 
 
-trader = SimpleTrader()
-analysis_BuyOrSellStrategy(bar_source,kdj1_Strategy(),trader)
-trader.print()
+analysis_BuyOrSellStrategy(bar_source,macd_Strategy())

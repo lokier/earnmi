@@ -7,9 +7,33 @@
 
 '''
 from earnmi.chart.Indicator import Indicator
+from earnmi.core.analysis.FloatRange import FloatRange
 from earnmi.data.BarSoruce import BarSource
 from earnmi.data.BarTrader import SimpleTrader
 
+
+def __parse_order_list(order_list):
+    ##计算涨幅比例
+    pct_list = []
+    hold_day_list = []
+    total_hold_day = 0.0
+    total_pct = 0.0
+    total_size = len(order_list)
+
+    for order in order_list:
+        pct = 100 * (order.sell_price - order.buy_price) / order.buy_price
+        pct_list.append(pct)
+        total_pct += pct
+        total_hold_day += order.hold_day
+        hold_day_list.append(order.hold_day)
+    pct_range = FloatRange(-1, 1, 1)  # 生成浮点值范围区间对象
+    hold_day_rang = FloatRange(1, 18, 3)
+    if total_size < 1:
+        print(f"    交易总数:0")
+        return
+    print(f"    交易总数:{total_size}, 平均涨幅:%.2f, 平均持有天数:%.2f" % (total_pct / total_size, total_hold_day / total_size))
+    print(f"    涨幅分布情况:{pct_range.calculate_distribute(pct_list).toStr()}")
+    print(f"    持有天数分布情况:{hold_day_rang.calculate_distribute(hold_day_list).toStr()}")
 
 class BuyOrSellStrategy:
 
@@ -24,9 +48,13 @@ class BuyOrSellStrategy:
     def is_buy_or_sell(self,bar:BarSource)->bool:
         return None
 
-def analysis_BuyOrSellStrategy(source: BarSource, strategy: BuyOrSellStrategy, trader: SimpleTrader):
+def analysis_BuyOrSellStrategy(source: BarSource, strategy: BuyOrSellStrategy):
     source.reset()
     bars, symbol = source.nextBars()
+
+    trader = SimpleTrader()  ##计算正向收益
+    trader_reverse = SimpleTrader()  ##计算反向收益
+
     while not bars is None:
         code = bars[0].symbol
         print(f"start:{code}")
@@ -34,19 +62,36 @@ def analysis_BuyOrSellStrategy(source: BarSource, strategy: BuyOrSellStrategy, t
         for bar in bars:
             _buy_or_sell = strategy.is_buy_or_sell(bar)
             ###是否持有
-            if _buy_or_sell is None:
-                pass
-            elif _buy_or_sell:
-                ## 买入
-                if not trader.hasBuy(bar.symbol):
-                    the_buy_price = bar.close_price * 1.001  # 上一个交易日的收盘价作为买入价
-                    trader.buy(bar.symbol, the_buy_price, bar.datetime)
-            else:
-                ## 卖出
-                if trader.hasBuy(bar.symbol):
-                    sell_Price = bars[-1].close_price * 0.999  # 上一个交易日的收盘价作为买如价
-                    trader.sell(bar.symbol, sell_Price, bar.datetime)
+            if not _buy_or_sell is None:
+                if _buy_or_sell:
+                    ## 买入
+                    if not trader.hasBuy(bar.symbol):
+                        ##正向买入
+                        the_buy_price = bar.close_price   # 上一个交易日的收盘价作为买入价
+                        trader.buy(bar.symbol, the_buy_price, bar.datetime)
+                    if trader_reverse.hasBuy(bar.symbol):
+                        ##反向卖出
+                        sell_Price = bars[-1].close_price  # 上一个交易日的收盘价作为买如价
+                        trader_reverse.sell(bar.symbol, sell_Price, bar.datetime)
+                else:
+                    ## 卖出
+                    if trader.hasBuy(bar.symbol):
+                        ##正向卖出
+                        sell_Price = bars[-1].close_price   # 上一个交易日的收盘价作为买如价
+                        trader.sell(bar.symbol, sell_Price, bar.datetime)
+                    if not trader_reverse.hasBuy(bar.symbol):
+                        ##反向买入
+                        the_buy_price = bar.close_price  # 上一个交易日的收盘价作为买入价
+                        trader_reverse.buy(bar.symbol, the_buy_price, bar.datetime)
             trader.watch(bar.datetime)
+            trader_reverse.watch(bar.datetime)
         trader.resetWatch()
+        trader_reverse.resetWatch()
         strategy.onEnd(code)
         bars, symbol = source.nextBars()
+
+    print("-------正向操作-----------")
+    __parse_order_list(trader.getOrederList())
+    print("-------反向操作-----------")
+    __parse_order_list(trader_reverse.getOrederList())
+

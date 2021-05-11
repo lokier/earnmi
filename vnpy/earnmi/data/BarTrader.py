@@ -9,7 +9,7 @@ from earnmi.core.analysis.FloatRange import FloatRange
 class SimpleTrader:
 
     @dataclass
-    class _cross_order:
+    class SimpleOrder:
         code:str
         buy_price:float
         updateTime:datetime
@@ -26,17 +26,18 @@ class SimpleTrader:
     def buy(self,code:str,price:float,time:datetime):
         if self.hasBuy(code):
             raise RuntimeError(f"code: {code} 已经buy")
-        order = SimpleTrader._cross_order(code=code,buy_price=price,updateTime=time)
+        order = SimpleTrader.SimpleOrder(code=code, buy_price=price, updateTime=time)
         self.processingOrderMap[code] = order
 
     def sell(self,code:str,price:float,time:datetime):
         if not self.hasBuy(code):
             raise RuntimeError(f"code: {code} can't sell")
-        order: SimpleTrader._cross_order = self.processingOrderMap.pop(code)
+        self.watch(time)
+        order: SimpleTrader.SimpleOrder = self.processingOrderMap.pop(code)
         assert not order is None
+        assert not self.hasBuy(code)
         order.sell_price = price
         self.doneOrderList.append(order)
-        self.watch(time)
 
     def resetWatch(self):
         self.processingOrderMap.clear()
@@ -55,6 +56,12 @@ class SimpleTrader:
                     raise RuntimeError(f"watch的时间必须有顺序：code:{code}, updateTime:{order.updateTime},but time:{time}")
             order.updateTime = time
 
+    def getOrederList(self):
+        return self.doneOrderList
+
+    """
+    离散的统计买入、卖出的利润值。 不可以用复利的方式去计算收益率，因为是离散的操作，可能同一段时间有很多操作。
+    """
     def print(self):
         ##计算涨幅比例
         pct_list = []
@@ -68,11 +75,12 @@ class SimpleTrader:
             total_pct+=pct
             total_hold_day+= order.hold_day
             hold_day_list.append(order.hold_day)
-        pct_range = FloatRange(-10, 10, 4)  # 生成浮点值范围区间对象
-        hold_day_rang = FloatRange(1, 20, 3)
+        pct_range = FloatRange(-1, 1, 1)  # 生成浮点值范围区间对象
+        hold_day_rang = FloatRange(1, 18, 3)
         if total_size < 1:
             print(f"交易总数:0")
             return
-        print(f"交易总数:{total_size},平均涨幅:%.2f, 平均持有天数:%.2f" % (total_pct/total_size,total_hold_day/total_size))
+
+        print(f"交易总数:{total_size}, 平均涨幅:%.2f, 平均持有天数:%.2f" % (total_pct/total_size,total_hold_day/total_size))
         print(f"涨幅分布情况:{pct_range.calculate_distribute(pct_list).toStr()}")
         print(f"持有天数分布情况:{hold_day_rang.calculate_distribute(hold_day_list).toStr()}")
