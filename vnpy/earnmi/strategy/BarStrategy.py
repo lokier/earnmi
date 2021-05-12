@@ -19,6 +19,12 @@ def __parse_order_list(order_list):
     total_hold_day = 0.0
     total_pct = 0.0
     total_size = len(order_list)
+    avg_pct = 0.0
+    avg_hold_day = 0.0
+
+    pct_probal_dist = [0.0,0.0,0.0]  ###[<-1%的概率，（-1,1）的概率，>1的概率]
+    pct_probal_dist_desc = "" ##持有天数分布描述
+    hold_day_dist_desc = "" ##持有天数分布描述
 
     for order in order_list:
         pct = 100 * (order.sell_price - order.buy_price) / order.buy_price
@@ -28,12 +34,28 @@ def __parse_order_list(order_list):
         hold_day_list.append(order.hold_day)
     pct_range = FloatRange(-1, 1, 1)  # 生成浮点值范围区间对象
     hold_day_rang = FloatRange(1, 18, 3)
-    if total_size < 1:
-        print(f"    交易总数:0")
-        return
-    print(f"    交易总数:{total_size}, 平均涨幅:%.2f, 平均持有天数:%.2f" % (total_pct / total_size, total_hold_day / total_size))
-    print(f"    涨幅分布情况:{pct_range.calculate_distribute(pct_list).toStr()}")
-    print(f"    持有天数分布情况:{hold_day_rang.calculate_distribute(hold_day_list).toStr()}")
+    if total_size > 0:
+        avg_pct = total_pct / total_size
+        avg_hold_day = total_hold_day / total_size
+        _pct_dist = pct_range.calculate_distribute(pct_list).items(reverse=None)
+
+        assert len(_pct_dist) ==3
+        assert _pct_dist[0].right ==-1
+        assert _pct_dist[1].left ==-1 and _pct_dist[1].right==1
+        assert _pct_dist[2].left ==1
+        pct_probal_dist[0] = _pct_dist[0].probal
+        pct_probal_dist[1] = _pct_dist[1].probal
+        pct_probal_dist[2] = _pct_dist[2].probal
+        pct_probal_dist_desc = pct_range.calculate_distribute(pct_list).toStr()
+        hold_day_dist_desc = hold_day_rang.calculate_distribute(hold_day_list).toStr()
+        # print(f"    交易总数:0")
+        # print(f"    交易总数:{total_size}, 平均涨幅:%.2f, 平均持有天数:%.2f" % (total_pct / total_size, total_hold_day / total_size))
+        # print(f"    涨幅分布情况:{pct_range.calculate_distribute(pct_list).toStr()}")
+        # print(f"    持有天数分布情况:{hold_day_rang.calculate_distribute(hold_day_list).toStr()}")
+
+    ret =  [total_size,avg_pct,avg_hold_day,pct_probal_dist[0],pct_probal_dist[1],pct_probal_dist[2],pct_probal_dist_desc,hold_day_dist_desc]
+    print(f"{ret}")
+    return ret
 
 class BuyOrSellStrategy:
 
