@@ -120,7 +120,25 @@ def analysis_BuyOrSellStrategy(source: BarSource, strategy: BuyOrSellStrategy):
     print("-------反向操作-----------")
     ret2 = __parse_order_list(trader_reverse.getOrederList())
 
+    def tofloat(v):
+        return f"%.2f" % v
 
     v = (ret1[3] - ret2[5])* (ret1[3] - ret2[5]) + (ret1[4] - ret2[4]) * (ret1[4] - ret2[4]) + (ret1[4] - ret2[4]) * (ret1[4] - ret2[4])
     v = math.sqrt(v)
-    print(f"反向操作值：{v}")
+
+    html = "<table>"
+    html = html +'\n<tr><th>策略名</th> <td colspan="6">     </td></tr>'
+    html = html +'\n<tr><th>策略说明</th> <td colspan="6">     </td></tr>'
+
+    html = html + (
+        ' \n <tr><th rowspan="2"></th>  <th rowspan="2">交易数</th> <th rowspan="2" >均收益</th> <th rowspan="2">均天数</th> <th colspan="3">收益分布概率</th> </tr>')
+    html = html + (' \n <tr><th>小于-1%</th> <th> [-1,1]左右</th> <th>大于1%</th> </tr>')
+    html = html + (
+        f"\n <tr><th>正向</th>  <td>{ret1[0]}</td> <td>{tofloat(ret1[1])}%</td> <td>{tofloat(ret1[2])}</td> <td>{tofloat(ret1[3])}</td> <td>{tofloat(ret1[4])}</td> <td>{tofloat(ret1[5])}</td> </tr>")
+    html = html + (
+        f"\n <tr><th>反向</th>  <td>{ret2[0]}</td> <td>{tofloat(ret2[1])}%</td> <td>{tofloat(ret2[2])}</td> <td>{tofloat(ret2[3])}</td> <td>{tofloat(ret2[4])}</td> <td>{tofloat(ret2[5])}</td> </tr>")
+    html = html + (f'\n <tr><td>反向值</td>  <td >{tofloat(v)}</td>  <th>天数分布</th>  <td colspan="4">{ret1[6]}</td></tr>')
+    html = html + ("  \n</table>")
+
+
+    print(f"html表格：\n{html}")

@@ -77,4 +77,4 @@ end = datetime(year=2021,month=3,day=20)
 bar_source = app.getBarManager().createBarSoruce([drvier2],Interval.DAILY,start,end)
 
 
-analysis_BuyOrSellStrategy(bar_source,macd_Strategy())
+analysis_BuyOrSellStrategy(bar_source,kdj1_Strategy())
