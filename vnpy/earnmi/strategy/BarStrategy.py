@@ -6,6 +6,8 @@
 + 卖出点没有细分：止损点和止盈点，比较粗糙。
 
 '''
+import math
+
 from earnmi.chart.Indicator import Indicator
 from earnmi.core.analysis.FloatRange import FloatRange
 from earnmi.data.BarSoruce import BarSource
@@ -43,9 +45,9 @@ def __parse_order_list(order_list):
         assert _pct_dist[0].right ==-1
         assert _pct_dist[1].left ==-1 and _pct_dist[1].right==1
         assert _pct_dist[2].left ==1
-        pct_probal_dist[0] = _pct_dist[0].probal
-        pct_probal_dist[1] = _pct_dist[1].probal
-        pct_probal_dist[2] = _pct_dist[2].probal
+        pct_probal_dist[0] = _pct_dist[0].probal * 100
+        pct_probal_dist[1] = _pct_dist[1].probal * 100
+        pct_probal_dist[2] = _pct_dist[2].probal * 100
         pct_probal_dist_desc = pct_range.calculate_distribute(pct_list).toStr()
         hold_day_dist_desc = hold_day_rang.calculate_distribute(hold_day_list).toStr()
         # print(f"    交易总数:0")
@@ -113,7 +115,12 @@ def analysis_BuyOrSellStrategy(source: BarSource, strategy: BuyOrSellStrategy):
         bars, symbol = source.nextBars()
 
     print("-------正向操作-----------")
-    __parse_order_list(trader.getOrederList())
-    print("-------反向操作-----------")
-    __parse_order_list(trader_reverse.getOrederList())
+    ret1 = __parse_order_list(trader.getOrederList())
 
+    print("-------反向操作-----------")
+    ret2 = __parse_order_list(trader_reverse.getOrederList())
+
+
+    v = (ret1[3] - ret2[5])* (ret1[3] - ret2[5]) + (ret1[4] - ret2[4]) * (ret1[4] - ret2[4]) + (ret1[4] - ret2[4]) * (ret1[4] - ret2[4])
+    v = math.sqrt(v)
+    print(f"反向操作值：{v}")
