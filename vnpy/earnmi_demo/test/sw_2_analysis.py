@@ -30,7 +30,10 @@ class kdj1_Strategy(BuyOrSellStrategy):
         return None
 
 '''
-macd 与 kdj结合。
+macd 与 kdj结合，满足：
+1、macd金叉出现以后（macd_bar > 0)
+2、kdj 金叉买入，kdj死叉卖出
+
 '''
 class macd_kdj_Strategy(BuyOrSellStrategy):
 
@@ -77,4 +80,4 @@ end = datetime(year=2021,month=3,day=20)
 bar_source = app.getBarManager().createBarSoruce([drvier2],Interval.DAILY,start,end)
 
 
-analysis_BuyOrSellStrategy(bar_source,kdj1_Strategy())
+analysis_BuyOrSellStrategy(bar_source,macd_kdj_Strategy())
