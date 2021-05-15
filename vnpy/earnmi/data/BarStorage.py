@@ -106,6 +106,19 @@ class BarStorage:
             start: datetime,
             end: datetime,
     ) -> Sequence[BarData]:
+        if symbol is None:
+            s = (
+                self.class_bar.select()
+                    .where(
+                     (self.class_bar.driver == driver)
+                    & (self.class_bar.interval == interval.value)
+                    & (self.class_bar.datetime >= start)
+                    & (self.class_bar.datetime <= end)
+                ).order_by(self.class_bar.datetime)
+            )
+            data = [db_bar.to_bar() for db_bar in s]
+            return data
+            return
         s = (
             self.class_bar.select()
                 .where(

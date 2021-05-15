@@ -1,5 +1,6 @@
 git config  http.proxy http://10.98.16.2:3128
 git config  https.proxy http://10.98.16.2:3128
+
 # Earnmi工程.
 * [Earnmi](earnmi_docs/README.md)
     * [计划与想法](earnmi_docs/book/计划与想法.md)
@@ -21,7 +22,7 @@ git config  https.proxy http://10.98.16.2:3128
     * [行情数据](earnmi_docs/book/数据源.md)
         * [数据驱动BarDriver](earnmi_docs/book/数据源.md#BarDataDriver)
         * [行情数据BarData](earnmi_docs/book/数据源.md#BarData)
-        * [市场行情Market与BarSource](earnmi_docs/book/数据源.md#Market)
+        * [市场行情Market、BarSource、BarParallel](earnmi_docs/book/数据源.md#Market)
         * [行情数据下载与调用](earnmi_docs/book/数据源.md#donwnload)
         * [模拟买卖和测评](earnmi_docs/book/数据源.md#trader)
     * [行情分析]()

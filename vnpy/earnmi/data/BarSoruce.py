@@ -5,6 +5,8 @@
 from abc import abstractmethod
 from datetime import datetime
 
+from numba import deprecated
+
 from vnpy.trader.constant import Interval
 
 from earnmi.core.Context import Context
@@ -17,7 +19,7 @@ __all__ = [
     'BarSource',
     'DefaultBarSource',
 ]
-
+@deprecated(version='1.0', reason="This function will be removed soon")
 class BarSource:
 
     @abstractmethod

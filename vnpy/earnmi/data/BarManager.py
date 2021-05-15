@@ -1,6 +1,9 @@
 from datetime import datetime
 
+from numba import deprecated
 from peewee import SqliteDatabase
+
+from earnmi.data.BarParallel import DefaultBarParallel
 from vnpy.trader.constant import Interval
 
 from earnmi.core.Context import Context, ContextWrapper
@@ -42,6 +45,7 @@ class BarManager:
         market.init(index_driver, drivers)
         return market
 
+    @deprecated(version='1.0', reason="This function will be removed soon")
     def createBarSoruce(self, drivers: ['BarDriver'], interval: Interval, start: datetime, end: datetime) -> BarSource:
         """
         创建行情市场对象
@@ -49,6 +53,10 @@ class BarManager:
             drivers: 各种股票池行情数据驱动器
         """
         source = DefaultBarSource(self.context, self._storage,drivers,interval,start,end)
+        return source
+
+    def createBarParallel(self, drvier:BarDriver, start: datetime, end: datetime):
+        source = DefaultBarParallel(self.context, self._storage,drvier,start,end)
         return source
 
     def createUpdator(self)->BarUpdator:
@@ -67,6 +75,7 @@ class BarManager:
     #
     # def getDrivers(self):
     #     pass
+
 
 
 
