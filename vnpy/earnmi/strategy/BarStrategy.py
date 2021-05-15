@@ -73,13 +73,10 @@ class BuyOrSellStrategy:
         return None
 
 def analysis_BuyOrSellStrategy(source: BarSource, strategy: BuyOrSellStrategy):
-    source.reset()
-    bars, symbol = source.nextBars()
-
     trader = SimpleTrader()  ##计算正向收益
     trader_reverse = SimpleTrader()  ##计算反向收益
 
-    while not bars is None:
+    for symbol,bars in source.items():
         code = bars[0].symbol
         print(f"start:{code}")
         strategy.onBegin(code)
@@ -112,7 +109,6 @@ def analysis_BuyOrSellStrategy(source: BarSource, strategy: BuyOrSellStrategy):
         trader.resetWatch()
         trader_reverse.resetWatch()
         strategy.onEnd(code)
-        bars, symbol = source.nextBars()
 
     print("-------正向操作-----------")
     ret1 = __parse_order_list(trader.getOrederList())

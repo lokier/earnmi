@@ -101,10 +101,8 @@ class CollectHandler:
 
 
     def __visit_soruce(self,source:BarSource,finished_list = None,un_finished_list = None):
-        bars,symbol = source.nextBars()
-        while not bars is None:
+        for symbol, bars in source.items():
             self.__visit_bars(bars,finished_list,un_finished_list,symbol)
-            bars, symbol = source.nextBars()
 
     def __visit_bars(self,bars:[BarData],finished_list = None,un_finished_list = None,symbol:str = None):
         if symbol is None:

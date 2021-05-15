@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from numba import deprecated
 from peewee import SqliteDatabase
 
 from earnmi.data.BarParallel import DefaultBarParallel
@@ -45,7 +44,6 @@ class BarManager:
         market.init(index_driver, drivers)
         return market
 
-    @deprecated(version='1.0', reason="This function will be removed soon")
     def createBarSoruce(self, drivers: ['BarDriver'], interval: Interval, start: datetime, end: datetime) -> BarSource:
         """
         创建行情市场对象

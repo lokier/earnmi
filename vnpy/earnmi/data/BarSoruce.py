@@ -5,8 +5,6 @@
 from abc import abstractmethod
 from datetime import datetime
 
-from numba import deprecated
-
 from vnpy.trader.constant import Interval
 
 from earnmi.core.Context import Context
@@ -19,16 +17,25 @@ __all__ = [
     'BarSource',
     'DefaultBarSource',
 ]
-@deprecated(version='1.0', reason="This function will be removed soon")
 class BarSource:
 
-    @abstractmethod
-    def nextBars(self) -> Tuple[Sequence['BarData'], str]:
+    def items(self) -> Tuple[str,Sequence['BarData']]:
         pass
 
-    @abstractmethod
-    def reset(self):
-        pass
+
+class Bar_iter:
+
+    def __init__(self, dataSource):
+        self.dataSource = dataSource
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        value = self.dataSource.nextBars()
+        if value[0] is None:
+            raise StopIteration
+        return value
 
 class DefaultBarSource(BarSource):
 
@@ -51,9 +58,12 @@ class DefaultBarSource(BarSource):
        self._current_symol_list:[] = None
        assert len(drivers) > 0
 
+    def items(self) -> Tuple[str,Sequence['BarData']]:
+        return Bar_iter(self)
+
     def nextBars(self) -> Tuple[Sequence['BarData'], str]:
         if self._driver_index >= len(self._drviers):
-            return None,None
+            return [None,None]
         driver: BarDriver = self._drviers[self._driver_index]
         if self._current_symol_list is None:
             assert self._current_symbol_list_index == 0
@@ -62,7 +72,7 @@ class DefaultBarSource(BarSource):
             symbol = self._current_symol_list[self._current_symbol_list_index]
             self._current_symbol_list_index += 1
             bars = driver.load_bars(symbol,self._inteval,self._start,self._end,self._storage)
-            return bars, symbol
+            return [ symbol,bars]
         else:
             self._current_symol_list = None
             self._current_symbol_list_index = 0

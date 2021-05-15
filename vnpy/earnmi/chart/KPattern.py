@@ -94,8 +94,7 @@ def anaylsisPatternCoverity(bar_source:BarSource,calc_pattern_value:Callable,min
     from earnmi.core.analysis.FloatRange import FloatDistribute
     pattern_value_map = defaultdict(int)
     total_count = 0
-    bars,symbol = bar_source.nextBars()
-    while not bars is None:
+    for symbol,bars in bar_source.items():
         print(f"symbol:{symbol}: size = {len(bars)}")
         bar_list = []
         for bar in bars:
@@ -107,7 +106,6 @@ def anaylsisPatternCoverity(bar_source:BarSource,calc_pattern_value:Callable,min
                     pattern_value_map[pattern_value] = pattern_value_map[pattern_value] +1
             else:
                 bar_list = []
-        bars, symbol = bar_source.nextBars()
     accept_min_count = total_count * min_coverity_rate
     accept_pattern_list = []
     accept_pattern_count_list = []

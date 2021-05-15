@@ -56,9 +56,8 @@ end = datetime(year=2021,month=3,day=20)
 bar_source = app.getBarManager().createBarSoruce([drvier2],Interval.DAILY,start,end)
 
 
-bars,symbol = bar_source.nextBars()
 chart = Chart()
-while not bars is None:
+for symbol, bars in bar_source.items():
 
     class Item(IndicatorItem):
 
@@ -86,5 +85,4 @@ while not bars is None:
 
     chart.show(n_bar_list)
 
-    bars, symbol = bar_source.nextBars()
 
