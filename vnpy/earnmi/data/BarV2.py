@@ -112,27 +112,6 @@ class BarV2Market:
     def __init__(self,market:BarMarket):
         self._market = market
 
-    def get_bars2(self, symbol: str, start: datetime,end:datetime = None,is_grand_volume = True) -> Sequence["BarV2"]:
-        start = utils.to_start_date(start)
-        end = utils.to_end_date(end)
-        mintue_bars = self._market.get_bars(symbol,Interval.MINUTE,start,end)
-
-        if len(mintue_bars) < 1:
-            return []
-        bar_v2_list = []
-        _day_info = int(mintue_bars[0].datetime.timestamp()/_A_DAY)
-        _a_day_bars = []
-        for m_bar in mintue_bars:
-            is_same_day = _day_info == int(m_bar.datetime.timestamp() / _A_DAY)
-            if not is_same_day:
-                print(f"BarV2.convert:{m_bar.datetime}, size={len(_a_day_bars)}")
-                bar_v2 = BarV2.convert(_a_day_bars, is_grand_volume=is_grand_volume)
-                print(f"           : {bar_v2}")
-                _a_day_bars = []
-                _day_info = int(m_bar.datetime.timestamp() / _A_DAY)
-                bar_v2_list.append(bar_v2)
-            _a_day_bars.append(m_bar)
-        return bar_v2_list
 
     def get_bars(self, symbol: str, start: datetime, end: datetime = None, is_grand_volume=True) -> Sequence["BarV2"]:
         start = utils.to_start_date(start)
