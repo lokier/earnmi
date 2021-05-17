@@ -42,7 +42,7 @@ class Dayly_iter:
 
 class DefaultBarParallel(BarParallel):
 
-    def __init__(self,context:Context,storage:BarStorage,driver:BarDriver,start:datetime,end:datetime):
+    def __init__(self,storage:BarStorage,driver:BarDriver,start:datetime,end:datetime):
        """
        参数：
             context:
@@ -50,7 +50,6 @@ class DefaultBarParallel(BarParallel):
             indexDriver: 指数行情驱动器，比如:A股的指数是上证指数。
             drivers:  各种股票池行情驱动器。
        """
-       self.context = context
        self.storage = storage
        self.start = start
        self.end = end

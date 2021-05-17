@@ -53,11 +53,11 @@ drvier2 = SW2Driver()
 app = App()
 start = datetime(year=2020,month=1,day=1)
 end = datetime(year=2021,month=3,day=20)
-bar_source = app.getBarManager().createBarSoruce([drvier2],Interval.DAILY,start,end)
 
 
+bar_source = app.getBarManager().createBarSoruce(drvier2,start,end)
 chart = Chart()
-for symbol, bars in bar_source.items():
+for symbol, bars in bar_source.itemsSequence():
 
     class Item(IndicatorItem):
 

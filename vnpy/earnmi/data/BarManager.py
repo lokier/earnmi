@@ -4,14 +4,17 @@ from peewee import SqliteDatabase
 
 from earnmi.data.BarParallel import DefaultBarParallel
 from vnpy.trader.constant import Interval
-
 from earnmi.core.Context import Context, ContextWrapper
 from earnmi.data.BarDriver import BarDriver
 from earnmi.data.BarMarket import BarMarket
-from earnmi.data.BarSoruce import BarSource, DefaultBarSource
+from earnmi.data.BarSoruce import BarSource, DefaultBarSource, BarSource
 from earnmi.data.BarStorage import BarStorage
 from earnmi.data.BarUpdator import BarUpdator
 
+__all__ = [
+    # Super-special typing primitives.
+    'BarManager',
+]
 
 class BarManager:
 
@@ -44,35 +47,44 @@ class BarManager:
         market.init(index_driver, drivers)
         return market
 
-    def createBarSoruce(self, drivers: ['BarDriver'], interval: Interval, start: datetime, end: datetime) -> BarSource:
-        """
-        创建行情市场对象
-        参数:
-            drivers: 各种股票池行情数据驱动器
-        """
-        source = DefaultBarSource(self.context, self._storage,drivers,interval,start,end)
-        return source
+    def createBarSoruce(self, driver:BarDriver, start: datetime = None, end: datetime = None) -> BarSource:
+        return BarSource(driver, self._storage, start, end)
 
-    def createBarParallel(self, drvier:BarDriver, start: datetime, end: datetime):
-        source = DefaultBarParallel(self.context, self._storage,drvier,start,end)
-        return source
+    """
+    创建数据加工数据。
+    """
+    def transfrom(self,transform,rebuild = False)->BarDriver:
+        transformBarDriver = BarManager._TransformBarDriver(transform)
+
+        driver_name = transformBarDriver.get_name()
+        if rebuild:
+            self._storage.clean(driver=driver_name)
+        transform.onTransform(self._storage,driver_name)
+        return transformBarDriver
+
+    # def createBarParallel(self, drvier:BarDriver, start: datetime, end: datetime):
+    #     source = DefaultBarParallel( self._storage,drvier,start,end)
+    #     return source
 
     def createUpdator(self)->BarUpdator:
         updator = BarUpdator(self.context,self._storage);
         return updator
 
-    """
-     行情管理器
-     """
+    class _TransformBarDriver(BarDriver):
 
-    # def registerDriver(self, driver: BarDriver):
-    #     pass
-    #
-    # def unregisterDriver(self, driver: BarDriver):
-    #     pass
-    #
-    # def getDrivers(self):
-    #     pass
+        def __init__(self,tranfrom):
+            self.transform = tranfrom
+            self.origin_driver = tranfrom.driver
+            self.name = f"__t__{tranfrom.driver.get_name()}"
+
+        def get_name(self):
+            return self.name
+
+        def get_symbol_lists(self):
+            return self.origin_driver.get_symbol_lists();
+
+        def get_symbol_name(self, symbol: str):
+            return self.origin_driver.get_symbol_name()
 
 
 

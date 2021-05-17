@@ -3,8 +3,9 @@
 行情数据驱动器。
 """
 from abc import abstractmethod
-from datetime import datetime
+from datetime import datetime, timedelta
 
+from earnmi.data.BarParallel import DefaultBarParallel
 from vnpy.trader.constant import Interval
 
 from earnmi.core.Context import Context
@@ -17,11 +18,37 @@ __all__ = [
     'BarSource',
     'DefaultBarSource',
 ]
+
 class BarSource:
 
-    def items(self) -> Tuple[str,Sequence['BarData']]:
-        pass
+    def __init__(self,driver:BarDriver,storage:BarStorage,start: datetime = None, end: datetime = None):
+        if end is None:
+            end = datetime.now()
+        if start is None:
+            start = end - timedelta(days=730)
+        assert start <= end
+        self._driver = driver
+        self._storage = storage
+        self._start = start
+        self._end = end
 
+    """
+    串行返回bar行情 。默认返回近两年数据。
+    """
+    @abstractmethod
+    def itemsSequence(self,interval:Interval = Interval.DAILY):
+
+        source = DefaultBarSource(self._storage, [self._driver], interval, self._start, self._end)
+        return source.items()
+
+    """
+    并行返回bar行情。默认返回近两年数据。
+    """
+    def itemsParallel(self):
+        # if not Interval.DAILY == self._interval:
+        #     raise RuntimeError("itemsParallel unsupoort intrvale: " + self._interval.__str__())
+        source = DefaultBarParallel( self._storage,self._driver,self._start,self._end)
+        return source.items()
 
 class Bar_iter:
 
@@ -39,7 +66,7 @@ class Bar_iter:
 
 class DefaultBarSource(BarSource):
 
-    def __init__(self,context:Context,storage:BarStorage,drivers:[],interval:Interval,start:datetime,end:datetime):
+    def __init__(self,storage:BarStorage,drivers:[],interval:Interval,start:datetime,end:datetime):
        """
        参数：
             context:
@@ -47,7 +74,6 @@ class DefaultBarSource(BarSource):
             indexDriver: 指数行情驱动器，比如:A股的指数是上证指数。
             drivers:  各种股票池行情驱动器。
        """
-       self.context = context
        self._storage = storage
        self._inteval = interval
        self._start = start

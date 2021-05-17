@@ -11,6 +11,11 @@ from earnmi.model.bar import LatestBar, BarData
 from earnmi.uitl.utils import utils
 from vnpy.trader.constant import Interval
 
+__all__ = [
+    # Super-special typing primitives.
+    'DayRange',
+    'BarDriver',
+]
 
 class DayRange:
 
@@ -40,7 +45,7 @@ class BarDriver:
         """
         该驱动器的描述
         """
-        raise RuntimeError("未实现")
+        return ""
 
     @abstractmethod
     def get_symbol_lists(self):

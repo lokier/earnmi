@@ -12,10 +12,10 @@ drvier2 = SW2Driver()
 app = App()
 start = datetime(year=2020,month=1,day=1)
 end = datetime(year=2021,month=3,day=20)
-barSource = app.getBarManager().createBarParallel(drvier2,start,end)
+barSource = app.getBarManager().createBarSoruce(drvier2,start,end)
 
 ###按日期并行遍历bar数据
-for day,bars in barSource.items():
+for day,bars in barSource.itemsParallel():
     print(f"day={day}: size= {len(bars)}")
 
 

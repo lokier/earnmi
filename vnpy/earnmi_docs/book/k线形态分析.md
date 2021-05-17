@@ -30,7 +30,7 @@ app = App()
 start = datetime(year=2018,month=1,day=6)
 end = datetime(year=2021,month=1,day=6)
 drvier2 = ZZ500StockDriver()
-bar_source = app.getBarManager().createBarSoruce([drvier2], Interval.DAILY, start, end)
+bar_source = app.getBarManager().createBarSoruce(drvier2, start, end)
 
 def calc_pattern_value(bars:Sequence['BarData'])->int:
     return KPattern.encode_2k_by_algo1(bars)

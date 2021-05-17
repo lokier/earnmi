@@ -60,7 +60,8 @@ app = App()
 start = datetime(year=2018,month=1,day=6)
 end = datetime(year=2021,month=1,day=6)
 drvier2 = ZZ500StockDriver()
-bar_source = app.getBarManager().createBarSoruce([drvier2], Interval.DAILY, start, end)
+bar_source = app.getBarManager().createBarSoruce(drvier2,start,end)
+
 finished_list = []
 CollectHandler.visit(Pattern_2k_by_algo1_handler(),bar_source,finished_list=finished_list)
 print(f"finished size :{len(finished_list)}")

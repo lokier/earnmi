@@ -10,7 +10,7 @@ import math
 
 from earnmi.chart.Indicator import Indicator
 from earnmi.core.analysis.FloatRange import FloatRange
-from earnmi.data.BarSoruce import BarSource
+from earnmi.data.BarSoruce import BarSource, BarSource
 from earnmi.data.BarTrader import SimpleTrader
 
 
@@ -76,7 +76,7 @@ def analysis_BuyOrSellStrategy(source: BarSource, strategy: BuyOrSellStrategy):
     trader = SimpleTrader()  ##计算正向收益
     trader_reverse = SimpleTrader()  ##计算反向收益
 
-    for symbol,bars in source.items():
+    for symbol,bars in source.itemsSequence():
         code = bars[0].symbol
         print(f"start:{code}")
         strategy.onBegin(code)

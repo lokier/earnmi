@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Union, Sequence
 
-from earnmi.data.BarSoruce import BarSource
+from earnmi.data.BarSoruce import BarSource, BarSource
 from earnmi.model.bar import BarData
 
 
@@ -83,7 +83,7 @@ class CollectHandler:
         pass
 
     @staticmethod
-    def visit(handler,source_or_bars:Union[BarSource, Sequence['BarData']],finished_list = None,un_finished_list = None):
+    def visit(handler, source_or_bars:Union[BarSource, Sequence['BarData']], finished_list = None, un_finished_list = None):
         """
         遍历该处理器。
         参数:
@@ -100,8 +100,8 @@ class CollectHandler:
             raise RuntimeError("unsupport type of : " + _the_type)
 
 
-    def __visit_soruce(self,source:BarSource,finished_list = None,un_finished_list = None):
-        for symbol, bars in source.items():
+    def __visit_soruce(self, source:BarSource, finished_list = None, un_finished_list = None):
+        for symbol, bars in source.itemsSequence():
             self.__visit_bars(bars,finished_list,un_finished_list,symbol)
 
     def __visit_bars(self,bars:[BarData],finished_list = None,un_finished_list = None,symbol:str = None):
