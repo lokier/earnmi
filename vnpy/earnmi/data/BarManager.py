@@ -2,7 +2,6 @@ from datetime import datetime
 
 from peewee import SqliteDatabase
 
-from earnmi.data.BarParallel import DefaultBarParallel
 from vnpy.trader.constant import Interval
 from earnmi.core.Context import Context, ContextWrapper
 from earnmi.data.BarDriver import BarDriver
