@@ -31,10 +31,14 @@ class BarSource:
         self.start = start
         self.end = end
 
-    def get_bars(self, symbol: str,interval:Interval, start: datetime,end:datetime = None) -> Sequence["BarData"]:
+    def get_bars(self, symbol: str,interval:Interval = Interval.DAILY, start: datetime = None,end:datetime = None) -> Sequence["BarData"]:
         """
         返回股票的历史行情。
         """
+        if start is None:
+            start = self.start
+        if end is None:
+            end = self.end
         return self._driver.load_bars(symbol,interval,start,end,self._storage)
 
     """

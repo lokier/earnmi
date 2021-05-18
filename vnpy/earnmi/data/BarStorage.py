@@ -3,9 +3,8 @@ from typing import List, Sequence, Optional, Dict
 
 from peewee import AutoField, CharField, DateTimeField, FloatField, Model, Database, chunked, BlobField
 
-from earnmi.data.BarV2 import BarV3
-from earnmi.model.bar import BarData
-from vnpy.trader.constant import Interval, Exchange
+from earnmi.model.bar import BarData, BarV2
+from vnpy.trader.constant import Interval
 
 
 
@@ -121,7 +120,6 @@ class BarStorage:
             )
             data = [db_bar.to_bar() for db_bar in s]
             return data
-            return
         s = (
             self.class_bar.select()
                 .where(
@@ -239,7 +237,7 @@ def _init_BarV2_Model(db: Database):
         low_price = FloatField()
         close_price = FloatField()
 
-        extra = BlobField()
+        extra:bytes = BlobField()
 
         class Meta:
             database = db
@@ -250,7 +248,7 @@ def _init_BarV2_Model(db: Database):
             return self.__data__
 
         @staticmethod
-        def from_bar(bar: BarV3):
+        def from_bar(bar: BarV2):
             """
             Generate DbBarData object from BarData.
             """
@@ -274,7 +272,7 @@ def _init_BarV2_Model(db: Database):
             """
             Generate BarData object from DbBarData.
             """
-            bar = BarV3(
+            bar = BarV2(
                 symbol=self.symbol,
                 datetime=self.datetime,
                 interval=Interval(self.interval),
@@ -286,7 +284,7 @@ def _init_BarV2_Model(db: Database):
                 close_price=self.close_price,
                 _driver=self.driver
             )
-            bar.parseExtraBlob(self.extra)
+            bar.loadExtraBlob(self.extra)
             return bar
 
         @staticmethod

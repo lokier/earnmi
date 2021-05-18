@@ -1,3 +1,4 @@
+import pickle
 from dataclasses import dataclass
 from datetime import datetime,timedelta
 from typing import List, Sequence
@@ -27,7 +28,31 @@ class BarData:
     close_price: float = 0
     _driver: str = ""  ##Bar驱动器名称，具体查看BarDriver.getName()
 
+@dataclass
+class BarV2(BarData):
 
+    @dataclass(init=False)
+    class Extra:
+        def __init__(self,**kwargs):
+            if kwargs is None:
+                return
+            for name, val in kwargs.items():
+                setattr(self, name, val)
+
+    extra:Extra = None
+
+    def __post_init__(self):
+        self.extra = BarV2.Extra()
+
+    def getExtraBlob(self)->bytes:
+        return pickle.dumps(self.extra.__dict__)
+
+    def loadExtraBlob(self, data):
+        if data is None:
+            self.extra = BarV2.Extra()
+        else:
+            dictData = pickle.loads(data)
+            self.extra = BarV2.Extra(**dictData)
 
 
 """
