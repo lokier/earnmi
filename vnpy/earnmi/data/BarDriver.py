@@ -139,8 +139,15 @@ class BarDriver:
         return storage.get_oldest_bar_data(symbol,self.get_name(),interval)
 
     """
-      是否BarV2数据类型. 会分组存储。
+        驱动器分组名称，同一个GroupName名称会保存在同一个数据库文件。
     """
-    def isBarV2(self):
-        return False
+    def getDriverGroupName(self):
+        return "__default__"
+
+class BarStorageGroup:
+
+    @abstractmethod
+    def getStorage(self,driver:BarDriver) -> BarStorage:
+        pass
+
 

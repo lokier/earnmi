@@ -10,8 +10,7 @@ from earnmi.data.driver.Sw2Driver import SW2Driver
 from earnmi.uitl.utils import utils
 
 from earnmi.core.Context import Context
-from earnmi.data.BarDriver import BarDriver, DayRange
-from earnmi.data.BarStorage import BarStorage, BarStorageGroup
+from earnmi.data.BarDriver import BarDriver, DayRange, BarStorageGroup
 from vnpy.trader.constant import Interval
 
 
@@ -103,7 +102,7 @@ class BarUpdator:
         self.update_drivers(market._driver_index,market._drivers,start,end,clear)
 
     def _getStorage(self,driver:BarDriver):
-        storage = self._dbStorage.getStorageV2() if driver.isBarV2() else self._dbStorage.getStorage()
+        storage = self._dbStorage.getStorage(driver)
         return storage
 
     def update_drivers(self,index_driver: BarDriver,drivers:[],start:datetime,end:datetime = None, clear = False):

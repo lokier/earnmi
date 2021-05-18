@@ -313,12 +313,6 @@ class BarV2Storage(BarStorage):
         self.class_bar = _init_BarV2_Model(db)
 
 
-class BarStorageGroup:
 
-    def getStorage(self) -> BarStorage:
-        pass
-
-    def getStorageV2(self) -> BarV2Storage:
-        pass
 
 

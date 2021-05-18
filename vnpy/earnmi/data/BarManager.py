@@ -4,10 +4,10 @@ from peewee import SqliteDatabase
 
 from vnpy.trader.constant import Interval
 from earnmi.core.Context import Context, ContextWrapper
-from earnmi.data.BarDriver import BarDriver
+from earnmi.data.BarDriver import BarDriver, BarStorageGroup
 from earnmi.data.BarMarket import BarMarket
 from earnmi.data.BarSoruce import BarSource, DefaultBarSource, BarSource
-from earnmi.data.BarStorage import BarStorage, BarV2Storage, BarStorageGroup
+from earnmi.data.BarStorage import BarStorage, BarV2Storage
 from earnmi.data.BarUpdator import BarUpdator
 
 __all__ = [
@@ -15,17 +15,20 @@ __all__ = [
     'BarManager',
 ]
 
-class _BarStorageSource(BarStorageGroup):
+V2_DRIVER_NAME = "_bar_v2_"
+
+class _BarStorageGroup(BarStorageGroup):
 
     def __init__(self,v1:BarStorage,v2:BarV2Storage):
         self.v1 = v1;
         self.v2 = v2
 
-    def getStorage(self) -> BarStorage:
-        return self.v1
+    def getStorage(self, driver: BarDriver) -> BarStorage:
+        if V2_DRIVER_NAME == driver.getDriverGroupName():
+            return self.v2
+        else:
+            return self.v1
 
-    def getStorageV2(self) -> BarV2Storage:
-        return self.v2;
 
 class BarManager:
 
@@ -39,16 +42,15 @@ class BarManager:
         self.context = context
         storageFilePath = context.getFilePath("BarManager","bar_storage.db")
         storageV2FilePath = context.getFilePath("BarManager","bar_v2_storage.db")
-        self._storageSource = _BarStorageSource(BarStorage(SqliteDatabase(storageFilePath))
+        self._storageGroup = _BarStorageGroup(BarStorage(SqliteDatabase(storageFilePath))
                                                 ,BarV2Storage(SqliteDatabase(storageV2FilePath)))
-
 
     def getStorageGroup(self)->BarStorageGroup:
         """
         返回行情存储器分组。
         不同的driver会存储到不同的平台。
         """
-        return self._storageSource
+        return self._storageGroup
 
     def createBarMarket(self, index_driver:BarDriver, drivers:['BarDriver'])->BarMarket:
         """
@@ -62,7 +64,7 @@ class BarManager:
         return market
 
     def createBarSoruce(self, driver:BarDriver, start: datetime = None, end: datetime = None) -> BarSource:
-        storage = self.getStorageGroup().getStorageV2() if driver.isBarV2() else self.getStorageGroup().getStorage()
+        storage = self.getStorageGroup().getStorage(driver)
         return BarSource(driver, storage, start, end)
 
     """
@@ -90,8 +92,8 @@ class BarManager:
             self.origin_driver = tranfrom.driver
             self.name = f"__t__{tranfrom.driver.get_name()}"
 
-        def isBarV2(self):
-            return True
+        def getDriverGroupName(self):
+            return V2_DRIVER_NAME
 
         def get_name(self):
             return self.name

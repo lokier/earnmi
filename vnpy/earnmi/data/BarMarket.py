@@ -6,10 +6,9 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Sequence, Tuple
 
-from earnmi.data.BarDriver import BarDriver
+from earnmi.data.BarDriver import BarDriver, BarStorageGroup
 from earnmi.model.bar import BarData, LatestBar
 from earnmi.core.Context import Context
-from earnmi.data.BarStorage import BarStorageGroup
 from earnmi.uitl.utils import utils
 from vnpy.trader.constant import Interval
 
@@ -69,7 +68,7 @@ class BarMarket:
             end = limit_end
         elif end > limit_end:
             raise RuntimeError("end time must be < today")
-        storage = self._dbSoruce.getStorageV2() if driver.isBarV2() else self._dbSoruce.getStorage()
+        storage = self._dbSoruce.getStorage(driver)
         return driver.load_bars(symbol,interval,start,end,storage)
 
     def get_symbol_list(self,symbol:str):
@@ -111,7 +110,7 @@ class BarMarket:
         restult = {}
         latest_bars = None
         for driver,code_list in driver_symbols_map.items():
-            storage = self._dbSoruce.getStorageV2() if driver.isBarV2() else self._dbSoruce.getStorage()
+            storage = self._dbSoruce.getStorage(driver)
             for code in code_list:
                 restult[code] = None
             if self.context.is_backtest():
@@ -131,7 +130,7 @@ class BarMarket:
         清空某个行情驱动的数据。
         """
         driver = self._find_bar_driver(driver_name)
-        storage = self._dbSoruce.getStorageV2() if driver.isBarV2() else self._dbSoruce.getStorage()
+        storage = self._dbSoruce.getStorage(driver)
         storage.clean(driver.get_name())
 
     def _find_bar_driver(self,driver_name:str)->BarDriver:
