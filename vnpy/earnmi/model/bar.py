@@ -54,6 +54,23 @@ class BarV2(BarData):
             dictData = pickle.loads(data)
             self.extra = BarV2.Extra(**dictData)
 
+    @staticmethod
+    def copy(bar:BarData,driver_name = None):
+        if driver_name is None:
+            driver_name = bar._driver
+        return BarV2(
+            symbol=bar.symbol,
+            _driver= driver_name,
+            datetime=bar.datetime,
+            interval=bar.interval,
+            volume=bar.volume,
+            open_price=bar.open_price,
+            high_price=bar.high_price,
+            low_price=bar.low_price,
+            close_price=bar.close_price,
+            open_interest=bar.open_interest,
+        )
+
 
 """
 最新的bar

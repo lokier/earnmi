@@ -23,7 +23,7 @@ git config  https.proxy http://10.98.16.2:3128
         * [1.数据驱动BarDriver](earnmi_docs/book/数据源.md#BarDataDriver)
         * [2.数据BarData](earnmi_docs/book/数据源.md#BarData)
         * [3.行情数据:Market、BarSource](earnmi_docs/book/数据源.md#Market)
-        * [4.加工行情数据BarV2](earnmi_docs/book/数据源.md#barv2)
+        * [4.行情数据变换：BarTransform和BarV2](earnmi_docs/book/数据源.md#barv2)
         * [5.行情数据下载与调用](earnmi_docs/book/数据源.md#donwnload)
         * [6.模拟买卖和测评](earnmi_docs/book/数据源.md#trader)
         * [7.行情收集](earnmi_docs/book/行情收集.md)

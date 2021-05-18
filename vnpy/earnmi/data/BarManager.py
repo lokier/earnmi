@@ -67,7 +67,7 @@ class BarManager:
         storage = self.getStorageGroup().getStorage(driver)
         return BarSource(driver, storage, start, end)
 
-    def createBarTransform(self,hander:BarTransformHandle):
+    def createBarTransform(self,hander:BarTransformHandle)->BarTransform:
         return BarManager.__Iner_BarTransform(hander,self)
 
 
