@@ -138,6 +138,9 @@ class BarDriver:
     def load_oldest_bar(self,symbol: str,interval:Interval,storage: BarStorage) -> BarData:
         return storage.get_oldest_bar_data(symbol,self.get_name(),interval)
 
-
-
+    """
+      是否BarV2数据类型. 会分组存储。
+    """
+    def isBarV2(self):
+        return False
 

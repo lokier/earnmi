@@ -11,7 +11,7 @@ from earnmi.uitl.utils import utils
 
 from earnmi.core.Context import Context
 from earnmi.data.BarDriver import BarDriver, DayRange
-from earnmi.data.BarStorage import BarStorage
+from earnmi.data.BarStorage import BarStorage, BarStorageGroup
 from vnpy.trader.constant import Interval
 
 
@@ -80,7 +80,7 @@ class BarUpdator:
     """
     行情更新器，将最新的行情数据下载到数据。
     """
-    def __init__(self,context:Context,storage:BarStorage):
+    def __init__(self, context:Context, dbStorage:BarStorageGroup):
        """
        参数：
             context:
@@ -89,7 +89,7 @@ class BarUpdator:
             drivers:
        """
        self.context = context
-       self._storage = storage
+       self._dbStorage = dbStorage
 
 
     def update(self,market:BarMarket,start:datetime,end:datetime = None, clear = False):
@@ -102,6 +102,10 @@ class BarUpdator:
         """
         self.update_drivers(market._driver_index,market._drivers,start,end,clear)
 
+    def _getStorage(self,driver:BarDriver):
+        storage = self._dbStorage.getStorageV2() if driver.isBarV2() else self._dbStorage.getStorage()
+        return storage
+
     def update_drivers(self,index_driver: BarDriver,drivers:[],start:datetime,end:datetime = None, clear = False):
         today = datetime.now()
         limit_end_day = utils.to_end_date(today - timedelta(days=1))  ##最新数据为昨天。
@@ -110,25 +114,23 @@ class BarUpdator:
         elif (end.__gt__(today)):
             end = limit_end_day
 
-        storage = self._storage
-
         ###先更新市场指数行情
         update_count = self._update_driver(index_driver, _dayRange_impl(start, end), clear)
         self.context.log_i("BarUpdator",f'update  index({index_driver.get_name()}): update_count = {update_count}')
 
         ##根据指数日行情，修正更新时间节点（过滤那些不在的交易日的时间）
         index_symbol = index_driver.get_symbol_lists()[0]
-        oldest_bar = index_driver.load_oldest_bar(index_symbol, Interval.DAILY, storage)
+        oldest_bar = index_driver.load_oldest_bar(index_symbol, Interval.DAILY, self._getStorage(index_driver))
         if oldest_bar is None:
             ##更新市场行情指数失败
             self.context.log_w("BarUpdator",f'update index drivers error')
             return
-        newest_bar = index_driver.load_newest_bar(index_symbol, Interval.DAILY, storage)
+        newest_bar = index_driver.load_newest_bar(index_symbol, Interval.DAILY, self._getStorage(index_driver))
         assert not newest_bar is None
 
         newest_time = utils.to_end_date(newest_bar.datetime)
         oldest_time = utils.to_start_date(oldest_bar.datetime)
-        index_bars = index_driver.load_bars(index_symbol,Interval.DAILY,start,end,storage)
+        index_bars = index_driver.load_bars(index_symbol,Interval.DAILY,start,end,self._getStorage(index_driver))
         trade_day_list = self._to_day_list(index_bars)
 
         ##更新的时间范围(start,end)不能超过市场指数的时间范围
@@ -151,19 +153,19 @@ class BarUpdator:
 
     def _update_driver(self, driver:BarDriver, days:_dayRange_impl, clear)->int:
         driver_name = driver.get_name()
+        storage = self._getStorage(driver)
         if clear:
-            self._storage.clean(driver=driver_name)
+            storage.clean(driver=driver_name)
         download_cnt = 0
         start = days.start()
         end = days.end()
         start_date = utils.to_start_date(start)
         end_date = utils.to_end_date(end)
-        storage = self._storage
         for symbol in driver.get_symbol_lists():
             newest_bar = storage.get_newest_bar_data(symbol, driver.get_name(), Interval.DAILY)
             if newest_bar is None:
                 # 不含数据，全量更新
-                download_cnt += driver.download_bars_from_net(self.context, symbol,days, self._storage)
+                download_cnt += driver.download_bars_from_net(self.context, symbol,days, storage)
             else:
                 # 已经含有数据，增量更新
                 oldest_bar = storage.get_oldest_bar_data(symbol, driver.get_name(), Interval.DAILY)
@@ -173,10 +175,10 @@ class BarUpdator:
                 if start_date < oldest_datetime:
                     _the_day_list = _dayRange_impl(start_date, oldest_datetime, days.daylist)
                     _the_day_list.reverse = True ###翻转时间，优先下载大日期
-                    download_cnt += driver.download_bars_from_net(self.context,symbol, _the_day_list,self._storage)
+                    download_cnt += driver.download_bars_from_net(self.context,symbol, _the_day_list,storage)
                 if newest_datetime < end_date:
                     _the_day_list = _dayRange_impl(newest_datetime, end_date, days.daylist)
-                    download_cnt += driver.download_bars_from_net(self.context,symbol, _the_day_list,self._storage)
+                    download_cnt += driver.download_bars_from_net(self.context,symbol, _the_day_list,storage)
         return download_cnt
 
 

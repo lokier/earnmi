@@ -28,8 +28,14 @@ class BarSource:
         assert start <= end
         self._driver = driver
         self._storage = storage
-        self._start = start
-        self._end = end
+        self.start = start
+        self.end = end
+
+    def get_bars(self, symbol: str,interval:Interval, start: datetime,end:datetime = None) -> Sequence["BarData"]:
+        """
+        返回股票的历史行情。
+        """
+        return self._driver.load_bars(symbol,interval,start,end,self._storage)
 
     """
     串行返回bar行情 。默认返回近两年数据。
@@ -37,7 +43,7 @@ class BarSource:
     @abstractmethod
     def itemsSequence(self,interval:Interval = Interval.DAILY):
 
-        source = DefaultBarSource(self._storage, [self._driver], interval, self._start, self._end)
+        source = DefaultBarSource(self._storage, [self._driver], interval, self.start, self.end)
         return source.items()
 
     """
@@ -46,7 +52,7 @@ class BarSource:
     def itemsParallel(self):
         # if not Interval.DAILY == self._interval:
         #     raise RuntimeError("itemsParallel unsupoort intrvale: " + self._interval.__str__())
-        source = DefaultBarParallel( self._storage,self._driver,self._start,self._end)
+        source = DefaultBarParallel(self._storage, self._driver, self.start, self.end)
         return source.items()
 
 class Bar_iter:

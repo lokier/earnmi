@@ -6,7 +6,7 @@ from abc import abstractmethod
 
 from earnmi.data.BarDriver import BarDriver
 from earnmi.data.BarManager import BarManager
-from earnmi.data.BarStorage import BarStorage
+from earnmi.data.BarStorage import  BarV2Storage
 
 
 class BarTransfrom:
@@ -20,7 +20,7 @@ class BarTransfrom:
         driver_name：该transfrom对应的driver_name
     """
     @abstractmethod
-    def onTransform(self,manager:BarManager,storage: BarStorage,driver_name:str):
+    def onTransform(self,manager:BarManager,storage: BarV2Storage,driver_name:str):
 
         ####开始加工数据
         ###storage.save_bar_data()

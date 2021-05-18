@@ -1,9 +1,7 @@
+import pickle
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Sequence, Tuple
-
-from earnmi.data.BarMarket import BarMarket
-from earnmi.data.BarSoruce import BarSource
 from earnmi.model.bar import BarData
 from earnmi.uitl.utils import utils
 from vnpy.trader.constant import Interval
@@ -11,10 +9,35 @@ import numpy as np
 __all__ = [
     # Super-special typing primitives.
     'BarV2',
+    'BarV3',
     'BarV2Market',
 ]
 
 _A_DAY = 24 * 60 * 60
+
+
+@dataclass
+class BarV3(BarData):
+
+    @dataclass(init=False)
+    class Extra:
+        def __init__(self,**kwargs):
+            if kwargs is None:
+                return
+            for name, val in kwargs.items():
+                setattr(self, name, val)
+
+    extra = Extra()
+
+    def getExtraBlob(self):
+        return pickle.dumps(self.extra.__dict__)
+
+    def parseExtraBlob(self,data):
+        if data is None:
+            self.extra = BarV3.Extra()
+        else:
+            dictData = pickle.load(data)
+            self.extra = BarV3.Extra(**dictData)
 
 @dataclass
 class BarV2(BarData):
@@ -109,7 +132,7 @@ class BarV2(BarData):
 
 class BarV2Market:
 
-    def __init__(self,market:BarMarket):
+    def __init__(self,market):
         self._market = market
 
 

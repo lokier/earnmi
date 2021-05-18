@@ -7,13 +7,25 @@ from earnmi.core.Context import Context, ContextWrapper
 from earnmi.data.BarDriver import BarDriver
 from earnmi.data.BarMarket import BarMarket
 from earnmi.data.BarSoruce import BarSource, DefaultBarSource, BarSource
-from earnmi.data.BarStorage import BarStorage
+from earnmi.data.BarStorage import BarStorage, BarV2Storage, BarStorageGroup
 from earnmi.data.BarUpdator import BarUpdator
 
 __all__ = [
     # Super-special typing primitives.
     'BarManager',
 ]
+
+class _BarStorageSource(BarStorageGroup):
+
+    def __init__(self,v1:BarStorage,v2:BarV2Storage):
+        self.v1 = v1;
+        self.v2 = v2
+
+    def getStorage(self) -> BarStorage:
+        return self.v1
+
+    def getStorageV2(self) -> BarV2Storage:
+        return self.v2;
 
 class BarManager:
 
@@ -26,14 +38,17 @@ class BarManager:
     def __init__(self,context:Context):
         self.context = context
         storageFilePath = context.getFilePath("BarManager","bar_storage.db")
-        self._storage:BarStorage = BarStorage(SqliteDatabase(storageFilePath))
+        storageV2FilePath = context.getFilePath("BarManager","bar_v2_storage.db")
+        self._storageSource = _BarStorageSource(BarStorage(SqliteDatabase(storageFilePath))
+                                                ,BarV2Storage(SqliteDatabase(storageV2FilePath)))
 
 
-    def getStorage(self)->BarStorage:
+    def getStorageGroup(self)->BarStorageGroup:
         """
-        返回行情存储器
+        返回行情存储器分组。
+        不同的driver会存储到不同的平台。
         """
-        return self._storage
+        return self._storageSource
 
     def createBarMarket(self, index_driver:BarDriver, drivers:['BarDriver'])->BarMarket:
         """
@@ -42,12 +57,13 @@ class BarManager:
             index_driver： 行情指数驱动器
             drivers: 各种股票池行情数据驱动器
         """
-        market = BarMarket(self.context, self._storage)
+        market = BarMarket(self.context, self.getStorageGroup())
         market.init(index_driver, drivers)
         return market
 
     def createBarSoruce(self, driver:BarDriver, start: datetime = None, end: datetime = None) -> BarSource:
-        return BarSource(driver, self._storage, start, end)
+        storage = self.getStorageGroup().getStorageV2() if driver.isBarV2() else self.getStorageGroup().getStorage()
+        return BarSource(driver, storage, start, end)
 
     """
     创建数据加工数据。
@@ -55,18 +71,16 @@ class BarManager:
     def transfrom(self,transform,rebuild = False)->BarDriver:
         transformBarDriver = BarManager._TransformBarDriver(transform)
 
+        storage = self.getStorageGroup().getStorageV2() if transformBarDriver.isBarV2() else self.getStorageGroup().getStorage()
         driver_name = transformBarDriver.get_name()
         if rebuild:
-            self._storage.clean(driver=driver_name)
-        transform.onTransform(self._storage,driver_name)
+            storage.clean(driver=driver_name)
+        transform.onTransform(self,storage,driver_name)
         return transformBarDriver
 
-    # def createBarParallel(self, drvier:BarDriver, start: datetime, end: datetime):
-    #     source = DefaultBarParallel( self._storage,drvier,start,end)
-    #     return source
 
     def createUpdator(self)->BarUpdator:
-        updator = BarUpdator(self.context,self._storage);
+        updator = BarUpdator(self.context, self.getStorageGroup());
         return updator
 
     class _TransformBarDriver(BarDriver):
@@ -75,6 +89,9 @@ class BarManager:
             self.transform = tranfrom
             self.origin_driver = tranfrom.driver
             self.name = f"__t__{tranfrom.driver.get_name()}"
+
+        def isBarV2(self):
+            return True
 
         def get_name(self):
             return self.name
