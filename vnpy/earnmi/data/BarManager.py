@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from peewee import SqliteDatabase
 
-from earnmi.data.BarTransform import BarTransform, BarTransformHandle
+from earnmi.data.BarTransform import BarTransform, BarTransformHandle, BarTransformStorage
 from earnmi.core.Context import Context, ContextWrapper
 from earnmi.data.BarDriver import BarDriver, BarStorageGroup
 from earnmi.data.BarMarket import BarMarket
@@ -101,13 +101,14 @@ class BarManager:
            创建数据加工数据。
            """
 
-        def transfrom(self,rebuild=False) -> BarDriver:
+        def transform(self,rebuild=False) -> BarDriver:
             transformBarDriver = self.driver
             storage:BarV2Storage = self.manager.getStorageGroup().getStorage(transformBarDriver)
             driver_name = transformBarDriver.get_name()
             if rebuild:
                 storage.clean(driver=driver_name)
-            self.handle.onTransform(self.manager, storage, driver_name)
+            storageForTransform = BarTransformStorage(self.manager,storage,self.getBarDriver());
+            self.handle.onTransform(self.manager, storageForTransform)
             return transformBarDriver
 
         def getBarDriver(self):

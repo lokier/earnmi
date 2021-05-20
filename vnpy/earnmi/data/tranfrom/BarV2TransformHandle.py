@@ -3,7 +3,7 @@ from datetime import datetime
 from earnmi.data.BarDriver import BarDriver
 from earnmi.data.BarManager import BarManager
 from earnmi.data.BarStorage import BarV2Storage
-from earnmi.data.BarTransform import BarTransformHandle
+from earnmi.data.BarTransform import BarTransformHandle, BarTransformStorage
 from earnmi.model.bar import BarData, BarV2
 from earnmi.uitl.utils import utils
 from vnpy.trader.constant import Interval
@@ -26,15 +26,17 @@ class BarV2TransformHandle(BarTransformHandle):
     def get_symbol_lists(self):
         return self.driver.get_symbol_lists()
 
-    def onTransform(self,manager:BarManager,storage: BarV2Storage,driver_name:str):
+    def onTransform(self,manager:BarManager,storage:BarTransformStorage):
         _A_DAY = 24 * 60 * 60
 
         ##清理数据
-        storage.clean(driver=driver_name)
+        storage.clear()
+
         targetDriver = self.driver
         barSource = manager.createBarSoruce(targetDriver)
 
         symbolist = targetDriver.get_symbol_lists()
+        driver_name = storage.getBarDriver().get_name()
         for symbol in symbolist:
             print(f"start transform: {symbol}")
 

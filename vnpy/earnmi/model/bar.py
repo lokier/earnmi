@@ -58,7 +58,7 @@ class BarV2(BarData):
     def copy(bar:BarData,driver_name = None):
         if driver_name is None:
             driver_name = bar._driver
-        return BarV2(
+        bar_v2 =  BarV2(
             symbol=bar.symbol,
             _driver= driver_name,
             datetime=bar.datetime,
@@ -70,6 +70,10 @@ class BarV2(BarData):
             close_price=bar.close_price,
             open_interest=bar.open_interest,
         )
+        if isinstance(bar,BarV2):
+            bar_v2.loadExtraBlob(bar.getExtraBlob())
+        return bar_v2
+
 
 
 """

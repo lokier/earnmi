@@ -141,6 +141,33 @@ class BarStorage:
         ds = [self.class_bar.from_bar(i) for i in datas]
         self.class_bar.save_all(ds)
 
+    def get_newest_datetime(self,driver_name:str,interval = Interval.DAILY)-> Optional["datetime"]:
+        s = (
+            self.class_bar.select()
+                .where(
+                 (self.class_bar.driver == driver_name)
+                & (self.class_bar.interval == interval.value)
+            )
+                .order_by(self.class_bar.datetime.desc())
+                .first()
+        )
+        if s:
+            return s.to_bar().datetime
+        return None
+
+    def get_oldest_datime(self, driver_name: str, interval = Interval.DAILY) -> Optional["datetime"]:
+        s = (
+            self.class_bar.select()
+                .where(
+                (self.class_bar.driver == driver_name)
+                & (self.class_bar.interval == interval.value)
+            )
+                .order_by(self.class_bar.datetime.asc())
+                .first()
+        )
+        if s:
+            return s.to_bar().datetime
+        return None
 
     def get_newest_bar_data(
             self, symbol: str, driver: str, interval: "Interval"

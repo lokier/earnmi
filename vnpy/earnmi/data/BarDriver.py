@@ -68,8 +68,6 @@ class BarDriver:
         """
         return None
 
-
-
     @abstractmethod
     def support_interval(self, interval: Interval) -> bool:
         """
@@ -137,6 +135,9 @@ class BarDriver:
 
     def load_oldest_bar(self,symbol: str,interval:Interval,storage: BarStorage) -> BarData:
         return storage.get_oldest_bar_data(symbol,self.get_name(),interval)
+
+    def clear(self,storage:BarStorage):
+        return storage.clean(driver=self.get_name())
 
     """
         驱动器分组名称，同一个GroupName名称会保存在同一个数据库文件。

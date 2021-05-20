@@ -21,10 +21,15 @@ __all__ = [
 class BarSource:
 
     def __init__(self,driver:BarDriver,storage:BarStorage,start: datetime = None, end: datetime = None):
+
         if end is None:
-            end = datetime.now()
+            end = storage.get_newest_datetime(driver.get_name())
+            if end is None:
+                end = datetime.now()
         if start is None:
-            start = end - timedelta(days=730)
+            start = storage.get_oldest_datime(driver.get_name())
+            if start is None:
+                start = end - timedelta(days=730)
         assert start <= end
         self._driver = driver
         self._storage = storage
