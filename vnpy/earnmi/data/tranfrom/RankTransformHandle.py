@@ -1,5 +1,7 @@
 from datetime import datetime
 
+import talib
+
 from earnmi.data.BarDriver import BarDriver
 from earnmi.data.BarManager import BarManager
 from earnmi.data.BarStorage import BarV2Storage
@@ -8,9 +10,9 @@ from earnmi.model.bar import BarData, BarV2
 from earnmi.uitl.utils import utils
 from vnpy.trader.constant import Interval
 import numpy as np
+import numpy as np
 
 _A_DAY = 24 * 60 * 60
-
 
 """
 BarV2变换器
@@ -27,10 +29,31 @@ class RankTransformHandle(BarTransformHandle):
         return self.driver.get_symbol_lists()
 
     def onTransform(self,manager:BarManager,storage:BarTransformStorage):
-
         ##清理数据
-        storage.clear()
+        # storage.clear()
+        #
+        # self._generate_rank_value(manager,storage)
+        # self._generate_rank_yx(manager,storage)
+        barV2Source = manager.createBarSoruce(storage.getBarDriver())
+        rank_values = []
+        rank_f = []
+        for symbol, bars in barV2Source.itemsSequence():
+            for bar in bars:
+                if not bar.extra.rank_y3 is None:
+                    rank_values.append(bar.extra.rank_value)
+                    rank_f.append(bar.extra.rank_y3)
+        rank_values = np.array(rank_values) * 100
+        rank_f = np.array(rank_f) * 1000
+        print(f"{rank_values[0:100]}")
+        print(f"{rank_f[0:100]}")
 
+        ret = talib.CORREL(rank_values, rank_f, timeperiod=100)
+        print(f"ic:{ret[-1]},size={len(rank_f)}")
+
+        ret = talib.CORREL(rank_values[0:200], rank_f[0:200], timeperiod=100)
+        print(f"ic:{ret[-1]},size={len(rank_f)}")
+
+    def _generate_rank_value(self,manager:BarManager,storage:BarTransformStorage):
         targetDriver = self.driver
         barSource = manager.createBarSoruce(targetDriver)
 
@@ -49,33 +72,29 @@ class RankTransformHandle(BarTransformHandle):
             storage.save_bar_data(barv2_list)
             print(f"date: {datetime} ,size = {len(barv2_list)}")
 
-
+    def _generate_rank_yx(self,manager:BarManager,storage:BarTransformStorage):
         barV2Source = manager.createBarSoruce(storage.getBarDriver())
-
-        import numpy as np
         """
         + rank_y3: 3天后的收益: y = 3天后[(high_price + close_price)/2] - 当天|open_price
         """
-        for symbol,bars in barV2Source.itemsSequence():
+        for symbol, bars in barV2Source.itemsSequence():
             barv2_list = []
             bar_size = len(bars)
-            for i in range(0,bar_size):
+            for i in range(0, bar_size):
                 bar = bars[i]
                 barV2 = storage.createBarV2(bar)
                 barV2.extra.rank_y3 = np.nan
                 barV2.extra.rank_y7 = np.nan
                 barV2.extra.rank_y14 = np.nan
                 if i + 3 < bar_size:
-                    barV2.extra.rank_y3 = self.computeProfitPct(bars[i+1:i+4])
+                    barV2.extra.rank_y3 = self.computeProfitPct(bars[i + 1:i + 4])
                 if i + 7 < bar_size:
-                    barV2.extra.rank_y7 = self.computeProfitPct(bars[i+1:i+8])
+                    barV2.extra.rank_y7 = self.computeProfitPct(bars[i + 1:i + 8])
                 if i + 14 < bar_size:
-                    barV2.extra.rank_y14 = self.computeProfitPct(bars[i+1:i+15])
-
+                    barV2.extra.rank_y14 = self.computeProfitPct(bars[i + 1:i + 15])
                 barv2_list.append(barV2)
             storage.save_bar_data(barv2_list)
             print(f"symbol: {symbol} ,size = {len(bars)}")
-
 
     def computeProfitPct(self,bars):
         "y = 3天后[(high_price + close_price)/2] - 当天|open_price"

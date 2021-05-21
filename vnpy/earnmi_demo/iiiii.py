@@ -22,10 +22,11 @@ ma5Handle = RankTransformHandle(driver=drvier)
 barTransform = app.getBarManager().createBarTransform(ma5Handle)
 barTransform.transform()
 sources = barTransform.createBarSource()
-for symbol,bars in sources.itemsSequence():
-    print(f"symbol:{symbol}, len = {len(bars)}")
-    bar = bars[0]
-    print(f"    datetime:{bar.datetime}: extra = {bar.extra.__dict__}")
+# for symbol,bars in sources.itemsSequence():
+#     print(f"symbol:{symbol}, len = {len(bars)}")
+#
+#     bar = bars[0]
+#     print(f"    datetime:{bar.datetime}: extra = {bar.extra.__dict__}")
 
 # symbol = '801744'
 # bars = sources.get_bars(symbol,interval=Interval.DAILY)
